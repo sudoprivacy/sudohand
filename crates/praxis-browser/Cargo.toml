@@ -4,7 +4,41 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Browser actuator: drive Chrome over CDP — navigate, act, read, screenshot (absorbs adb / ai-dev-browser)."
+description = "Browser actuator: drive Chrome/Chromium/Edge over CDP (absorbs adb / ai-dev-browser)."
+
+[features]
+default = []
+# `flow`: graph-flow orchestration of browser steps (`workflow`, `flow`,
+# `registry`). Browser-only by design — there is no cross-actuator workflow.
+flow = ["dep:graph-flow", "dep:async-trait"]
 
 [dependencies]
 praxis-core = { workspace = true }
+chromiumoxide_cdp = "0.9.1"
+chromiumoxide_types = "0.9.1"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+png = "0.17"
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
+sha2 = "0.10"
+base64 = "0.22"
+thiserror = "2"
+regex-lite = "0.1"
+# cookies_import: Chromium cookie decryption (pure Rust)
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+pbkdf2 = { version = "0.12", default-features = false }
+hmac = "0.12"
+sha1 = "0.10"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync", "io-util", "process", "fs"] }
+tokio-tungstenite = "0.29"
+graph-flow = { version = "0.6", optional = true }
+async-trait = { version = "0.1", optional = true }
+
+[[test]]
+name = "flow"
+required-features = ["flow"]
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Drag fixture</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  #track { position: absolute; left: 100px; top: 100px; width: 400px; height: 40px; background: #ddd; }
+  #knob { position: absolute; left: 0; top: 0; width: 40px; height: 40px; background: #36c; cursor: grab; }
+  #pad { position: absolute; left: 100px; top: 200px; width: 300px; height: 200px; background: #eee; }
+  #log { position: absolute; left: 100px; top: 420px; }
+</style></head>
+<body>
+<div id="track"><div id="knob" role="slider" aria-label="Knob" aria-valuenow="0"></div></div>
+<div id="pad" role="button" aria-label="Pad"></div>
+<div id="log"></div>
+<script>
+  const knob = document.getElementById('knob');
+  const state = { down: 0, moves: 0, up: 0, trusted: true, path: [], lastButton: null, dbl: 0, ctx: 0, padClicks: [], moveEvents: 0 };
+  window.__state = state;
+  let dragging = false, startX = 0, startLeft = 0;
+  knob.addEventListener('mousedown', e => { state.down++; state.trusted = state.trusted && e.isTrusted; dragging = true; startX = e.clientX; startLeft = knob.offsetLeft; });
+  document.addEventListener('mousemove', e => {
+    state.moveEvents++;
+    if (!dragging) return;
+    state.moves++; state.trusted = state.trusted && e.isTrusted;
+    state.path.push([e.clientX, e.clientY]);
+    const left = Math.max(0, Math.min(360, startLeft + e.clientX - startX));
+    knob.style.left = left + 'px'; knob.setAttribute('aria-valuenow', String(left));
+  });
+  document.addEventListener('mouseup', e => { if (dragging) { state.up++; } dragging = false; state.lastButton = e.button; });
+  const pad = document.getElementById('pad');
+  pad.addEventListener('click', e => state.padClicks.push([e.clientX, e.clientY, e.button, e.isTrusted]));
+  pad.addEventListener('dblclick', () => state.dbl++);
+  pad.addEventListener('contextmenu', e => { e.preventDefault(); state.ctx++; });
+</script>
+</body></html>

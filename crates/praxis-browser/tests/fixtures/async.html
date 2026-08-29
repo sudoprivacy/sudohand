@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Async Fixture</title></head>
+<body>
+<h1>Async</h1>
+<p id="state">waiting</p>
+<script>
+  // Simulate a slow resource: an image that only "loads" after ~800ms via a
+  // delayed src assignment, so readyState stays "loading" until then.
+  document.write('<img id="slow" alt="Slow image">');
+  setTimeout(() => {
+    const b = document.createElement('button');
+    b.id = 'late';
+    b.textContent = 'Late button';
+    b.onclick = () => { window.location.href = 'result.html?from=late'; };
+    document.body.appendChild(b);
+    document.getElementById('state').textContent = 'ready';
+  }, 800);
+</script>
+</body>
+</html>

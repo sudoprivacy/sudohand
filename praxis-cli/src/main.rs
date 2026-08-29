@@ -16,6 +16,7 @@
 
 #![deny(unsafe_code)]
 
+mod browser;
 mod desktop;
 mod fs;
 mod shell;
@@ -36,7 +37,10 @@ struct Cli {
 #[derive(Subcommand)]
 enum Domain {
     /// Drive Chrome over CDP (was `adb`).
-    Browser,
+    Browser {
+        #[command(subcommand)]
+        cmd: browser::Cmd,
+    },
     /// Drive desktop apps: windows, AX tree, input, screenshots (was `adc`).
     Desktop {
         #[command(subcommand)]
@@ -57,12 +61,7 @@ enum Domain {
 fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
     match cli.command {
-        Domain::Browser => {
-            praxis_core::print_result::<()>(Err(praxis_core::Error::internal(format!(
-                "praxis browser: not yet implemented — {}",
-                praxis_browser::placeholder()
-            ))))
-        }
+        Domain::Browser { cmd } => praxis_core::print_result(browser::run(cmd)),
         Domain::Desktop { cmd } => praxis_core::print_result(desktop::run(cmd)),
         Domain::Fs { cmd } => praxis_core::print_result(fs::run(cmd)),
         Domain::Shell { cmd } => praxis_core::print_result(shell::run(cmd)),
