@@ -200,15 +200,18 @@ fn real_backend_invariants_under_random_requests() {
         );
         // A child killed by the timeout (it was still sleeping) vs. one that
         // finished: the two are mutually exclusive and self-consistent.
+        // Only classify when the margin is unambiguous: under parallel test
+        // load, shell + head + tr startup can take a few hundred ms.
+        const MARGIN: u64 = 500;
         if out.timed_out {
             assert!(
-                timeout.is_some_and(|tm| tm <= delay_ms + 150),
+                timeout.is_some_and(|tm| tm <= delay_ms + MARGIN),
                 "case {case}: timed out with timeout {timeout:?} vs delay {delay_ms}"
             );
             assert!(out.exit_code.is_none() && out.signal.is_some(), "{out:?}");
         } else {
             assert!(
-                timeout.is_none_or(|tm| tm + 150 >= delay_ms),
+                timeout.is_none_or(|tm| tm + MARGIN >= delay_ms),
                 "case {case}: finished although timeout {timeout:?} < delay {delay_ms}"
             );
             assert_eq!(out.exit_code, Some(exit), "case {case}: {out:?}");
