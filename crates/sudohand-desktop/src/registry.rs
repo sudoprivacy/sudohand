@@ -1,10 +1,11 @@
 //! Name → workflow registry. Workflows are graphs written in code; a
 //! [`Registry`] maps a name to a builder (`Fn(&Runner) -> Graph`) plus its
-//! description and required variables. [`Registry::builtins`] holds the
-//! crate's own (`wechat-send`); an integrator registers its graphs with
-//! [`Registry::register_fn`] and resolves/validates/runs them by name.
+//! description and required variables. This crate ships no app-specific
+//! graphs — [`Registry::builtins`] is empty; extensions and integrators
+//! register theirs with [`Registry::register_fn`] and resolve/validate/run
+//! them by name.
 
-use crate::flow::{self, run_graph, FlowGraph as Graph};
+use crate::flow::{run_graph, FlowGraph as Graph};
 use crate::workflow::{Runner, StepReport};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
@@ -71,16 +72,11 @@ impl Registry {
     }
 
     /// Built-ins only.
+    /// The crate's own workflows: none (app knowledge lives in
+    /// extensions). Kept as the conventional starting point for
+    /// [`Registry::register_fn`].
     pub fn builtins() -> Self {
-        let mut r = Self::new();
-        r.register_fn(
-            "wechat-send",
-            "Send one WeChat message to a contact or group (built-in graph with search retry)",
-            &["contact", "message"],
-            "builtin",
-            flow::wechat_send,
-        );
-        r
+        Self::new()
     }
 
     pub fn register(&mut self, def: Arc<dyn WorkflowDef>) {
@@ -170,6 +166,7 @@ impl Registry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::flow;
     use crate::workflow::Step;
     use graph_flow::Task;
 
@@ -219,9 +216,10 @@ mod tests {
     #[test]
     fn register_list_override_and_var_check() {
         let mut r = Registry::builtins();
-        assert_eq!(r.list().len(), 1);
+        assert!(r.list().is_empty());
         r.register_fn("hello", "says hi", &["who"], "test", hello);
-        // same name replaces the built-in
+        r.register_fn("wechat-send", "first", &[], "test0", hello);
+        // same name replaces the earlier registration
         r.register_fn("wechat-send", "override", &[], "test", hello);
         let names: Vec<_> = r.list().into_iter().map(|e| e.name).collect();
         assert_eq!(names, ["hello", "wechat-send"]);
