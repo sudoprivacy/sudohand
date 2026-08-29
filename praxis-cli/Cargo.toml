@@ -12,7 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 praxis-core = { workspace = true }
-praxis-desktop = { workspace = true }
+praxis-desktop = { workspace = true, features = ["agent"] }
 praxis-browser = { workspace = true }
 praxis-fs = { workspace = true }
 praxis-shell = { workspace = true }

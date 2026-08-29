@@ -1,5 +1,8 @@
 //! `praxis desktop <command> [flags]` — a thin CLI over `praxis-desktop`.
-//! Subcommands, flags and JSON output mirror `adc` one-to-one.
+//! Subcommands, flags and JSON output mirror `adc` one-to-one, including the
+//! agent layer (`locate` / `workflows` / `flow`, feature `agent` of
+//! praxis-desktop). Flows are desktop-only by design — no cross-actuator
+//! workflows.
 //!
 //! Only the stateless commands are exposed: the ref-based actions
 //! (`ax_press`/`ax_set_value`/`ax_focus`) need the `ref` map from an `ax_tree`
@@ -79,11 +82,39 @@ pub enum Cmd {
         #[arg(long)]
         keys: String,
     },
+    /// Ask the VLM where an element is on a window; prints the screen point.
+    Locate {
+        #[arg(long)]
+        bundle: String,
+        #[arg(long)]
+        window: Option<u32>,
+        /// Natural-language description of the element.
+        #[arg(long)]
+        find: String,
+        #[arg(long)]
+        model: Option<String>,
+    },
+    /// List the registered workflows (name, description, variables).
+    Workflows,
+    /// Run a registered workflow by name (scripted clicks first, VLM
+    /// fallback on failure).
+    Flow {
+        name: String,
+        /// `--var name=value`, substituted into `{{name}}` placeholders.
+        #[arg(long = "var")]
+        vars: Vec<String>,
+        /// Grounding model (default qwen3.6-27b).
+        #[arg(long)]
+        model: Option<String>,
+        /// Verification model (default qwen3.6-flash).
+        #[arg(long)]
+        ask_model: Option<String>,
+    },
 }
 
 #[cfg(target_os = "macos")]
 pub fn run(cmd: Cmd) -> Result<Value> {
-    run_with(&praxis_desktop::MacBackend::new(), cmd)
+    run_with(std::sync::Arc::new(praxis_desktop::MacBackend::new()), cmd)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -95,9 +126,11 @@ pub fn run(_cmd: Cmd) -> Result<Value> {
 
 /// Backend-generic body so the JSON shapes can be tested against the fake.
 #[cfg_attr(not(any(target_os = "macos", test)), allow(dead_code))]
-pub fn run_with(b: &dyn praxis_desktop::DesktopBackend, cmd: Cmd) -> Result<Value> {
+pub fn run_with(b: std::sync::Arc<dyn praxis_desktop::DesktopBackend>, cmd: Cmd) -> Result<Value> {
     use praxis_desktop::{parse_key, Error};
     use serde_json::json;
+    let b_arc = b;
+    let b = &*b_arc;
     Ok(match cmd {
         Cmd::Status => json!({
             "permissions": b.permissions(),
@@ -191,34 +224,71 @@ pub fn run_with(b: &dyn praxis_desktop::DesktopBackend, cmd: Cmd) -> Result<Valu
             b.key(&k, m)?;
             json!({"key": keys})
         }
+        Cmd::Locate {
+            bundle,
+            window,
+            find,
+            model,
+        } => {
+            use praxis_desktop::vlm::Vlm;
+            let mut vlm = praxis_desktop::vlm::DashScopeVlm::from_env()?;
+            if let Some(m) = model {
+                vlm.locate_model = m;
+            }
+            let wid = match window {
+                Some(w) => w,
+                None => pick_window(b, &bundle)?,
+            };
+            let shot = b.screenshot(&bundle, wid, Some(1100))?;
+            let t0 = std::time::Instant::now();
+            let n = vlm.locate(&shot.png, &find)?;
+            let (x, y) = praxis_desktop::workflow::norm_to_point(n, &shot);
+            json!({"find": find, "model": vlm.locate_model, "normalized": [n.x, n.y],
+                   "point": {"x": x, "y": y}, "window": wid, "ms": t0.elapsed().as_millis()})
+        }
+        Cmd::Workflows => {
+            json!({"workflows": praxis_desktop::registry::Registry::builtins().list()})
+        }
+        Cmd::Flow {
+            name,
+            vars,
+            model,
+            ask_model,
+        } => {
+            let map = parse_vars(vars)?;
+            let mut vlm = praxis_desktop::vlm::DashScopeVlm::from_env()?;
+            if let Some(m) = model {
+                vlm.locate_model = m;
+            }
+            if let Some(m) = ask_model {
+                vlm.ask_model = m;
+            }
+            let runner =
+                praxis_desktop::workflow::Runner::new(b_arc.clone(), std::sync::Arc::new(vlm));
+            let graph =
+                praxis_desktop::registry::Registry::builtins().prepare(&name, &runner, &map)?;
+            let report = praxis_desktop::flow::run_graph_blocking(graph, map)?;
+            json!({"ok": true, "workflow": name, "steps": report})
+        }
     })
 }
 
+fn parse_vars(vars: Vec<String>) -> Result<std::collections::HashMap<String, String>> {
+    let mut map = std::collections::HashMap::new();
+    for v in vars {
+        let (k, val) = v.split_once('=').ok_or_else(|| {
+            praxis_desktop::Error::invalid(format!("--var {v:?}: expected name=value"))
+        })?;
+        map.insert(k.to_string(), val.to_string());
+    }
+    Ok(map)
+}
+
 /// The app's biggest on-screen window with a title, else biggest on-screen,
-/// else biggest (same choice adc made).
+/// else biggest — the same choice adc made.
 #[cfg_attr(not(any(target_os = "macos", test)), allow(dead_code))]
 fn pick_window(b: &dyn praxis_desktop::DesktopBackend, bundle: &str) -> Result<u32> {
-    use praxis_desktop::Error;
-    let apps = b.apps(std::slice::from_ref(&bundle.to_string()))?;
-    let a = apps
-        .into_iter()
-        .find(|a| a.bundle_id == bundle)
-        .ok_or_else(|| Error::not_found(format!("{bundle} is not running")))?;
-    let mut ws = a.windows;
-    ws.sort_by(|x, y| {
-        y.on_screen
-            .cmp(&x.on_screen)
-            .then((!y.title.is_empty()).cmp(&(!x.title.is_empty())))
-            .then(
-                (y.width * y.height)
-                    .partial_cmp(&(x.width * x.height))
-                    .unwrap_or(std::cmp::Ordering::Equal),
-            )
-    });
-    ws.into_iter()
-        .next()
-        .map(|w| w.id)
-        .ok_or_else(|| Error::not_found(format!("no window for {bundle}")))
+    praxis_desktop::workflow::pick_window(b, bundle)
 }
 
 #[cfg(test)]
@@ -229,12 +299,12 @@ mod tests {
     #[test]
     fn json_shapes_mirror_adc() {
         let b = FakeBackend::with_running(&["com.example.app"]);
-        let v = run_with(&*b, Cmd::Status).unwrap();
+        let v = run_with(b.clone(), Cmd::Status).unwrap();
         assert_eq!(v["permissions"]["accessibility"], true);
         assert!(v["frontmost"].is_null());
 
         let v = run_with(
-            &*b,
+            b.clone(),
             Cmd::Apps {
                 bundles: vec![],
                 verbose: false,
@@ -243,7 +313,7 @@ mod tests {
         .unwrap();
         assert_eq!(v["apps"][0]["windows"], 1);
         let v = run_with(
-            &*b,
+            b.clone(),
             Cmd::Apps {
                 bundles: vec!["com.example.app".into()],
                 verbose: true,
@@ -253,7 +323,7 @@ mod tests {
         assert_eq!(v["apps"][0]["windows"][0]["id"], 42);
 
         let v = run_with(
-            &*b,
+            b.clone(),
             Cmd::Screenshot {
                 bundle: "com.example.app".into(),
                 window: None,
@@ -269,18 +339,18 @@ mod tests {
         assert!(v.get("path").is_none());
 
         let v = run_with(
-            &*b,
+            b.clone(),
             Cmd::Key {
                 keys: "cmd+shift+a".into(),
             },
         )
         .unwrap();
         assert_eq!(v["key"], "cmd+shift+a");
-        let e = run_with(&*b, Cmd::Key { keys: "cmd".into() }).unwrap_err();
+        let e = run_with(b.clone(), Cmd::Key { keys: "cmd".into() }).unwrap_err();
         assert_eq!(e.code(), "invalid_input");
 
         let e = run_with(
-            &*b,
+            b.clone(),
             Cmd::Screenshot {
                 bundle: "com.missing".into(),
                 window: None,

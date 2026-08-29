@@ -6,9 +6,26 @@ license.workspace = true
 repository.workspace = true
 description = "Desktop actuator: window list, accessibility tree, synthetic input, screenshots (absorbs adc / ai-desktop-control)."
 
+[features]
+default = []
+# `agent`: VLM-assisted element location (`vlm`), the workflow step DSL
+# (`workflow`), graph-flow orchestration (`flow`) and the registry. Pulls in
+# reqwest, tokio and graph-flow (which brings sqlx); the thin execution
+# surface needs none of it, so it is off by default and enabled by praxis-cli.
+agent = ["dep:reqwest", "dep:graph-flow", "dep:async-trait", "dep:tokio", "dep:serde_json"]
+
 [dependencies]
 praxis-core = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true, optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "native-tls"], optional = true }
+graph-flow = { version = "0.6", optional = true }
+async-trait = { version = "0.1", optional = true }
+tokio = { version = "1", features = ["rt", "macros"], optional = true }
+
+[[test]]
+name = "flow_graph"
+required-features = ["agent"]
 
 [target.'cfg(target_os = "macos")'.dependencies]
 accessibility-sys = "0.1"

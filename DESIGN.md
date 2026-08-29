@@ -51,6 +51,13 @@ shell. If shell is ever exposed, it needs its own authz model
 Do the port after adb/adc each stabilized (both just landed their current
 state) — this is the right moment, before they grow more divergent conventions.
 
+## Flows stay inside one actuator (2026-08-29)
+adc's agent layer (VLM locate, workflow DSL, graph-flow orchestration,
+registry) lives in `praxis-desktop` behind the `agent` feature (off by
+default for the library; on in `praxis-cli`). adb's equivalent will live in
+`praxis-browser` the same way. **No cross-actuator workflows** — a flow is
+desktop-only or browser-only; composing domains is the integrator's job.
+
 ## Conventions to keep
 - JSON on stdout; `{"error":{kind,message}}` on stderr (adc's exact shape;
   `kind` ∈ permission_denied/not_found/invalid_input/io/internal); exit 1 on failure.
