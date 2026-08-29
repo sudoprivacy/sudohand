@@ -60,8 +60,8 @@ extension's) via a `Dispatch` (`CliDispatch` execs `$SUH_BIN`) — with
 results bound into `{{var}}`s and routing by id (`on_ok`/`on_fail`,
 `Branch` on a `Cond`, `Goto` loops) plus interactive confirm/prompt/select.
 It links no actuator crate; VLM element location/judgement are the
-`desktop locate` / `desktop ask` actions (browser gets its own), chained by
-variable. The earlier per-actuator flow engines (`sudohand-desktop::flow`
+`desktop locate`/`ask` and `browser locate`/`ask` actions (both over the
+shared `sudohand-vlm` crate), chained by variable. The earlier per-actuator flow engines (`sudohand-desktop::flow`
 and `sudohand-browser::flow`, graph_flow + VLM self-heal, domain-bound)
 have been **removed** — desktop/browser keep only their VLM actions and
 geometry helpers; graph_flow lives only in sudohand-flow. Extensions

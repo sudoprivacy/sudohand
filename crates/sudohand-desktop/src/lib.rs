@@ -28,7 +28,7 @@
 pub mod backend;
 pub mod fake;
 #[cfg(feature = "agent")]
-pub mod vlm;
+pub use sudohand_vlm as vlm;
 #[cfg(feature = "agent")]
 pub mod workflow;
 

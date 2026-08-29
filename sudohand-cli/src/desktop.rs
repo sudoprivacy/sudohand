@@ -267,7 +267,7 @@ pub fn run_with(
             let shot = b.screenshot(&bundle, wid, Some(1100))?;
             let t0 = std::time::Instant::now();
             let answer = vlm.ask(&shot.png, &question)?;
-            let yes = sudohand_desktop::workflow::is_yes(&answer);
+            let yes = sudohand_desktop::vlm::is_yes(&answer);
             json!({"question": question, "answer": answer, "yes": yes,
                    "model": vlm.ask_model, "window": wid, "ms": t0.elapsed().as_millis()})
         }

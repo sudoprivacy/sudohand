@@ -2326,6 +2326,7 @@ dependencies = [
  "sudohand-ext",
  "sudohand-fs",
  "sudohand-shell",
+ "sudohand-vlm",
  "tokio",
 ]
 
@@ -2349,10 +2350,9 @@ dependencies = [
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
- "reqwest",
  "serde",
- "serde_json",
  "sudohand-core",
+ "sudohand-vlm",
 ]
 
 [[package]]
@@ -2395,6 +2395,16 @@ version = "0.0.0"
 dependencies = [
  "libc",
  "serde",
+ "sudohand-core",
+]
+
+[[package]]
+name = "sudohand-vlm"
+version = "0.0.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
  "sudohand-core",
 ]
 

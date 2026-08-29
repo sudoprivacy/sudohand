@@ -17,6 +17,7 @@ sudohand-browser = { workspace = true }
 sudohand-fs = { workspace = true }
 sudohand-shell = { workspace = true }
 sudohand-ext = { workspace = true }
+sudohand-vlm = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

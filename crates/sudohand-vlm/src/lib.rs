@@ -4,7 +4,7 @@
 //! `qwen3.6-27b` for grounding and `qwen3.6-flash` for cheap verification.
 //!
 //! Coordinates: Qwen-VL models answer in a **0–1000 normalized** space; the
-//! [`Vlm`] trait keeps that convention and [`crate::workflow`] maps it onto
+//! [`Vlm`] trait keeps that convention and the actuator maps it onto
 //! screenshot pixels and then screen points.
 
 use serde_json::{json, Value};
@@ -224,5 +224,26 @@ mod tests {
         );
         assert!(parse_point("I cannot see it").is_none());
         assert!(parse_point(r#"{"target": "left"}"#).is_none());
+    }
+}
+
+/// Whether a VLM answer reads as "yes" (used by the `ask` actions).
+pub fn is_yes(answer: &str) -> bool {
+    let a = answer.trim().to_lowercase();
+    let head = a.chars().take(12).collect::<String>();
+    (head.starts_with("yes") || head.starts_with('是')) && !head.contains("no")
+        || (a.contains("yes") && !a.contains("no"))
+}
+
+#[cfg(test)]
+mod is_yes_tests {
+    use super::is_yes;
+    #[test]
+    fn detection() {
+        assert!(is_yes("Yes"));
+        assert!(is_yes("yes, the title is Kai"));
+        assert!(is_yes("是的"));
+        assert!(!is_yes("no"));
+        assert!(!is_yes("No, it is not"));
     }
 }
