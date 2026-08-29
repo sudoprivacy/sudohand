@@ -8,23 +8,16 @@
 //! `vars` (the `{{name}}` substitutions), `report` (every [`StepReport`] so
 //! far) and per-task attempt counters.
 //!
-//! [`wechat_send`] builds the reference graph:
-//!
-//! ```text
-//! ensure_chat ──chat_open──▶ focus_input ─▶ type_message ─▶ send ─▶ verify_sent ─▶ done
-//!      │ else                     ▲
-//!      ▼                          │
-//! pick_from_list ────────────────┘  (the contact's row in the visible chat list)
-//!      │ check fails: GoTo open_search (once)
-//!      ▼
-//! open_search ─▶ select_all ─▶ type_contact ─▶ wait ─▶ pick_result ──(check fails: GoTo open_search, ≤3)
-//! ```
+//! A reference graph (WeChat "send a message": conditional edge, GoTo
+//! recovery loop, abort on exhausted attempts) lives in
+//! `sudoprivacy/suh-wx` (`src/flows.rs`) together with its tests; this crate
+//! carries no app-specific knowledge.
 
 use crate::workflow::{Runner, Step, StepReport, WindowPick};
 use async_trait::async_trait;
 use graph_flow::{
-    Context, ExecutionStatus, FlowRunner, Graph, GraphBuilder, GraphError, InMemorySessionStorage,
-    NextAction, Session, SessionStorage, Task, TaskResult,
+    Context, ExecutionStatus, FlowRunner, Graph, GraphError, InMemorySessionStorage, NextAction,
+    Session, SessionStorage, Task, TaskResult,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -222,145 +215,6 @@ impl Task for EndTask {
     async fn run(&self, _ctx: Context) -> graph_flow::Result<TaskResult> {
         Ok(TaskResult::new(None, NextAction::End))
     }
-}
-
-/// The reference "send a WeChat message" graph. Variables: `contact`,
-/// `message`.
-pub fn wechat_send(runner: &Runner) -> Result<Graph> {
-    let app = "com.tencent.xinWeChat";
-    let ensure_chat = AskTask::new(
-        "ensure_chat",
-        runner,
-        app,
-        "这是微信截图。右侧聊天窗口顶部的标题是否为“{{contact}}”(后面可以带括号人数,如“{{contact}} (3)”)?只回答 yes 或 no",
-        "chat_open",
-    );
-    let pick_from_list = StepTask::new(
-        "pick_from_list",
-        runner,
-        app,
-        Step::Click {
-            at: None,
-            find: Some("左侧会话列表(左边那一栏)中名为“{{contact}}”的那一行会话条目(头像右侧的名字正好是“{{contact}}”)".into()),
-            check: Some("这是微信截图。右侧聊天窗口顶部的标题是否为“{{contact}}”(可带括号人数)?只回答 yes 或 no".into()),
-            count: 1,
-        },
-    )
-    .recover_with("open_search", 2);
-    let open_search = StepTask::new(
-        "open_search",
-        runner,
-        app,
-        Step::Click {
-            at: Some([200.0, 31.0]),
-            find: Some("左侧顶部的 Search 搜索框".into()),
-            check: None,
-            count: 1,
-        },
-    );
-    let select_all = StepTask::new(
-        "select_all",
-        runner,
-        app,
-        Step::Key {
-            keys: "cmd+a".into(),
-        },
-    );
-    let type_contact = StepTask::new(
-        "type_contact",
-        runner,
-        app,
-        Step::Type {
-            text: "{{contact}}".into(),
-        },
-    );
-    let wait_results = StepTask::new("wait_results", runner, app, Step::Wait { ms: 1500 });
-    let pick_result = StepTask::new(
-        "pick_result",
-        runner,
-        app,
-        Step::Click {
-            at: None,
-            find: Some("左侧下拉搜索结果中、“群聊”或“联系人”分组下名为“{{contact}}”的那一条会话条目。注意:不要选最上面带放大镜的“搜一搜”网络搜索项".into()),
-            check: Some("这是微信截图。右侧聊天窗口顶部的标题是否为“{{contact}}”(可带括号人数)?只回答 yes 或 no".into()),
-            count: 1,
-        },
-    )
-    .recover_with("open_search", 3);
-    let focus_input = StepTask::new(
-        "focus_input",
-        runner,
-        app,
-        Step::Click {
-            at: None,
-            find: Some("右侧底部工具栏图标行(表情、文件夹、剪刀等图标)正下方约 20 像素处的空白消息输入区域".into()),
-            check: Some("这是微信截图。右侧底部的消息输入框是否完全为空(没有任何已输入文字,也没有引用回复条)?只回答 yes 或 no".into()),
-            count: 1,
-        },
-    );
-    let type_message = StepTask::new(
-        "type_message",
-        runner,
-        app,
-        Step::Type {
-            text: "{{message}}".into(),
-        },
-    );
-    let send = StepTask::new(
-        "send",
-        runner,
-        app,
-        Step::Key {
-            keys: "return".into(),
-        },
-    );
-    let wait_sent = StepTask::new("wait_sent", runner, app, Step::Wait { ms: 1000 });
-    let verify_sent = StepTask::new(
-        "verify_sent",
-        runner,
-        app,
-        Step::Verify {
-            ask: "这是微信截图。把右侧聊天区域最下方那个绿色气泡(我方发送)里的文字原样转写出来,只输出文字本身".into(),
-            expect: "{{message}}".into(),
-        },
-    );
-    let done = Arc::new(EndTask);
-
-    GraphBuilder::new("wechat_send")
-        .add_task(ensure_chat.clone())
-        .add_task(pick_from_list.clone())
-        .add_task(open_search.clone())
-        .add_task(select_all.clone())
-        .add_task(type_contact.clone())
-        .add_task(wait_results.clone())
-        .add_task(pick_result.clone())
-        .add_task(focus_input.clone())
-        .add_task(type_message.clone())
-        .add_task(send.clone())
-        .add_task(wait_sent.clone())
-        .add_task(verify_sent.clone())
-        .add_task(done.clone())
-        .set_start_task(ensure_chat.id())
-        .add_conditional_edge(
-            ensure_chat.id(),
-            |ctx| ctx.get::<bool>("chat_open").unwrap_or(false),
-            focus_input.id(),
-            pick_from_list.id(),
-        )
-        .add_edge(pick_from_list.id(), focus_input.id())
-        .add_edge(open_search.id(), select_all.id())
-        .add_edge(select_all.id(), type_contact.id())
-        .add_edge(type_contact.id(), wait_results.id())
-        .add_edge(wait_results.id(), pick_result.id())
-        .add_edge(pick_result.id(), focus_input.id())
-        .add_edge(focus_input.id(), type_message.id())
-        .add_edge(type_message.id(), send.id())
-        .add_edge(send.id(), wait_sent.id())
-        .add_edge(wait_sent.id(), verify_sent.id())
-        .add_edge(verify_sent.id(), done.id())
-        .with_max_execution_steps(60)
-        .build()
-        .map_err(|e| Error::internal(format!("graph: {e}")))
 }
 
 /// Drive a graph to completion (following `GoTo` pauses) and return the

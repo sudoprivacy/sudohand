@@ -1,4 +1,4 @@
-//! `sudohand shell run …` — thin CLI over `sudohand-shell`.
+//! `suh shell run …` — thin CLI over `sudohand-shell`.
 //!
 //! Exposed here for operators and integrators that *choose* to link it;
 //! see the crate docs for the red line (agents do not get this by default).
@@ -9,7 +9,7 @@ use sudohand_shell::{Result, RunRequest, ShellBackend};
 
 #[derive(Subcommand)]
 pub enum Cmd {
-    /// Run a program: `sudohand shell run [flags] -- prog arg…`, or a script
+    /// Run a program: `suh shell run [flags] -- prog arg…`, or a script
     /// with `--sh 'cmd | cmd'`.
     Run {
         /// Interpret the single argument as a `sh -c` script.

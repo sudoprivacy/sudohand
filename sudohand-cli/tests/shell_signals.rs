@@ -1,4 +1,4 @@
-//! `sudohand shell run` must not leave its child behind when sudohand itself is
+//! `suh shell run` must not leave its child behind when suh itself is
 //! interrupted (Ctrl-C / SIGTERM) — the child runs in its own process group,
 //! so the CLI forwards those signals to the group.
 
@@ -14,7 +14,7 @@ fn child_alive(marker: &str) -> bool {
 
 fn check(sig: &str) {
     let marker = format!("sudohand-signal-test-{}-{sig}", std::process::id());
-    let mut sudohand = Command::new(env!("CARGO_BIN_EXE_sudohand"))
+    let mut sudohand = Command::new(env!("CARGO_BIN_EXE_suh"))
         .args([
             "shell",
             "run",

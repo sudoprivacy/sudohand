@@ -6,6 +6,7 @@ members = [
     "crates/sudohand-browser",
     "crates/sudohand-fs",
     "crates/sudohand-shell",
+    "crates/sudohand-ext",
     "sudohand-cli",
 ]
 
@@ -18,12 +19,13 @@ repository = "https://github.com/sudoprivacy/sudohand"
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "string"] }
 sudohand-core = { path = "crates/sudohand-core" }
 sudohand-desktop = { path = "crates/sudohand-desktop" }
 sudohand-browser = { path = "crates/sudohand-browser" }
 sudohand-fs = { path = "crates/sudohand-fs" }
 sudohand-shell = { path = "crates/sudohand-shell" }
+sudohand-ext = { path = "crates/sudohand-ext" }
 
 [profile.release]
 strip = true

@@ -1,4 +1,4 @@
-//! `sudohand browser <tool> [flags]` — thin CLI over `sudohand-browser`, one
+//! `suh browser <tool> [flags]` — thin CLI over `sudohand-browser`, one
 //! subcommand per tool, names identical to adb / the Python
 //! `ai_dev_browser.tools.<name>` modules (kebab-case aliases too).
 //! Output is JSON on stdout; failures use the sudohand error envelope.
@@ -1507,7 +1507,7 @@ async fn run_flow(cmd: Cmd) -> sudohand_core::Result<Value> {
     }
 }
 
-/// Entry point for `sudohand browser <tool>`: a current-thread runtime, the
+/// Entry point for `suh browser <tool>`: a current-thread runtime, the
 /// tool's own JSON on success, and the sudohand error envelope on failure.
 pub fn run(cmd: Cmd) -> sudohand_core::Result<Value> {
     let rt = tokio::runtime::Builder::new_current_thread()

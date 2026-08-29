@@ -1,7 +1,7 @@
 //! Name → workflow registry. Workflows are graphs written in code; a
 //! [`Registry`] maps a name to a builder (`Fn(&Runner) -> Graph`) plus its
 //! description and required variables. [`Registry::builtins`] holds the
-//! crate's own (`wechat-send`); an integrator registers its graphs with
+//! crate's own reference graphs; an integrator registers its graphs with
 //! [`Registry::register_fn`] and resolves/validates/runs them by name.
 //! Built-ins: `form-signup` and `page-extract` (reference graphs).
 

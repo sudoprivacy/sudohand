@@ -1,4 +1,4 @@
-//! `sudohand fs <command> [flags]` — thin CLI over `sudohand-fs`.
+//! `suh fs <command> [flags]` — thin CLI over `sudohand-fs`.
 
 use clap::Subcommand;
 use serde_json::{json, Value};

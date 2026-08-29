@@ -4,7 +4,7 @@
 //! Drives a locally installed Chrome / Chromium / Edge over the DevTools
 //! Protocol and exposes the runtime subset of ai-dev-browser's tools as a
 //! library API ([`tools`]); the CLI lives in `sudohand-cli`
-//! (`sudohand browser <tool> [flags]`). Tool names, flags, JSON shapes and
+//! (`suh browser <tool> [flags]`). Tool names, flags, JSON shapes and
 //! the `ref` grammar are unchanged from `adb`.
 //!
 //! Module boundaries that are deliberately independent of CDP:
