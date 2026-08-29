@@ -155,38 +155,33 @@ impl Ctx {
         }
         Ok(Arc::new(v))
     }
-
-    /// Desktop workflow runner: desktop backend + VLM.
-    pub fn runner(
-        &self,
-        locate: Option<&str>,
-        ask: Option<&str>,
-    ) -> Result<sudohand_desktop::workflow::Runner> {
-        Ok(sudohand_desktop::workflow::Runner::new(
-            self.desktop()?,
-            self.vlm(locate, ask)?,
-        ))
-    }
 }
 
 impl Ctx {
-    /// Run a registered workflow (desktop built-ins + `E::workflows`) to
-    /// completion: `{"ok":true,"workflow":name,"steps":[…]}`. Missing
-    /// variables and unknown names are `invalid_input` / `not_found`
-    /// before anything touches the screen.
+    /// Resolve one of the extension's registered generic workflows by name
+    /// and run it through [`Ctx::run_workflow`] (actions dispatch via the
+    /// calling `suh`; interactive steps prompt on stdin). Unknown names are
+    /// `not_found`, missing `--var`s `invalid_input`.
     pub fn flow<E: crate::Extension>(
         &self,
         name: &str,
         vars: std::collections::HashMap<String, String>,
-        locate: Option<&str>,
-        ask: Option<&str>,
     ) -> Result<serde_json::Value> {
-        let registry = E::registry();
-        let runner = self.runner(locate, ask)?;
-        let graph = registry.prepare(name, &runner, &vars)?;
-        let steps = sudohand_desktop::flow::run_graph_blocking(graph, vars)?;
-        Ok(serde_json::json!({ "ok": true, "workflow": name, "steps": steps }))
+        let wf = E::registry().resolve(name)?;
+        let report = self.run_workflow(&wf, sudohand_flow::Vars(to_json_map(vars)))?;
+        Ok(serde_json::json!({
+            "ok": report.ok, "cancelled": report.cancelled,
+            "workflow": name, "steps": report.steps, "vars": report.vars,
+        }))
     }
+}
+
+fn to_json_map(
+    m: std::collections::HashMap<String, String>,
+) -> std::collections::HashMap<String, serde_json::Value> {
+    m.into_iter()
+        .map(|(k, v)| (k, serde_json::Value::String(v)))
+        .collect()
 }
 
 #[cfg(target_os = "macos")]

@@ -88,9 +88,26 @@ pub enum Cmd {
         bundle: String,
         #[arg(long)]
         window: Option<u32>,
+        /// Pick the window whose title contains this (over --window / largest).
+        #[arg(long)]
+        window_title: Option<String>,
         /// Natural-language description of the element.
         #[arg(long)]
         find: String,
+        #[arg(long)]
+        model: Option<String>,
+    },
+    /// Ask the VLM a yes/no question about a window; prints {answer, yes}.
+    Ask {
+        #[arg(long)]
+        bundle: String,
+        #[arg(long)]
+        window: Option<u32>,
+        /// Pick the window whose title contains this (over --window / largest).
+        #[arg(long)]
+        window_title: Option<String>,
+        #[arg(long)]
+        question: String,
         #[arg(long)]
         model: Option<String>,
     },
@@ -233,6 +250,7 @@ pub fn run_with(
         Cmd::Locate {
             bundle,
             window,
+            window_title,
             find,
             model,
         } => {
@@ -241,16 +259,33 @@ pub fn run_with(
             if let Some(m) = model {
                 vlm.locate_model = m;
             }
-            let wid = match window {
-                Some(w) => w,
-                None => pick_window(b, &bundle)?,
-            };
+            let wid = pick_target(b, &bundle, window, window_title.as_deref())?;
             let shot = b.screenshot(&bundle, wid, Some(1100))?;
             let t0 = std::time::Instant::now();
             let n = vlm.locate(&shot.png, &find)?;
             let (x, y) = sudohand_desktop::workflow::norm_to_point(n, &shot);
             json!({"find": find, "model": vlm.locate_model, "normalized": [n.x, n.y],
                    "point": {"x": x, "y": y}, "window": wid, "ms": t0.elapsed().as_millis()})
+        }
+        Cmd::Ask {
+            bundle,
+            window,
+            window_title,
+            question,
+            model,
+        } => {
+            use sudohand_desktop::vlm::Vlm;
+            let mut vlm = sudohand_desktop::vlm::DashScopeVlm::from_env()?;
+            if let Some(m) = model {
+                vlm.ask_model = m;
+            }
+            let wid = pick_target(b, &bundle, window, window_title.as_deref())?;
+            let shot = b.screenshot(&bundle, wid, Some(1100))?;
+            let t0 = std::time::Instant::now();
+            let answer = vlm.ask(&shot.png, &question)?;
+            let yes = sudohand_desktop::workflow::is_yes(&answer);
+            json!({"question": question, "answer": answer, "yes": yes,
+                   "model": vlm.ask_model, "window": wid, "ms": t0.elapsed().as_millis()})
         }
         Cmd::Workflows => {
             json!({"workflows": sudohand_desktop::registry::Registry::builtins().list()})
@@ -295,6 +330,22 @@ fn parse_vars(vars: Vec<String>) -> Result<std::collections::HashMap<String, Str
 #[cfg_attr(not(any(target_os = "macos", test)), allow(dead_code))]
 fn pick_window(b: &dyn sudohand_desktop::DesktopBackend, bundle: &str) -> Result<u32> {
     sudohand_desktop::workflow::pick_window(b, bundle)
+}
+
+/// Resolve the target window: explicit id, else by title substring, else the
+/// largest on-screen window.
+#[cfg_attr(not(any(target_os = "macos", test)), allow(dead_code))]
+fn pick_target(
+    b: &dyn sudohand_desktop::DesktopBackend,
+    bundle: &str,
+    window: Option<u32>,
+    title: Option<&str>,
+) -> Result<u32> {
+    match (window, title) {
+        (Some(w), _) => Ok(w),
+        (None, Some(t)) => sudohand_desktop::workflow::pick_window_titled(b, bundle, t),
+        (None, None) => sudohand_desktop::workflow::pick_window(b, bundle),
+    }
 }
 
 #[cfg(test)]

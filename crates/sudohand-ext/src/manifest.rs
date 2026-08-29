@@ -69,8 +69,8 @@ pub struct WorkflowSpec {
     pub source: String,
 }
 
-impl From<sudohand_desktop::registry::Entry> for WorkflowSpec {
-    fn from(e: sudohand_desktop::registry::Entry) -> Self {
+impl From<sudohand_flow::Entry> for WorkflowSpec {
+    fn from(e: sudohand_flow::Entry) -> Self {
         Self {
             name: e.name,
             description: e.description,
@@ -137,7 +137,7 @@ impl Manifest {
         requires: Requires,
         readonly: &[&str],
         cmd: &clap::Command,
-        workflows: Vec<sudohand_desktop::registry::Entry>,
+        workflows: Vec<sudohand_flow::Entry>,
     ) -> Self {
         let commands = cmd
             .get_subcommands()

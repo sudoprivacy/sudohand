@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use std::sync::Mutex as M2;
 use sudohand_core::{Error, Result};
-use sudohand_flow::{Dispatch, Prompter, Runner, Step, Vars, Workflow};
+use sudohand_flow::{Cond, Dispatch, Prompter, Runner, Step, Vars, Workflow};
 
 /// Answers scripted up front: confirms, lines, and select indices.
 struct ScriptedPrompter {
@@ -243,4 +243,117 @@ fn declined_confirm_cancels_cleanly() {
     assert!(!report.ok);
     assert!(report.cancelled);
     assert_eq!(report.steps.len(), 1); // stopped at the confirm; action never ran
+}
+
+// ---- react: branch / loop / on_fail routing ----
+
+#[test]
+fn branch_skips_when_condition_false() {
+    // ask "dialog?" → no → branch else skips the OK-click.
+    let fake = FakeDispatch::new().script("desktop ask", vec![Ok(json!({"answer": "no"}))]);
+    let wf = Workflow::new("logout")
+        .step(Step::run("ask", ["desktop", "ask", "--question", "confirm dialog?"]).bind("dlg"))
+        .step(
+            Step::branch("has_dialog", Cond::eq("dlg.answer", "yes"))
+                .then("click_ok")
+                .els("done"),
+        )
+        .step(Step::run(
+            "click_ok",
+            ["desktop", "click", "--x", "1", "--y", "2"],
+        ))
+        .step(Step::end("done"));
+    let report = Runner::new(fake).run(&wf, Vars::new()).unwrap();
+    assert!(report.ok);
+    let ran: Vec<&str> = report.steps.iter().map(|s| s.id.as_str()).collect();
+    assert_eq!(ran, ["ask"]); // branch/goto/end are control steps (no report); click_ok skipped
+}
+
+#[test]
+fn branch_takes_then_when_true() {
+    let fake = FakeDispatch::new().script("desktop ask", vec![Ok(json!({"answer": "yes"}))]);
+    let wf = Workflow::new("logout")
+        .step(Step::run("ask", ["desktop", "ask", "--question", "dialog?"]).bind("dlg"))
+        .step(
+            Step::branch("has_dialog", Cond::eq("dlg.answer", "yes"))
+                .then("click_ok")
+                .els("done"),
+        )
+        .step(Step::run(
+            "click_ok",
+            ["desktop", "click", "--x", "1", "--y", "2"],
+        ))
+        .step(Step::end("done"));
+    let report = Runner::new(fake).run(&wf, Vars::new()).unwrap();
+    assert!(report.ok);
+    let ran: Vec<&str> = report.steps.iter().map(|s| s.id.as_str()).collect();
+    assert_eq!(ran, ["ask", "click_ok"]);
+}
+
+#[test]
+fn loop_retries_until_vlm_says_done() {
+    // "still logged in?" yes twice then no: click logout, re-check, loop back.
+    let fake = FakeDispatch::new().script(
+        "desktop ask",
+        vec![
+            Ok(json!({"answer": "yes"})),
+            Ok(json!({"answer": "yes"})),
+            Ok(json!({"answer": "no"})),
+        ],
+    );
+    let wf = Workflow::new("ensure_logged_out")
+        .step(
+            Step::run(
+                "check",
+                ["desktop", "ask", "--question", "still logged in?"],
+            )
+            .bind("st"),
+        )
+        .step(
+            Step::branch("done?", Cond::eq("st.answer", "no"))
+                .then("done")
+                .els("click"),
+        )
+        .step(Step::run(
+            "click",
+            ["desktop", "click", "--x", "1", "--y", "2"],
+        ))
+        .step(Step::goto("again", "check"))
+        .step(Step::end("done"));
+    let report = Runner::new(fake).run(&wf, Vars::new()).unwrap();
+    assert!(report.ok);
+    // check ran 3 times, click ran 2 times
+    let checks = report.steps.iter().filter(|s| s.id == "check").count();
+    let clicks = report.steps.iter().filter(|s| s.id == "click").count();
+    assert_eq!((checks, clicks), (3, 2));
+}
+
+#[test]
+fn on_fail_routes_to_recovery() {
+    let fake = FakeDispatch::new().script("desktop click", vec![Err(Error::io("miss"))]);
+    let wf = Workflow::new("recover")
+        .step(Step::run("click", ["desktop", "click", "--x", "1", "--y", "2"]).on_fail("fallback"))
+        .step(Step::run("normal", ["fs", "exists", "--path", "/"]))
+        .step(Step::end("the_end"))
+        .step(Step::run(
+            "fallback",
+            ["shell", "run", "--", "echo", "recovered"],
+        ));
+    let report = Runner::new(fake).run(&wf, Vars::new()).unwrap();
+    assert!(report.ok);
+    let ran: Vec<&str> = report.steps.iter().map(|s| s.id.as_str()).collect();
+    assert_eq!(ran, ["click", "fallback"]); // jumped to fallback, not normal
+}
+
+#[test]
+fn loop_guard_trips_on_runaway() {
+    let wf = Workflow::new("spin")
+        .step(Step::run("a", ["fs", "exists", "--path", "/"]))
+        .step(Step::goto("again", "a"));
+    let report = Runner::new(FakeDispatch::new())
+        .max_steps(10)
+        .run(&wf, Vars::new())
+        .unwrap();
+    // graph-flow stops at the step cap; run does not hang
+    assert!(report.steps.len() <= 10);
 }

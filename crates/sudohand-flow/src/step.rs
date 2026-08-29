@@ -1,8 +1,15 @@
-//! Steps and workflows: plain data, built in Rust. Most steps run an
-//! *action* (a `suh` subcommand); a few are *interactive* — they ask the
-//! person running the workflow (account picker, confirmation) via the
-//! [`Prompter`](crate::Prompter), so an end-to-end flow like `wx init` is one
-//! workflow instead of hand-written command glue.
+//! Steps, conditions and workflows: plain data, built in Rust.
+//!
+//! Execution is a graph, not just a line. Steps run in list order by
+//! default, but any step can route elsewhere by id: an action can jump on
+//! success (`on_ok`) or on failure (`on_fail`, instead of aborting), a
+//! [`Step::Branch`] jumps on a [`Cond`], and [`Step::Goto`] jumps
+//! unconditionally — so a workflow can *react* (retry a click until a VLM
+//! `ask` says the screen changed, skip a confirm dialog that did not
+//! appear, loop back on failure). A loop guard bounds total steps.
+//!
+//! Most steps are *actions* (a `suh` subcommand); a few are *interactive*
+//! (ask the operator via the [`Prompter`](crate::Prompter)).
 
 use serde::Serialize;
 
@@ -16,6 +23,11 @@ pub struct Action {
     pub bind: Option<String>,
     pub attempts: u32,
     pub optional: bool,
+    /// Jump here after success (default: the next step in the list).
+    pub on_ok: Option<String>,
+    /// Jump here on failure instead of aborting (default: abort unless
+    /// `optional`, which continues to the next step).
+    pub on_fail: Option<String>,
 }
 
 impl Action {
@@ -27,9 +39,57 @@ impl Action {
         self.attempts = n.max(1);
         self
     }
+    /// Failure continues to the next step instead of aborting.
     pub fn optional(mut self) -> Self {
         self.optional = true;
         self
+    }
+    /// Go to step `id` after this action succeeds.
+    pub fn on_ok(mut self, id: &str) -> Self {
+        self.on_ok = Some(id.into());
+        self
+    }
+    /// Go to step `id` when this action fails (instead of aborting).
+    pub fn on_fail(mut self, id: &str) -> Self {
+        self.on_fail = Some(id.into());
+        self
+    }
+}
+
+/// A branch condition, evaluated against the current variables.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum Cond {
+    /// `var` exists and is not false / null / 0 / "" / "no".
+    Truthy { var: String },
+    /// `var` (looked up) equals `value` (a `{{…}}` template), case-insensitive.
+    Eq { var: String, value: String },
+    /// `var`'s string rendering contains `value` (a template), case-insensitive.
+    Contains { var: String, value: String },
+    /// Logical negation.
+    Not { cond: Box<Cond> },
+}
+
+impl Cond {
+    pub fn truthy(var: &str) -> Cond {
+        Cond::Truthy { var: var.into() }
+    }
+    pub fn eq(var: &str, value: &str) -> Cond {
+        Cond::Eq {
+            var: var.into(),
+            value: value.into(),
+        }
+    }
+    pub fn contains(var: &str, value: &str) -> Cond {
+        Cond::Contains {
+            var: var.into(),
+            value: value.into(),
+        }
+    }
+    pub fn negate(self) -> Cond {
+        Cond::Not {
+            cond: Box::new(self),
+        }
     }
 }
 
@@ -59,6 +119,17 @@ pub enum Step {
         value: String,
         bind: String,
     },
+    /// Evaluate `cond`; jump to `then`/`else` (None = fall through).
+    Branch {
+        id: String,
+        cond: Cond,
+        then: Option<String>,
+        els: Option<String>,
+    },
+    /// Jump unconditionally to `to`.
+    Goto { id: String, to: String },
+    /// Stop the workflow successfully.
+    End { id: String },
 }
 
 impl Step {
@@ -70,6 +141,8 @@ impl Step {
             bind: None,
             attempts: 1,
             optional: false,
+            on_ok: None,
+            on_fail: None,
         }
     }
 
@@ -116,10 +189,36 @@ impl Step {
         }
     }
 
+    /// A branch on `cond`. Chain [`Branch::then`]/[`Branch::els`].
+    pub fn branch(id: &str, cond: Cond) -> Branch {
+        Branch {
+            id: id.into(),
+            cond,
+            then: None,
+            els: None,
+        }
+    }
+
+    pub fn goto(id: &str, to: &str) -> Step {
+        Step::Goto {
+            id: id.into(),
+            to: to.into(),
+        }
+    }
+
+    pub fn end(id: &str) -> Step {
+        Step::End { id: id.into() }
+    }
+
     pub fn id(&self) -> &str {
         match self {
             Step::Action(a) => &a.id,
-            Step::Confirm { id, .. } | Step::Prompt { id, .. } | Step::Select { id, .. } => id,
+            Step::Confirm { id, .. }
+            | Step::Prompt { id, .. }
+            | Step::Select { id, .. }
+            | Step::Branch { id, .. }
+            | Step::Goto { id, .. }
+            | Step::End { id } => id,
         }
     }
 }
@@ -130,7 +229,40 @@ impl From<Action> for Step {
     }
 }
 
-/// A named, Rust-defined sequence of steps with declared variables.
+/// Builder for a [`Step::Branch`].
+pub struct Branch {
+    id: String,
+    cond: Cond,
+    then: Option<String>,
+    els: Option<String>,
+}
+
+impl Branch {
+    /// Where to go when the condition holds.
+    pub fn then(mut self, id: &str) -> Self {
+        self.then = Some(id.into());
+        self
+    }
+    /// Where to go when it does not.
+    pub fn els(mut self, id: &str) -> Self {
+        self.els = Some(id.into());
+        self
+    }
+}
+
+impl From<Branch> for Step {
+    fn from(b: Branch) -> Self {
+        Step::Branch {
+            id: b.id,
+            cond: b.cond,
+            then: b.then,
+            els: b.els,
+        }
+    }
+}
+
+/// A named, Rust-defined workflow. Steps run in list order unless one
+/// routes elsewhere by id.
 #[derive(Debug, Clone, Serialize)]
 pub struct Workflow {
     pub name: String,
