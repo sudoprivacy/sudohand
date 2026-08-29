@@ -845,17 +845,6 @@ pub enum Cmd {
         #[arg(long, default_value_t = 30.0)]
         timeout: f64,
     },
-    /// List the registered browser workflows (name, description, variables)
-    Workflows,
-    /// Run a registered browser workflow by name on the active tab
-    Flow {
-        #[command(flatten)]
-        conn: Conn,
-        name: String,
-        /// `--var name=value`, substituted into `{{name}}` placeholders
-        #[arg(long = "var")]
-        vars: Vec<String>,
-    },
 }
 
 async fn browser_and_tab(conn: &Conn) -> sudohand_browser::Result<(BrowserClient, Tab)> {
@@ -1470,41 +1459,13 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::page::js_evaluate_in(&tab, &expression, frame.as_deref()).await
         }
-        Cmd::Workflows | Cmd::Flow { .. } => unreachable!("handled in run()"),
     }
 }
 
-fn parse_vars(
-    vars: Vec<String>,
-) -> sudohand_core::Result<std::collections::HashMap<String, String>> {
-    let mut map = std::collections::HashMap::new();
-    for v in vars {
-        let (k, val) = v.split_once('=').ok_or_else(|| {
-            sudohand_core::Error::invalid(format!("--var {v:?}: expected name=value"))
-        })?;
-        map.insert(k.to_string(), val.to_string());
-    }
-    Ok(map)
-}
-
-/// The workflow commands speak `sudohand_core::Error` natively (so a failed
-/// flow keeps its real category) — dispatched here, not in `run_async`.
+/// Entry from [`run`]: dispatch to the tool body, mapping its browser error
+/// onto the shared envelope.
 async fn run_flow(cmd: Cmd) -> sudohand_core::Result<Value> {
-    match cmd {
-        Cmd::Workflows => Ok(json!({
-            "workflows": sudohand_browser::registry::Registry::builtins().list()
-        })),
-        Cmd::Flow { conn, name, vars } => {
-            let map = parse_vars(vars)?;
-            let (browser, tab) = browser_and_tab(&conn).await?;
-            let runner = sudohand_browser::workflow::Runner::new(browser, tab);
-            let report = sudohand_browser::registry::Registry::builtins()
-                .run(&name, &runner, map)
-                .await?;
-            Ok(json!({"ok": true, "workflow": name, "steps": report}))
-        }
-        other => run_async(other).await.map_err(sudohand_core::Error::from),
-    }
+    run_async(cmd).await.map_err(sudohand_core::Error::from)
 }
 
 /// Entry point for `suh browser <tool>`: a current-thread runtime, the

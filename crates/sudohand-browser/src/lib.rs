@@ -11,9 +11,8 @@
 //! - [`refs`] — the `ref` grammar (`5#214`, `FRAME_ABC:5#214`, legacy `5`).
 //! - [`geometry`] — screenshot scaling metadata and image⇄CSS coordinate maps.
 //!
-//! Feature `flow` adds [`workflow`] / [`flow`] / [`registry`]: browser
-//! steps composed into graph-flow graphs and looked up by name. Flows are
-//! browser-only by design — no cross-actuator workflows.
+//! Workflow orchestration is not here — cross-actuator react workflows live
+//! in `sudohand-flow` and drive these tools via the CLI.
 //!
 //! The crate keeps its own rich [`Error`] (CDP protocol / timeout / JS
 //! evaluation details); it converts into `sudohand_core::Error` for the
@@ -48,8 +47,6 @@ pub mod download;
 pub mod element;
 pub mod elements;
 pub mod error;
-#[cfg(feature = "flow")]
-pub mod flow;
 pub mod geometry;
 pub mod human;
 pub mod image_cap;
@@ -59,16 +56,12 @@ pub mod mouse;
 pub mod page;
 pub mod port;
 pub mod refs;
-#[cfg(feature = "flow")]
-pub mod registry;
 pub mod snapshot;
 pub mod sqlite;
 pub mod storage;
 pub mod tabs;
 pub mod text_match;
 pub mod window;
-#[cfg(feature = "flow")]
-pub mod workflow;
 
 pub use error::{Error, Result};
 

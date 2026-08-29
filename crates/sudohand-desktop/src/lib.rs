@@ -14,7 +14,7 @@
 //!   synthetic events + `screencapture`. The one module that uses `unsafe`.
 //! - [`fake`] — a recording backend ([`FakeBackend`]) for permission-free tests.
 //!
-//! - [`vlm`] / [`workflow`] / [`flow`] / [`registry`] (feature `agent`, off
+//! - [`vlm`] / [`workflow`] (feature `agent`, off
 //!   by default) — VLM-assisted element location, the workflow step DSL, its
 //!   execution as a graph-flow graph (scripted positions first, VLM
 //!   fallback), and the name → workflow registry. Desktop-only by design:
@@ -27,10 +27,6 @@
 
 pub mod backend;
 pub mod fake;
-#[cfg(feature = "agent")]
-pub mod flow;
-#[cfg(feature = "agent")]
-pub mod registry;
 #[cfg(feature = "agent")]
 pub mod vlm;
 #[cfg(feature = "agent")]

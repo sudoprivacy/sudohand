@@ -84,9 +84,8 @@ pub mod prelude {
     pub use crate::{vars, Ctx, Error, Extension, Platform, Registry, Requires, Result};
     pub use clap::{Args, Subcommand, ValueEnum};
     pub use serde_json::{json, Value};
-    pub use sudohand_desktop::workflow::{Runner, Step, WindowPick};
     pub use sudohand_desktop::DesktopBackend;
-    pub use sudohand_flow::{Step as FlowStep, Vars, Workflow};
+    pub use sudohand_flow::{Cond, Step, Vars, Workflow};
     pub use sudohand_fs::FsBackend;
     pub use sudohand_shell::ShellBackend;
 }
