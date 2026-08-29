@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Iframe Fixture</title></head>
+<body>
+<h1>Outer page</h1>
+<button id="outer-btn" onclick="document.getElementById('log').textContent='outer'">Outer button</button>
+<iframe id="child" src="iframe_child.html" width="400" height="200" title="Child frame"></iframe>
+<iframe id="blank" src="about:blank" width="10" height="10" title="Blank frame"></iframe>
+<p id="log"></p>
+</body>
+</html>
