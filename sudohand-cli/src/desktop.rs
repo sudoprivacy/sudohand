@@ -1,4 +1,4 @@
-//! `sudohand desktop <command> [flags]` — a thin CLI over `sudohand-desktop`.
+//! `suh desktop <command> [flags]` — a thin CLI over `sudohand-desktop`.
 //! Subcommands, flags and JSON output mirror `adc` one-to-one, including the
 //! agent layer (`locate` / `workflows` / `flow`, feature `agent` of
 //! sudohand-desktop). Flows are desktop-only by design — no cross-actuator
@@ -123,7 +123,7 @@ pub fn run(cmd: Cmd) -> Result<Value> {
 #[cfg(not(target_os = "macos"))]
 pub fn run(_cmd: Cmd) -> Result<Value> {
     Err(sudohand_desktop::Error::io(
-        "sudohand desktop only runs on macOS",
+        "suh desktop only runs on macOS",
     ))
 }
 

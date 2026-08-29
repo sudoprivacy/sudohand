@@ -14,7 +14,7 @@ encoding / permission probing.
 - `sudohand-core` — shared `Error`, value types, JSON-CLI helpers, permissions.
 - `sudohand-browser` / `sudohand-desktop` / `sudohand-fs` / `sudohand-shell` —
   each a lib (+ behavior via the umbrella CLI).
-- `sudohand-cli` — the `sudohand` binary, dispatches domain subcommands.
+- `sudohand-cli` — the `suh` binary, dispatches domain subcommands.
 
 Separate crates keep them independently usable/testable/versioned and let
 per-crate platform `cfg` stay clean (desktop is macOS-only via AX/CG;
@@ -28,7 +28,7 @@ browser/fs/shell are cross-platform). Integrators link only what they need.
   layer), a Greek "action/doing" word (fine but obscure).
 - **Drop `adb`/`adc`/`ad*`**: `adb` collides with Android Debug Bridge on
   PATH, and the `ad` prefix already expands inconsistently (ai-**dev**-browser
-  vs ai-**desktop**-control). Use domain subcommands: `sudohand browser|desktop|fs|shell`.
+  vs ai-**desktop**-control). Use domain subcommands: `suh browser|desktop|fs|shell`.
 
 ## RED LINE: shell
 Per the apeiron-bridge capability model, **shell is not exposed to agents
@@ -47,7 +47,7 @@ shell. If shell is ever exposed, it needs its own authz model
 3. Add **sudohand-fs** (thin over `std::fs`) and **sudohand-shell**
    (thin over `std::process::Command`), each with fake backends for
    side-effect-free tests.
-4. Fill in the `sudohand` CLI subcommand trees.
+4. Fill in the `suh` CLI subcommand trees.
 
 Do the port after adb/adc each stabilized (both just landed their current
 state) — this is the right moment, before they grow more divergent conventions.
@@ -60,6 +60,27 @@ default for the library; on in `sudohand-cli`). `sudohand-browser` has its own
 registry with `form-signup` / `page-extract`). **No cross-actuator
 workflows** — a flow is desktop-only or browser-only; composing domains is
 the integrator's job.
+
+## Extensions = external executables (2026-08-29)
+`suh <name> …` for a non-built-in `<name>` execs `suh-<name>` (git / cargo /
+kubectl convention; clap `external_subcommand`). Chosen over in-tree
+feature-gated modules (not extensible without rebuilding `suh`) and over a
+declarative manifest DSL (too weak the moment an app needs a loop or a
+VLM check). Extensions compose the actuators either by shelling out to
+`$SUH_BIN` (any language) or by linking the `sudohand-*` crates (Rust —
+`sudoprivacy/suh-wx` is the reference). This is also where cross-actuator
+composition lives: a flow stays inside one actuator, an extension may
+chain several. Search path: `$SUH_EXT_PATH`, `~/.suh/extensions`, the
+binary's directory, `$PATH`.
+
+The contract is enforced, not just documented: `sudohand-ext` is the
+only sanctioned way to write a Rust extension (the `Extension` trait +
+`Ctx`; parsing, `--manifest`, error envelopes and the platform gate come
+from the crate, so extensions cannot drift), and `suh ext check` /
+`sudohand_ext::check::assert_conformant` verify any executable — script
+or binary — black-box. The manifest is derived from the clap tree, never
+hand-written, so it is always what the binary accepts; agents build tool
+definitions from it.
 
 ## Conventions to keep
 - JSON on stdout; `{"error":{kind,message}}` on stderr (adc's exact shape;

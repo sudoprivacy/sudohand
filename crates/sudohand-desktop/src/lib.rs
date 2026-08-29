@@ -3,7 +3,7 @@
 //! and Accessibility tree, drive it with synthetic mouse/keyboard events,
 //! and capture window screenshots.
 //!
-//! It is a library; the CLI lives in `sudohand-cli` (`sudohand desktop <cmd>`).
+//! It is a library; the CLI lives in `sudohand-cli` (`suh desktop <cmd>`).
 //! It deliberately contains no policy, sessions, auditing, confirmation
 //! prompts, or transport — an integrator such as `apeiron-bridge` wraps the
 //! [`DesktopBackend`] with those and exposes it over the wire.
