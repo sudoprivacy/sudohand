@@ -69,9 +69,69 @@ enum Domain {
         #[command(subcommand)]
         cmd: ext::Cmd,
     },
+    /// Print the command tree (domain, action, description) as TSV, plus the
+    /// exit-code contract — the machine-readable API for an agent.
+    Describe,
     /// `suh <name> …` → run the `suh-<name>` extension.
     #[command(external_subcommand)]
     External(Vec<OsString>),
+}
+
+/// The command tree as TSV: one line per `domain action`, with the action's
+/// one-line description. Followed by the exit-code contract. This is the
+/// agent-facing API — stable, greppable, no prose.
+fn describe() -> String {
+    use clap::CommandFactory;
+    use std::fmt::Write as _;
+    let root = Cli::command();
+    let mut out = String::new();
+    let _ = writeln!(out, "schema\tsuh.describe.v1");
+    let _ = writeln!(out, "kind\tdomain\taction\tdescription");
+    for domain in root.get_subcommands() {
+        let dname = domain.get_name();
+        if dname == "help" {
+            continue;
+        }
+        let subs: Vec<_> = domain
+            .get_subcommands()
+            .filter(|c| c.get_name() != "help")
+            .collect();
+        if subs.is_empty() {
+            let about = domain
+                .get_about()
+                .map(|s| s.to_string())
+                .unwrap_or_default();
+            let _ = writeln!(out, "cmd\t{dname}\t\t{}", one_line(&about));
+        } else {
+            for a in subs {
+                let about = a.get_about().map(|s| s.to_string()).unwrap_or_default();
+                let _ = writeln!(
+                    out,
+                    "action\t{dname}\t{}\t{}",
+                    a.get_name(),
+                    one_line(&about)
+                );
+            }
+        }
+    }
+    out.push('\n');
+    let _ = writeln!(
+        out,
+        "# extensions: `suh <name> ...` runs the suh-<name> executable; see `suh ext list`."
+    );
+    let _ = writeln!(
+        out,
+        "# exit: 0=ok 2=invalid_input(fix args) 4=not_found 7=permission_denied(grant/sudo) 9=io/transient(retry) 1=internal(bug)"
+    );
+    let _ = writeln!(
+        out,
+        "# output: JSON on stdout, error envelope on stderr; extension list commands default to TSV (--format json for the JSON shape)."
+    );
+    out
+}
+
+fn one_line(s: &str) -> String {
+    s.lines().next().unwrap_or("").replace('\t', " ")
 }
 
 fn main() -> std::process::ExitCode {
@@ -82,6 +142,10 @@ fn main() -> std::process::ExitCode {
         Domain::Fs { cmd } => sudohand_core::print_result(fs::run(cmd)),
         Domain::Shell { cmd } => sudohand_core::print_result(shell::run(cmd)),
         Domain::Ext { cmd } => sudohand_core::print_result(ext::run_cmd(cmd)),
+        Domain::Describe => {
+            print!("{}", describe());
+            std::process::ExitCode::SUCCESS
+        }
         Domain::External(argv) => {
             let (name, args) = argv.split_first().expect("clap gives at least the name");
             ext::exec(&name.to_string_lossy(), args)

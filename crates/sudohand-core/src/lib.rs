@@ -78,6 +78,20 @@ impl Error {
         }
     }
 
+    /// Process exit code by category, so a calling agent can branch on the
+    /// failure without parsing stderr: 2=bad input (fix the args), 4=not
+    /// found (target absent), 7=permission (grant access / sudo), 9=io /
+    /// transient (safe to retry), 1=internal (a bug — do not retry).
+    pub fn exit_code(&self) -> u8 {
+        match self {
+            Error::InvalidInput(_) => 2,
+            Error::NotFound(_) => 4,
+            Error::PermissionDenied(_) => 7,
+            Error::Io(_) => 9,
+            Error::Internal(_) => 1,
+        }
+    }
+
     /// The human message, without the category.
     pub fn message(&self) -> &str {
         match self {
@@ -130,12 +144,12 @@ pub fn print_result<T: Serialize>(r: Result<T>) -> std::process::ExitCode {
             Err(e) => {
                 let e = Error::internal(format!("could not serialize result: {e}"));
                 let _ = writeln!(std::io::stderr().lock(), "{}", e.envelope());
-                std::process::ExitCode::FAILURE
+                std::process::ExitCode::from(e.exit_code())
             }
         },
         Err(e) => {
             let _ = writeln!(std::io::stderr().lock(), "{}", e.envelope());
-            std::process::ExitCode::FAILURE
+            std::process::ExitCode::from(e.exit_code())
         }
     }
 }
