@@ -16,6 +16,12 @@ fn scenario(fs: &dyn FsBackend, root: &Path) {
     assert_eq!(fs.read(&a).unwrap(), b"hello");
     fs.append(&a, b" world").unwrap();
     assert_eq!(fs.read(&a).unwrap(), b"hello world");
+    assert_eq!(fs.read_prefix(&a, 5).unwrap(), b"hello");
+    assert_eq!(fs.read_prefix(&a, 99).unwrap(), b"hello world");
+    assert_eq!(
+        fs.read_prefix(&root.join("zz"), 1).unwrap_err().code(),
+        "not_found"
+    );
 
     // create_dirs=false into a missing dir fails; true creates it.
     assert_eq!(
@@ -66,6 +72,15 @@ fn fake_backend() {
     let log = fs.actions();
     assert!(log.iter().any(|l| l == "write /w/a.txt 5B"));
     assert!(log.iter().any(|l| l == "remove /w/sub recursive=true"));
+}
+
+#[cfg(unix)]
+#[test]
+fn real_read_prefix_does_not_read_a_device_to_the_end() {
+    let d = RealFs::new()
+        .read_prefix(Path::new("/dev/zero"), 10)
+        .unwrap();
+    assert_eq!(d, vec![0u8; 10]);
 }
 
 #[test]

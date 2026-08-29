@@ -85,6 +85,11 @@ impl FsBackend for FakeFs {
             None => Err(Self::missing(path)),
         }
     }
+    fn read_prefix(&self, path: &Path, max: usize) -> Result<Vec<u8>> {
+        let mut d = self.read(path)?;
+        d.truncate(max);
+        Ok(d)
+    }
     fn write(&self, path: &Path, data: &[u8], create_dirs: bool) -> Result<()> {
         self.log(format!("write {} {}B", path.display(), data.len()));
         if create_dirs {

@@ -118,16 +118,17 @@ pub struct ErrorEnvelope<'a> {
 /// pretty JSON to stdout; failure prints `{"error":{"kind","message"}}`
 /// to stderr and exits 1.
 pub fn print_result<T: Serialize>(r: Result<T>) -> std::process::ExitCode {
+    use std::io::Write;
     match r {
         Ok(v) => {
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&v).unwrap_or_else(|_| "null".into())
-            );
+            let json = serde_json::to_string_pretty(&v).unwrap_or_else(|_| "null".into());
+            // A closed stdout (`praxis … | head -1`) is not our failure:
+            // exit quietly instead of panicking on EPIPE.
+            let _ = writeln!(std::io::stdout().lock(), "{json}");
             std::process::ExitCode::SUCCESS
         }
         Err(e) => {
-            eprintln!("{}", e.envelope());
+            let _ = writeln!(std::io::stderr().lock(), "{}", e.envelope());
             std::process::ExitCode::FAILURE
         }
     }

@@ -62,6 +62,14 @@ impl FsBackend for RealFs {
         io("read", path, std::fs::read(path))
     }
 
+    fn read_prefix(&self, path: &Path, max: usize) -> Result<Vec<u8>> {
+        use std::io::Read;
+        let f = io("read", path, std::fs::File::open(path))?;
+        let mut buf = Vec::new();
+        io("read", path, f.take(max as u64).read_to_end(&mut buf))?;
+        Ok(buf)
+    }
+
     fn write(&self, path: &Path, data: &[u8], create_dirs: bool) -> Result<()> {
         if create_dirs {
             if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
