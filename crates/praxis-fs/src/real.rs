@@ -51,6 +51,17 @@ fn refuse_blocking_special(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Error for a two-path operation, naming both so a missing *destination*
+/// directory is not blamed on the source.
+fn both(what: &str, from: &Path, to: &Path, e: &std::io::Error) -> Error {
+    let msg = format!("{what} {} -> {}: {e}", from.display(), to.display());
+    match Error::from_io(e) {
+        Error::NotFound(_) => Error::not_found(msg),
+        Error::PermissionDenied(_) => Error::perm(msg),
+        _ => Error::io(msg),
+    }
+}
+
 pub(crate) fn entry_from(path: &Path, md: &std::fs::Metadata) -> Entry {
     let ft = md.file_type();
     let kind = if ft.is_symlink() {
@@ -63,7 +74,7 @@ pub(crate) fn entry_from(path: &Path, md: &std::fs::Metadata) -> Entry {
         EntryKind::Other
     };
     Entry {
-        path: path.to_path_buf(),
+        path: path.to_string_lossy().into_owned(),
         name: path
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
@@ -163,10 +174,10 @@ impl FsBackend for RealFs {
                 if e.raw_os_error() == Some(EXDEV)
                     && std::fs::symlink_metadata(from).is_ok_and(|m| m.is_file()) =>
             {
-                io("copy", from, std::fs::copy(from, to))?;
+                std::fs::copy(from, to).map_err(|e| both("copy", from, to, &e))?;
                 io("remove", from, std::fs::remove_file(from))
             }
-            Err(e) => io("rename", from, Err(e)),
+            Err(e) => Err(both("rename", from, to, &e)),
         }
     }
 
@@ -187,7 +198,7 @@ impl FsBackend for RealFs {
                 )));
             }
         }
-        io("copy", from, std::fs::copy(from, to))
+        std::fs::copy(from, to).map_err(|e| both("copy", from, to, &e))
     }
 
     fn exists(&self, path: &Path) -> bool {

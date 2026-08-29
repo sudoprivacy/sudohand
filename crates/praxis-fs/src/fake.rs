@@ -1,12 +1,20 @@
 //! An in-memory tree that records every mutation. Used by consumers to
 //! test their policy logic (and by this crate's own tests) without
-//! touching the disk.
+//! touching the disk. Its error categories match [`RealFs`](crate::RealFs)
+//! (verified by `tests/differential.rs`):
+//! - an ancestor that is a file → `io` (ENOTDIR); a missing ancestor →
+//!   `not_found`
+//! - writing / appending / copying onto a directory → `io`
+//! - `mkdir` over anything that exists → `io` (with `recursive`, an existing
+//!   directory is fine)
+//! - `rename` of a file onto a directory, a directory onto a file, onto a
+//!   non-empty directory, or into its own subtree → `io`
 
 use crate::backend::{Entry, EntryKind, FsBackend};
 use praxis_core::{Error, Result};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 #[derive(Debug, Clone)]
 enum Node {
@@ -14,10 +22,67 @@ enum Node {
     Dir,
 }
 
+type Nodes = BTreeMap<PathBuf, Node>;
+
 #[derive(Debug, Default)]
 pub struct FakeFs {
-    nodes: Mutex<BTreeMap<PathBuf, Node>>,
+    nodes: Mutex<Nodes>,
     pub actions: Mutex<Vec<String>>,
+}
+
+fn missing(p: &Path) -> Error {
+    Error::not_found(format!("{}: no such file or directory", p.display()))
+}
+fn is_dir_err(p: &Path) -> Error {
+    Error::io(format!("{}: is a directory", p.display()))
+}
+fn not_dir_err(p: &Path) -> Error {
+    Error::io(format!("{}: not a directory", p.display()))
+}
+
+/// Every proper ancestor must be a directory (or absent).
+fn check_ancestors(nodes: &Nodes, p: &Path) -> Result<()> {
+    let mut cur = p.parent();
+    while let Some(d) = cur {
+        if d.as_os_str().is_empty() {
+            break;
+        }
+        if let Some(Node::File(_)) = nodes.get(d) {
+            return Err(not_dir_err(d));
+        }
+        cur = d.parent();
+    }
+    Ok(())
+}
+
+/// The immediate parent must exist as a directory.
+fn check_parent(nodes: &Nodes, p: &Path) -> Result<()> {
+    check_ancestors(nodes, p)?;
+    match p.parent() {
+        Some(d) if !d.as_os_str().is_empty() => match nodes.get(d) {
+            Some(Node::Dir) => Ok(()),
+            Some(Node::File(_)) => Err(not_dir_err(d)),
+            None => Err(missing(d)),
+        },
+        _ => Ok(()),
+    }
+}
+
+fn create_parents(nodes: &mut Nodes, p: &Path) -> Result<()> {
+    check_ancestors(nodes, p)?;
+    let mut cur = p.parent();
+    while let Some(d) = cur {
+        if d.as_os_str().is_empty() {
+            break;
+        }
+        nodes.entry(d.to_path_buf()).or_insert(Node::Dir);
+        cur = d.parent();
+    }
+    Ok(())
+}
+
+fn has_children(nodes: &Nodes, p: &Path) -> bool {
+    nodes.keys().any(|k| k.parent() == Some(p))
 }
 
 impl FakeFs {
@@ -33,11 +98,10 @@ impl FakeFs {
     /// Seed a file (creating parents).
     pub fn with_file(self: Arc<Self>, path: &str, data: &[u8]) -> Arc<Self> {
         let p = PathBuf::from(path);
-        self.ensure_parents(&p);
-        self.nodes
-            .lock()
-            .unwrap()
-            .insert(p, Node::File(data.to_vec()));
+        let mut nodes = self.nodes.lock().unwrap();
+        create_parents(&mut nodes, &p).expect("seed path");
+        nodes.insert(p, Node::File(data.to_vec()));
+        drop(nodes);
         self
     }
     pub fn actions(&self) -> Vec<String> {
@@ -46,17 +110,12 @@ impl FakeFs {
     fn log(&self, s: String) {
         self.actions.lock().unwrap().push(s);
     }
-    fn ensure_parents(&self, p: &Path) {
-        let mut nodes = self.nodes.lock().unwrap();
-        let mut cur = p.parent();
-        while let Some(d) = cur {
-            nodes.entry(d.to_path_buf()).or_insert(Node::Dir);
-            cur = d.parent();
-        }
+    fn nodes(&self) -> MutexGuard<'_, Nodes> {
+        self.nodes.lock().unwrap()
     }
     fn entry(path: &Path, node: &Node) -> Entry {
         Entry {
-            path: path.to_path_buf(),
+            path: path.to_string_lossy().into_owned(),
             name: path
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
@@ -72,17 +131,39 @@ impl FakeFs {
             modified: Some(0),
         }
     }
-    fn missing(p: &Path) -> Error {
-        Error::not_found(format!("{}: no such file or directory", p.display()))
+    fn write_file(&self, path: &Path, data: &[u8], create_dirs: bool, append: bool) -> Result<()> {
+        let mut nodes = self.nodes();
+        if create_dirs {
+            create_parents(&mut nodes, path)?;
+        } else {
+            check_parent(&nodes, path)?;
+        }
+        match nodes.get_mut(path) {
+            Some(Node::Dir) => Err(is_dir_err(path)),
+            Some(Node::File(d)) => {
+                if append {
+                    d.extend_from_slice(data);
+                } else {
+                    *d = data.to_vec();
+                }
+                Ok(())
+            }
+            None => {
+                nodes.insert(path.to_path_buf(), Node::File(data.to_vec()));
+                Ok(())
+            }
+        }
     }
 }
 
 impl FsBackend for FakeFs {
     fn read(&self, path: &Path) -> Result<Vec<u8>> {
-        match self.nodes.lock().unwrap().get(path) {
+        let nodes = self.nodes();
+        check_ancestors(&nodes, path)?;
+        match nodes.get(path) {
             Some(Node::File(d)) => Ok(d.clone()),
-            Some(Node::Dir) => Err(Error::io(format!("{}: is a directory", path.display()))),
-            None => Err(Self::missing(path)),
+            Some(Node::Dir) => Err(is_dir_err(path)),
+            None => Err(missing(path)),
         }
     }
     fn read_prefix(&self, path: &Path, max: usize) -> Result<Vec<u8>> {
@@ -92,101 +173,96 @@ impl FsBackend for FakeFs {
     }
     fn write(&self, path: &Path, data: &[u8], create_dirs: bool) -> Result<()> {
         self.log(format!("write {} {}B", path.display(), data.len()));
-        if create_dirs {
-            self.ensure_parents(path);
-        } else if let Some(parent) = path.parent() {
-            if !matches!(self.nodes.lock().unwrap().get(parent), Some(Node::Dir)) {
-                return Err(Self::missing(parent));
-            }
-        }
-        self.nodes
-            .lock()
-            .unwrap()
-            .insert(path.to_path_buf(), Node::File(data.to_vec()));
-        Ok(())
+        self.write_file(path, data, create_dirs, false)
     }
     fn append(&self, path: &Path, data: &[u8]) -> Result<()> {
         self.log(format!("append {} {}B", path.display(), data.len()));
-        let mut nodes = self.nodes.lock().unwrap();
-        match nodes
-            .entry(path.to_path_buf())
-            .or_insert(Node::File(Vec::new()))
-        {
-            Node::File(d) => {
-                d.extend_from_slice(data);
-                Ok(())
-            }
-            Node::Dir => Err(Error::io(format!("{}: is a directory", path.display()))),
-        }
+        self.write_file(path, data, false, true)
     }
     fn list(&self, path: &Path) -> Result<Vec<Entry>> {
-        let nodes = self.nodes.lock().unwrap();
+        let nodes = self.nodes();
+        check_ancestors(&nodes, path)?;
         match nodes.get(path) {
             Some(Node::Dir) => {}
-            Some(Node::File(_)) => {
-                return Err(Error::io(format!("{}: not a directory", path.display())))
-            }
-            None => return Err(Self::missing(path)),
+            Some(Node::File(_)) => return Err(not_dir_err(path)),
+            None => return Err(missing(path)),
         }
-        Ok(nodes
+        let mut out: Vec<Entry> = nodes
             .iter()
             .filter(|(p, _)| p.parent() == Some(path) && p.as_path() != path)
             .map(|(p, n)| Self::entry(p, n))
-            .collect())
+            .collect();
+        out.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(out)
     }
     fn stat(&self, path: &Path) -> Result<Entry> {
-        self.nodes
-            .lock()
-            .unwrap()
+        let nodes = self.nodes();
+        check_ancestors(&nodes, path)?;
+        nodes
             .get(path)
             .map(|n| Self::entry(path, n))
-            .ok_or_else(|| Self::missing(path))
+            .ok_or_else(|| missing(path))
     }
     fn mkdir(&self, path: &Path, recursive: bool) -> Result<()> {
         self.log(format!("mkdir {} recursive={recursive}", path.display()));
-        if recursive {
-            self.ensure_parents(path);
-        } else {
-            if self.nodes.lock().unwrap().contains_key(path) {
-                return Err(Error::io(format!("{}: already exists", path.display())));
-            }
-            if let Some(parent) = path.parent() {
-                if !matches!(self.nodes.lock().unwrap().get(parent), Some(Node::Dir)) {
-                    return Err(Self::missing(parent));
-                }
-            }
+        let mut nodes = self.nodes();
+        match nodes.get(path) {
+            Some(Node::Dir) if recursive => return Ok(()),
+            Some(_) => return Err(Error::io(format!("{}: already exists", path.display()))),
+            None => {}
         }
-        self.nodes
-            .lock()
-            .unwrap()
-            .entry(path.to_path_buf())
-            .or_insert(Node::Dir);
+        if recursive {
+            create_parents(&mut nodes, path)?;
+        } else {
+            check_parent(&nodes, path)?;
+        }
+        nodes.insert(path.to_path_buf(), Node::Dir);
         Ok(())
     }
     fn remove(&self, path: &Path, recursive: bool) -> Result<()> {
         self.log(format!("remove {} recursive={recursive}", path.display()));
-        let mut nodes = self.nodes.lock().unwrap();
+        let mut nodes = self.nodes();
+        check_ancestors(&nodes, path)?;
         match nodes.get(path) {
-            None => return Err(Self::missing(path)),
-            Some(Node::Dir) => {
-                let has_children = nodes.keys().any(|p| p.parent() == Some(path));
-                if has_children && !recursive {
-                    return Err(Error::io(format!(
-                        "{}: directory not empty",
-                        path.display()
-                    )));
-                }
+            None => return Err(missing(path)),
+            Some(Node::Dir) if !recursive && has_children(&nodes, path) => {
+                return Err(Error::io(format!(
+                    "{}: directory not empty",
+                    path.display()
+                )))
             }
-            Some(Node::File(_)) => {}
+            Some(_) => {}
         }
         nodes.retain(|p, _| !(p == path || p.starts_with(path)));
         Ok(())
     }
     fn rename(&self, from: &Path, to: &Path) -> Result<()> {
         self.log(format!("rename {} -> {}", from.display(), to.display()));
-        let mut nodes = self.nodes.lock().unwrap();
-        if !nodes.contains_key(from) {
-            return Err(Self::missing(from));
+        let mut nodes = self.nodes();
+        check_ancestors(&nodes, from)?;
+        let Some(src) = nodes.get(from).cloned() else {
+            return Err(missing(from));
+        };
+        check_parent(&nodes, to)?;
+        if from == to {
+            return Ok(());
+        }
+        if to.starts_with(from) {
+            return Err(Error::io(format!(
+                "{}: cannot move a directory into itself",
+                from.display()
+            )));
+        }
+        match (&src, nodes.get(to)) {
+            (Node::File(_), Some(Node::Dir)) => return Err(is_dir_err(to)),
+            (Node::Dir, Some(Node::File(_))) => return Err(not_dir_err(to)),
+            (Node::Dir, Some(Node::Dir)) => {
+                if has_children(&nodes, to) {
+                    return Err(Error::io(format!("{}: directory not empty", to.display())));
+                }
+                nodes.remove(to);
+            }
+            _ => {}
         }
         let moved: Vec<(PathBuf, Node)> = nodes
             .iter()
@@ -202,13 +278,9 @@ impl FsBackend for FakeFs {
     }
     fn copy(&self, from: &Path, to: &Path) -> Result<u64> {
         self.log(format!("copy {} -> {}", from.display(), to.display()));
-        if from == to {
-            return Err(Error::invalid(format!(
-                "copy {}: source and destination are the same file",
-                from.display()
-            )));
-        }
-        let data = match self.nodes.lock().unwrap().get(from) {
+        let mut nodes = self.nodes();
+        check_ancestors(&nodes, from)?;
+        let data = match nodes.get(from) {
             Some(Node::File(d)) => d.clone(),
             Some(Node::Dir) => {
                 return Err(Error::invalid(format!(
@@ -216,16 +288,24 @@ impl FsBackend for FakeFs {
                     from.display()
                 )))
             }
-            None => return Err(Self::missing(from)),
+            None => return Err(missing(from)),
         };
+        if from == to {
+            return Err(Error::invalid(format!(
+                "copy {}: source and destination are the same file",
+                from.display()
+            )));
+        }
+        check_parent(&nodes, to)?;
+        if matches!(nodes.get(to), Some(Node::Dir)) {
+            return Err(is_dir_err(to));
+        }
         let n = data.len() as u64;
-        self.nodes
-            .lock()
-            .unwrap()
-            .insert(to.to_path_buf(), Node::File(data));
+        nodes.insert(to.to_path_buf(), Node::File(data));
         Ok(n)
     }
     fn exists(&self, path: &Path) -> bool {
-        self.nodes.lock().unwrap().contains_key(path)
+        let nodes = self.nodes();
+        check_ancestors(&nodes, path).is_ok() && nodes.contains_key(path)
     }
 }
