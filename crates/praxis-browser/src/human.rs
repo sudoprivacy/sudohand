@@ -867,7 +867,7 @@ mod tests {
         let mut b = Rng::seed_from_u64(7);
         for _ in 0..1000 {
             let x = a.random();
-            assert!(x.to_bits() == b.random().to_bits());
+            assert_eq!(x.to_bits(), b.random().to_bits());
             assert!((0.0..1.0).contains(&x));
         }
         let mut c = Rng::seed_from_u64(1);

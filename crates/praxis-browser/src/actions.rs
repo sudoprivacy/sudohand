@@ -644,9 +644,7 @@ pub async fn screenshot_by_ref(
             "capped": r.capped,
         }));
     }
-    let (width, height) = crate::geometry::decode_png(&bytes)
-        .map(|i| i.dimensions())
-        .unwrap_or((0, 0));
+    let (width, height) = crate::geometry::decode_png(&bytes).map_or((0, 0), |i| i.dimensions());
     Ok(json!({
         "path": path.to_string_lossy(),
         "size": std::fs::metadata(&path)?.len(),
