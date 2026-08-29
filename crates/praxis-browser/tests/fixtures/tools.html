@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Tools Fixture</title>
+<style>
+  body{font-family:sans-serif;margin:20px}
+  #scroller{height:120px;overflow:auto;border:1px solid #ccc;width:300px}
+  #scroller .row{height:60px}
+  #tall{height:2000px}
+  #grid .grow{display:flex;padding:6px;border-bottom:1px solid #eee}
+  .hidden{display:none}
+  #late{margin-top:8px}
+</style></head>
+<body>
+<h1 id="page-title">Tools</h1>
+<button id="go" data-role="confirm" onclick="document.getElementById('out').textContent='went'">Go</button>
+<p id="out"></p>
+
+<select id="fruit">
+  <option value="a">Apple</option>
+  <option value="b" id="opt-banana">Banana</option>
+</select>
+<p id="fruitpick"></p>
+<script>
+  document.getElementById('fruit').addEventListener('change', e => {
+    document.getElementById('fruitpick').textContent = 'fruit:' + e.target.value;
+  });
+</script>
+
+<div id="grid">
+  <div class="grow"><span>Alpha row</span><label><input type="checkbox" id="cb1">pick</label></div>
+  <div class="grow"><span>Beta row</span><label><input type="checkbox" id="cb2">pick</label></div>
+</div>
+
+<p id="para">The quick brown fox jumps over the lazy dog.</p>
+
+<div id="scroller"><div class="row">r1</div><div class="row">r2</div><div class="row">r3</div><div class="row">r4</div></div>
+<div id="tall"></div>
+<div id="bottom-marker">BOTTOM</div>
+
+<button id="reveal" onclick="setTimeout(()=>{const b=document.createElement('button');b.id='late';b.textContent='Late Button';document.body.appendChild(b);}, 400)">Reveal</button>
+
+<input type="file" id="file" name="file">
+<p id="filecount"></p>
+<script>
+  document.getElementById('file').addEventListener('change', e => {
+    document.getElementById('filecount').textContent = 'files:' + e.target.files.length;
+  });
+</script>
+</body>
+</html>

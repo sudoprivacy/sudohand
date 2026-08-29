@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Dynamic Fixture</title></head>
+<body>
+<h1>Loading…</h1>
+<div id="app"></div>
+<script>
+  setTimeout(() => {
+    document.querySelector('h1').textContent = 'Loaded';
+    const app = document.getElementById('app');
+    for (const name of ['Alpha', 'Beta', 'Gamma']) {
+      const b = document.createElement('button');
+      b.textContent = name;
+      b.id = 'btn-' + name.toLowerCase();
+      b.onclick = () => { document.title = 'clicked ' + name; };
+      app.appendChild(b);
+    }
+    const host = document.createElement('div');
+    host.id = 'shadow-host';
+    const root = host.attachShadow({mode: 'open'});
+    root.innerHTML = '<button id="shadow-btn">Shadow button</button>';
+    app.appendChild(host);
+  }, 400);
+</script>
+</body>
+</html>

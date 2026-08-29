@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Buttons Fixture</title></head>
+<body>
+<h1>Actions</h1>
+<h2>Primary</h2>
+<button id="save" onclick="document.getElementById('log').textContent='saved'">Save</button>
+<button id="delete" disabled>Delete</button>
+<button id="icon-btn"><span aria-hidden="true">★</span><span>Sudo</span> <span>Code</span></button>
+<a id="home" href="result.html?from=home">Home</a>
+<a id="docs" href="result.html?from=docs" title="Documentation">Docs</a>
+<div id="nav-item" onclick="document.getElementById('log').textContent='nav'">Plain div nav</div>
+<div role="button" tabindex="0" id="aria-btn" onclick="document.getElementById('log').textContent='aria'">ARIA button</div>
+<img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="Logo" width="20" height="20">
+<div id="grid">
+  <div class="grid-row" data-role="row"><span class="cell">Row one</span></div>
+  <div class="grid-row" datarole="row"><span class="cell">Row two</span></div>
+</div>
+<p id="log"></p>
+</body>
+</html>
