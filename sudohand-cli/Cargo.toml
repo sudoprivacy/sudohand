@@ -1,0 +1,21 @@
+[package]
+name = "sudohand-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The `sudohand` umbrella CLI — dispatches to the browser/desktop/fs/shell actuators."
+
+[[bin]]
+name = "sudohand"
+path = "src/main.rs"
+
+[dependencies]
+sudohand-core = { workspace = true }
+sudohand-desktop = { workspace = true, features = ["agent"] }
+sudohand-browser = { workspace = true, features = ["flow"] }
+sudohand-fs = { workspace = true }
+sudohand-shell = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["rt"] }

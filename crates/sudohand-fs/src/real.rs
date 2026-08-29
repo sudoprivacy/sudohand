@@ -1,0 +1,207 @@
+//! The real backend: a thin, policy-free wrapper over `std::fs`.
+
+use crate::backend::{Entry, EntryKind, FsBackend};
+use std::path::Path;
+use sudohand_core::{Error, Result};
+
+#[cfg(unix)]
+const EXDEV: i32 = 18;
+#[cfg(not(unix))]
+const EXDEV: i32 = 17;
+
+#[derive(Debug, Default)]
+pub struct RealFs;
+
+impl RealFs {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+fn io<T>(what: &str, path: &Path, r: std::io::Result<T>) -> Result<T> {
+    r.map_err(|e| {
+        let base = Error::from_io(&e);
+        let msg = format!("{what} {}: {e}", path.display());
+        match base {
+            Error::NotFound(_) => Error::not_found(msg),
+            Error::PermissionDenied(_) => Error::perm(msg),
+            _ => Error::io(msg),
+        }
+    })
+}
+
+/// Opening a FIFO or socket blocks until a peer shows up; refuse instead of
+/// hanging. Character devices (`/dev/zero`, `/dev/null`) stay readable.
+fn refuse_blocking_special(path: &Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::FileTypeExt;
+        if let Ok(md) = std::fs::metadata(path) {
+            let ft = md.file_type();
+            if ft.is_fifo() || ft.is_socket() {
+                return Err(Error::invalid(format!(
+                    "read {}: is a {}",
+                    path.display(),
+                    if ft.is_fifo() { "fifo" } else { "socket" }
+                )));
+            }
+        }
+    }
+    let _ = path;
+    Ok(())
+}
+
+/// Error for a two-path operation, naming both so a missing *destination*
+/// directory is not blamed on the source.
+fn both(what: &str, from: &Path, to: &Path, e: &std::io::Error) -> Error {
+    let msg = format!("{what} {} -> {}: {e}", from.display(), to.display());
+    match Error::from_io(e) {
+        Error::NotFound(_) => Error::not_found(msg),
+        Error::PermissionDenied(_) => Error::perm(msg),
+        _ => Error::io(msg),
+    }
+}
+
+pub(crate) fn entry_from(path: &Path, md: &std::fs::Metadata) -> Entry {
+    let ft = md.file_type();
+    let kind = if ft.is_symlink() {
+        EntryKind::Symlink
+    } else if ft.is_dir() {
+        EntryKind::Dir
+    } else if ft.is_file() {
+        EntryKind::File
+    } else {
+        EntryKind::Other
+    };
+    Entry {
+        path: path.to_string_lossy().into_owned(),
+        name: path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+        kind,
+        size: if kind == EntryKind::File { md.len() } else { 0 },
+        modified: md
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs()),
+    }
+}
+
+impl FsBackend for RealFs {
+    fn read(&self, path: &Path) -> Result<Vec<u8>> {
+        refuse_blocking_special(path)?;
+        io("read", path, std::fs::read(path))
+    }
+
+    fn read_prefix(&self, path: &Path, max: usize) -> Result<Vec<u8>> {
+        use std::io::Read;
+        refuse_blocking_special(path)?;
+        let f = io("read", path, std::fs::File::open(path))?;
+        let mut buf = Vec::new();
+        io("read", path, f.take(max as u64).read_to_end(&mut buf))?;
+        Ok(buf)
+    }
+
+    fn write(&self, path: &Path, data: &[u8], create_dirs: bool) -> Result<()> {
+        if create_dirs {
+            if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+                io("mkdir", parent, std::fs::create_dir_all(parent))?;
+            }
+        }
+        io("write", path, std::fs::write(path, data))
+    }
+
+    fn append(&self, path: &Path, data: &[u8]) -> Result<()> {
+        use std::io::Write;
+        let mut f = io(
+            "open",
+            path,
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path),
+        )?;
+        io("append", path, f.write_all(data))
+    }
+
+    fn list(&self, path: &Path) -> Result<Vec<Entry>> {
+        let rd = io("list", path, std::fs::read_dir(path))?;
+        let mut out = Vec::new();
+        for e in rd {
+            let e = io("list", path, e)?;
+            let p = e.path();
+            let md = io("stat", &p, std::fs::symlink_metadata(&p))?;
+            out.push(entry_from(&p, &md));
+        }
+        out.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(out)
+    }
+
+    fn stat(&self, path: &Path) -> Result<Entry> {
+        let md = io("stat", path, std::fs::symlink_metadata(path))?;
+        Ok(entry_from(path, &md))
+    }
+
+    fn mkdir(&self, path: &Path, recursive: bool) -> Result<()> {
+        if recursive {
+            io("mkdir", path, std::fs::create_dir_all(path))
+        } else {
+            io("mkdir", path, std::fs::create_dir(path))
+        }
+    }
+
+    fn remove(&self, path: &Path, recursive: bool) -> Result<()> {
+        let md = io("stat", path, std::fs::symlink_metadata(path))?;
+        if md.file_type().is_dir() && !md.file_type().is_symlink() {
+            if recursive {
+                io("remove", path, std::fs::remove_dir_all(path))
+            } else {
+                io("remove", path, std::fs::remove_dir(path))
+            }
+        } else {
+            io("remove", path, std::fs::remove_file(path))
+        }
+    }
+
+    fn rename(&self, from: &Path, to: &Path) -> Result<()> {
+        match std::fs::rename(from, to) {
+            Ok(()) => Ok(()),
+            // Across filesystems `rename` fails with EXDEV; move a file by
+            // copy + delete instead (directories are not moved that way).
+            Err(e)
+                if e.raw_os_error() == Some(EXDEV)
+                    && std::fs::symlink_metadata(from).is_ok_and(|m| m.is_file()) =>
+            {
+                std::fs::copy(from, to).map_err(|e| both("copy", from, to, &e))?;
+                io("remove", from, std::fs::remove_file(from))
+            }
+            Err(e) => Err(both("rename", from, to, &e)),
+        }
+    }
+
+    fn copy(&self, from: &Path, to: &Path) -> Result<u64> {
+        let md = io("stat", from, std::fs::metadata(from))?;
+        if md.is_dir() {
+            return Err(Error::invalid(format!(
+                "copy {}: is a directory",
+                from.display()
+            )));
+        }
+        // Copying a file onto itself truncates it to zero bytes.
+        if let (Ok(a), Ok(b)) = (std::fs::canonicalize(from), std::fs::canonicalize(to)) {
+            if a == b {
+                return Err(Error::invalid(format!(
+                    "copy {}: source and destination are the same file",
+                    from.display()
+                )));
+            }
+        }
+        std::fs::copy(from, to).map_err(|e| both("copy", from, to, &e))
+    }
+
+    fn exists(&self, path: &Path) -> bool {
+        std::fs::symlink_metadata(path).is_ok()
+    }
+}

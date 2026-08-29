@@ -1,0 +1,11 @@
+[package]
+name = "sudohand-fs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Filesystem actuator: read/write/list/stat/move/delete under a caller-supplied contract (cross-platform)."
+
+[dependencies]
+sudohand-core = { workspace = true }
+serde = { workspace = true }

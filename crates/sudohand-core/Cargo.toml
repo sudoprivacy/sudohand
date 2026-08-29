@@ -1,0 +1,14 @@
+[package]
+name = "sudohand-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared value types, error model, and JSON-CLI conventions for the sudohand actuators."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
