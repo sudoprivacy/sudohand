@@ -10,12 +10,24 @@
 //! praxis shell ...
 //! ```
 //!
-//! Each subcommand tree is filled in as its crate is ported/implemented.
+//! JSON on stdout; failures print `{"error":{"kind","message"}}` to stderr
+//! and exit 1 (see `praxis_core::print_result`). Each subcommand tree is
+//! filled in as its crate is ported/implemented.
+
+#![deny(unsafe_code)]
+
+mod desktop;
+mod fs;
+mod shell;
 
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "praxis", about = "AI computer-control actuators: browser + desktop + filesystem + shell")]
+#[command(
+    name = "praxis",
+    version,
+    about = "AI computer-control actuators: browser + desktop + filesystem + shell"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Domain,
@@ -26,24 +38,33 @@ enum Domain {
     /// Drive Chrome over CDP (was `adb`).
     Browser,
     /// Drive desktop apps: windows, AX tree, input, screenshots (was `adc`).
-    Desktop,
+    Desktop {
+        #[command(subcommand)]
+        cmd: desktop::Cmd,
+    },
     /// Filesystem operations.
-    Fs,
+    Fs {
+        #[command(subcommand)]
+        cmd: fs::Cmd,
+    },
     /// Run a shell command (gated by the integrator; off by default).
-    Shell,
+    Shell {
+        #[command(subcommand)]
+        cmd: shell::Cmd,
+    },
 }
 
 fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
-    let todo = |domain: &str, crate_note: &str| {
-        praxis_core::print_result::<()>(Err(praxis_core::Error::Other(format!(
-            "praxis {domain}: not yet implemented — {crate_note}"
-        ))))
-    };
     match cli.command {
-        Domain::Browser => todo("browser", praxis_browser::placeholder()),
-        Domain::Desktop => todo("desktop", praxis_desktop::placeholder()),
-        Domain::Fs => todo("fs", praxis_fs::placeholder()),
-        Domain::Shell => todo("shell", praxis_shell::placeholder()),
+        Domain::Browser => {
+            praxis_core::print_result::<()>(Err(praxis_core::Error::internal(format!(
+                "praxis browser: not yet implemented — {}",
+                praxis_browser::placeholder()
+            ))))
+        }
+        Domain::Desktop { cmd } => praxis_core::print_result(desktop::run(cmd)),
+        Domain::Fs { cmd } => praxis_core::print_result(fs::run(cmd)),
+        Domain::Shell { cmd } => praxis_core::print_result(shell::run(cmd)),
     }
 }

@@ -9,3 +9,6 @@ description = "Shared value types, error model, and JSON-CLI conventions for the
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"

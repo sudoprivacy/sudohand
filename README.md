@@ -41,6 +41,11 @@ with Android's `adb`.
 
 ## Status
 
-Workspace skeleton. `praxis-browser` and `praxis-desktop` will be
-ported in from the existing `ai-dev-browser` and `ai-desktop-control`
-repos; `praxis-fs` / `praxis-shell` are new. See [DESIGN.md](DESIGN.md).
+`praxis-desktop` is ported from `ai-desktop-control` (backend trait,
+value types, `MacBackend`, `FakeBackend`) and wired up as
+`praxis desktop status|apps|screenshot|ax-tree|activate|click|type|paste-file|key`;
+`praxis-core` carries the shared `Error`, JSON-CLI contract, base64 and
+permission probing. `praxis-fs` (`praxis fs read|write|ls|stat|mkdir|rm|mv|cp|exists`) and
+`praxis-shell` (`praxis shell run`) are thin over `std::fs` /
+`std::process::Command`, each with a fake backend. `praxis-browser` is
+still to be ported from `ai-dev-browser`. See [DESIGN.md](DESIGN.md).

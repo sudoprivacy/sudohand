@@ -8,3 +8,4 @@ description = "Filesystem actuator: read/write/list/stat/move/delete under a cal
 
 [dependencies]
 praxis-core = { workspace = true }
+serde = { workspace = true }
