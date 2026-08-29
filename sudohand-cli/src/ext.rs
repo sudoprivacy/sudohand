@@ -247,12 +247,47 @@ pub enum Cmd {
     /// Verify an extension against the contract: `--manifest`, `--help`,
     /// and the error envelope. Exit 1 with the failing checks otherwise.
     Check { name: String },
+    /// Install into ~/.suh/extensions/<name>/ from an executable, a cargo
+    /// project directory, `owner/repo[@ref]` (GitHub) or a git URL. The
+    /// name comes from the manifest; the binary must pass `check`.
+    Install {
+        source: String,
+        /// Install even if the conformance check fails.
+        #[arg(long)]
+        force: bool,
+    },
+    /// Remove an extension installed by `install`.
+    Uninstall { name: String },
+    /// Re-fetch / rebuild / re-copy an installed extension from its
+    /// recorded source.
+    Update {
+        name: String,
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 pub fn run_cmd(cmd: Cmd) -> Result<serde_json::Value> {
     use serde_json::json;
     Ok(match cmd {
-        Cmd::List => json!({ "extensions": list() }),
+        Cmd::List => json!({
+            "extensions": list()
+                .into_iter()
+                .map(|e| {
+                    let rec = crate::ext_install::record_for(&e.path);
+                    json!({
+                        "name": e.name,
+                        "path": e.path,
+                        "source": e.source,
+                        "version": rec.as_ref().map(|r| r.version.clone()),
+                        "installed_from": rec.map(|r| r.source),
+                    })
+                })
+                .collect::<Vec<_>>()
+        }),
+        Cmd::Install { source, force } => crate::ext_install::install(&source, force)?,
+        Cmd::Uninstall { name } => crate::ext_install::uninstall(&name)?,
+        Cmd::Update { name, force } => crate::ext_install::update(&name, force)?,
         Cmd::Which { name } => match find(&name) {
             Some(ext) => json!(ext),
             None => return Err(Error::not_found(format!("no `suh-{name}` extension found"))),

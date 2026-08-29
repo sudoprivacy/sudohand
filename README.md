@@ -80,6 +80,22 @@ holding `suh`, then `$PATH`.
 `suh ext check <name>` verifies all of that black-box; `suh ext info <name>`
 prints the manifest; `suh ext list` / `which` show what would run.
 
+### Installing
+
+```sh
+suh ext install sudoprivacy/suh-wx            # GitHub owner/repo[@ref] (or any git URL)
+suh ext install ./suh-wx                      # local cargo project → cargo build --release
+suh ext install ./target/release/suh-wx       # an executable (script or binary)
+suh ext update wx                             # re-fetch / rebuild from the recorded source
+suh ext uninstall wx
+```
+
+Installs land in `~/.suh/extensions/<name>/suh-<name>` (git checkouts in
+`~/.suh/src/<repo>`), named from the manifest, and only after passing
+`suh ext check` (`--force` overrides). `install.json` beside the binary
+records the source, ref and commit; `suh ext list` shows the version.
+Needs `git` / `cargo` on `PATH` for those source kinds.
+
 ### Writing one in Rust: `sudohand-ext`
 
 Implement the [`Extension`](crates/sudohand-ext/src/lib.rs) trait and the

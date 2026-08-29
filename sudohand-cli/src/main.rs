@@ -8,7 +8,7 @@
 //! suh desktop ...     # was adc / ai-desktop-control
 //! suh fs ...
 //! suh shell ...
-//! suh ext list        # installed extensions
+//! suh ext list        # installed extensions (install|uninstall|update|check|info)
 //! suh <name> ...      # extension: runs `suh-<name>` (see `ext`)
 //! ```
 //!
@@ -21,6 +21,7 @@
 mod browser;
 mod desktop;
 mod ext;
+mod ext_install;
 mod fs;
 mod shell;
 
