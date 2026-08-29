@@ -1389,8 +1389,17 @@ async fn tab_new_and_close() {
         .await
         .unwrap();
     assert_eq!(r["closed"], true);
-    let after = tab_list(&mut browser).await.unwrap()["count"]
-        .as_u64()
-        .unwrap();
+    // Chrome drops the closed target from /json/list asynchronously; give
+    // it a moment rather than racing it.
+    let mut after = 0;
+    for _ in 0..20 {
+        after = tab_list(&mut browser).await.unwrap()["count"]
+            .as_u64()
+            .unwrap();
+        if after == before {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
     assert_eq!(after, before);
 }
