@@ -1,8 +1,11 @@
 //! `suh desktop <command> [flags]` — a thin CLI over `sudohand-desktop`.
 //! Subcommands, flags and JSON output mirror `adc` one-to-one, plus the VLM
-//! actions `locate` / `ask` (feature `agent` of sudohand-desktop). Workflow
+//! actions `locate` / `ask` and the cheap deterministic checks
+//! `find-window` / `ax-find` (feature `agent` of sudohand-desktop). Workflow
 //! orchestration is not here — cross-actuator react workflows live in
-//! `sudohand-flow` and drive these actions via the CLI.
+//! `sudohand-flow` and drive these actions via the CLI. Prefer the cheap
+//! checks (window list, accessibility tree — free, deterministic) over a VLM
+//! `ask` where the app exposes the state.
 //!
 //! Only the stateless commands are exposed: the ref-based actions
 //! (`ax_press`/`ax_set_value`/`ax_focus`) need the `ref` map from an `ax_tree`
@@ -110,6 +113,36 @@ pub enum Cmd {
         question: String,
         #[arg(long)]
         model: Option<String>,
+    },
+    /// Cheap, deterministic check: is there a window whose title contains
+    /// `--title`? Prints {found, id, title, count} — no VLM, no screenshot.
+    FindWindow {
+        #[arg(long)]
+        bundle: String,
+        #[arg(long)]
+        title: String,
+    },
+    /// Cheap, deterministic element search over the accessibility tree.
+    /// Match by `--role` (exact, case-insensitive) and/or `--text` (substring
+    /// of title/value/description). Prints {found, count, point (first
+    /// match's center), matches:[…]} — no VLM. Use it to check "did the
+    /// dialog appear?" or to click an AX element by name.
+    AxFind {
+        #[arg(long)]
+        bundle: String,
+        #[arg(long)]
+        window: Option<u32>,
+        /// Pick the window whose title contains this (over --window / largest).
+        #[arg(long)]
+        window_title: Option<String>,
+        #[arg(long)]
+        role: Option<String>,
+        #[arg(long)]
+        text: Option<String>,
+        #[arg(long, default_value_t = 40)]
+        depth: usize,
+        #[arg(long, default_value_t = 3000)]
+        nodes: usize,
     },
 }
 
@@ -270,6 +303,80 @@ pub fn run_with(
             let yes = sudohand_desktop::vlm::is_yes(&answer);
             json!({"question": question, "answer": answer, "yes": yes,
                    "model": vlm.ask_model, "window": wid, "ms": t0.elapsed().as_millis()})
+        }
+        Cmd::FindWindow { bundle, title } => {
+            let ndl = title.to_lowercase();
+            let win = b
+                .apps(std::slice::from_ref(&bundle))?
+                .into_iter()
+                .find(|a| a.bundle_id == bundle)
+                .into_iter()
+                .flat_map(|a| a.windows)
+                .filter(|w| w.title.to_lowercase().contains(&ndl))
+                .max_by(|x, y| {
+                    x.on_screen.cmp(&y.on_screen).then(
+                        (x.width * x.height)
+                            .partial_cmp(&(y.width * y.height))
+                            .unwrap_or(std::cmp::Ordering::Equal),
+                    )
+                });
+            match win {
+                Some(w) => json!({"found": true, "id": w.id, "title": w.title}),
+                None => json!({"found": false}),
+            }
+        }
+        Cmd::AxFind {
+            bundle,
+            window,
+            window_title,
+            role,
+            text,
+            depth,
+            nodes,
+        } => {
+            let wid = match (window, window_title.as_deref()) {
+                (Some(w), _) => Some(w),
+                (None, Some(t)) => Some(sudohand_desktop::workflow::pick_window_titled(
+                    b, &bundle, t,
+                )?),
+                (None, None) => None,
+            };
+            let tree = b.ax_tree(&bundle, wid, depth, nodes)?;
+            let role_ci = role.as_ref().map(|r| r.to_lowercase());
+            let text_ci = text.as_ref().map(|t| t.to_lowercase());
+            let mut matches = Vec::new();
+            let mut stack = vec![&tree];
+            while let Some(n) = stack.pop() {
+                for c in &n.children {
+                    stack.push(c);
+                }
+                if let Some(r) = &role_ci {
+                    if n.role.to_lowercase() != *r {
+                        continue;
+                    }
+                }
+                if let Some(t) = &text_ci {
+                    let hay = [&n.title, &n.value, &n.description]
+                        .into_iter()
+                        .flatten()
+                        .any(|s| s.to_lowercase().contains(t));
+                    if !hay {
+                        continue;
+                    }
+                }
+                let center = n
+                    .frame
+                    .map(|[x, y, w, h]| json!({"x": x + w / 2.0, "y": y + h / 2.0}));
+                matches.push(json!({
+                    "ref": n.r#ref, "role": n.role, "title": n.title,
+                    "value": n.value, "frame": n.frame, "center": center,
+                }));
+            }
+            let point = matches
+                .iter()
+                .find_map(|m| m.get("center").filter(|c| !c.is_null()).cloned());
+            json!({"found": !matches.is_empty(), "count": matches.len(),
+                   "point": point, "matches": matches})
         }
     })
 }
