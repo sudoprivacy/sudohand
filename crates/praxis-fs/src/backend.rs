@@ -32,6 +32,9 @@ pub struct Entry {
 pub trait FsBackend: Send + Sync + std::fmt::Debug {
     /// Whole-file contents.
     fn read(&self, path: &Path) -> Result<Vec<u8>>;
+    /// At most the first `max` bytes, without reading the rest (so a
+    /// device or a huge file cannot hang or exhaust memory).
+    fn read_prefix(&self, path: &Path, max: usize) -> Result<Vec<u8>>;
     /// Create or truncate `path` and write `data`; with `create_dirs`,
     /// create missing parent directories first.
     fn write(&self, path: &Path, data: &[u8], create_dirs: bool) -> Result<()>;

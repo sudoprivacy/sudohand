@@ -91,12 +91,25 @@ pub fn run_with(fs: &dyn FsBackend, cmd: Cmd) -> Result<Value> {
             base64,
             max_bytes,
         } => {
-            let data = fs.read(Path::new(&path))?;
-            let total = data.len();
-            let (slice, truncated) = match max_bytes {
-                Some(n) if n < total => (&data[..n], true),
-                _ => (&data[..], false),
+            let p = Path::new(&path);
+            // With --max-bytes, read only that much (+1 to detect more), so
+            // /dev/zero or a huge file neither hangs nor fills memory.
+            let (data, total, truncated) = match max_bytes {
+                Some(n) => {
+                    let mut d = fs.read_prefix(p, n.saturating_add(1))?;
+                    let more = d.len() > n;
+                    d.truncate(n);
+                    let len = d.len() as u64;
+                    let total = fs.stat(p).map(|e| e.size).unwrap_or(len);
+                    (d, total.max(len), more)
+                }
+                None => {
+                    let d = fs.read(p)?;
+                    let n = d.len() as u64;
+                    (d, n, false)
+                }
             };
+            let slice = &data[..];
             let mut v = json!({"path": path, "bytes": total, "truncated": truncated});
             match (base64, std::str::from_utf8(slice)) {
                 (false, Ok(s)) => v["text"] = json!(s),
