@@ -23,11 +23,62 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Default)]
-pub struct RealShell;
+pub struct RealShell {
+    /// Kill the child's process group when *this* process gets SIGINT /
+    /// SIGTERM / SIGHUP (then die of that signal). Off by default because it
+    /// installs process-wide signal handlers — a one-shot CLI wants it, a
+    /// library host may not.
+    pub forward_signals: bool,
+}
 
 impl RealShell {
     pub fn new() -> Self {
-        Self
+        Self::default()
+    }
+
+    /// A shell whose children die with the calling process (see
+    /// [`RealShell::forward_signals`]).
+    pub fn with_signal_forwarding() -> Self {
+        Self {
+            forward_signals: true,
+        }
+    }
+}
+
+#[cfg(unix)]
+mod signals {
+    use std::sync::atomic::{AtomicI32, Ordering};
+
+    /// Process group to kill from the handler (0 = none).
+    static PGID: AtomicI32 = AtomicI32::new(0);
+
+    extern "C" fn on_signal(sig: libc::c_int) {
+        // Async-signal-safe: kill, signal, raise only.
+        let pgid = PGID.load(Ordering::SeqCst);
+        // SAFETY: plain syscalls; re-raises with the default disposition so
+        // the parent sees us die of the same signal.
+        unsafe {
+            if pgid > 0 {
+                libc::kill(-pgid, libc::SIGKILL);
+            }
+            libc::signal(sig, libc::SIG_DFL);
+            libc::raise(sig);
+        }
+    }
+
+    pub fn arm(pgid: i32) {
+        PGID.store(pgid, Ordering::SeqCst);
+        for sig in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
+            // SAFETY: installing a handler that only calls async-signal-safe
+            // functions.
+            unsafe {
+                libc::signal(sig, on_signal as *const () as libc::sighandler_t);
+            }
+        }
+    }
+
+    pub fn disarm() {
+        PGID.store(0, Ordering::SeqCst);
     }
 }
 
@@ -132,6 +183,10 @@ impl ShellBackend for RealShell {
 
         let started = Instant::now();
         let mut child = cmd.spawn().map_err(|e| spawn_error(&exe, &e))?;
+        #[cfg(unix)]
+        if self.forward_signals {
+            signals::arm(child.id() as i32);
+        }
 
         if let (Some(data), Some(mut stdin)) = (req.stdin.clone(), child.stdin.take()) {
             // Off-thread: a child that never reads must not block us. A
@@ -149,7 +204,9 @@ impl ShellBackend for RealShell {
             req.max_output_bytes,
         );
 
-        let deadline = req.timeout_ms.map(|ms| started + Duration::from_millis(ms));
+        let deadline = req
+            .timeout_ms
+            .and_then(|ms| started.checked_add(Duration::from_millis(ms)));
         let mut timed_out = false;
         let status = loop {
             if let Some(st) = child.try_wait().map_err(|e| Error::io(e.to_string()))? {
@@ -177,6 +234,10 @@ impl ShellBackend for RealShell {
             if stderr.is_none() {
                 stderr = recv_until(&err, last);
             }
+        }
+        #[cfg(unix)]
+        if self.forward_signals {
+            signals::disarm();
         }
         let (stdout, stdout_truncated) = stdout.unwrap_or_default();
         let (stderr, stderr_truncated) = stderr.unwrap_or_default();

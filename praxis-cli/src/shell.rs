@@ -36,7 +36,7 @@ pub enum Cmd {
 }
 
 pub fn run(cmd: Cmd) -> Result<Value> {
-    run_with(&praxis_shell::RealShell::new(), cmd)
+    run_with(&praxis_shell::RealShell::with_signal_forwarding(), cmd)
 }
 
 pub fn run_with(sh: &dyn ShellBackend, cmd: Cmd) -> Result<Value> {

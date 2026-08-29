@@ -83,6 +83,26 @@ fn real_read_prefix_does_not_read_a_device_to_the_end() {
     assert_eq!(d, vec![0u8; 10]);
 }
 
+#[cfg(unix)]
+#[test]
+fn real_read_refuses_a_fifo_instead_of_blocking() {
+    let dir = std::env::temp_dir().join(format!("praxis-fs-fifo-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let fifo = dir.join("f");
+    assert!(std::process::Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .unwrap()
+        .success());
+    let fs = RealFs::new();
+    assert_eq!(fs.read(&fifo).unwrap_err().code(), "invalid_input");
+    assert_eq!(
+        fs.read_prefix(&fifo, 1).unwrap_err().code(),
+        "invalid_input"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
 #[test]
 fn real_backend() {
     let root: PathBuf = std::env::temp_dir().join(format!("praxis-fs-test-{}", std::process::id()));

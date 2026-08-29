@@ -30,6 +30,27 @@ fn io<T>(what: &str, path: &Path, r: std::io::Result<T>) -> Result<T> {
     })
 }
 
+/// Opening a FIFO or socket blocks until a peer shows up; refuse instead of
+/// hanging. Character devices (`/dev/zero`, `/dev/null`) stay readable.
+fn refuse_blocking_special(path: &Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::FileTypeExt;
+        if let Ok(md) = std::fs::metadata(path) {
+            let ft = md.file_type();
+            if ft.is_fifo() || ft.is_socket() {
+                return Err(Error::invalid(format!(
+                    "read {}: is a {}",
+                    path.display(),
+                    if ft.is_fifo() { "fifo" } else { "socket" }
+                )));
+            }
+        }
+    }
+    let _ = path;
+    Ok(())
+}
+
 pub(crate) fn entry_from(path: &Path, md: &std::fs::Metadata) -> Entry {
     let ft = md.file_type();
     let kind = if ft.is_symlink() {
@@ -59,11 +80,13 @@ pub(crate) fn entry_from(path: &Path, md: &std::fs::Metadata) -> Entry {
 
 impl FsBackend for RealFs {
     fn read(&self, path: &Path) -> Result<Vec<u8>> {
+        refuse_blocking_special(path)?;
         io("read", path, std::fs::read(path))
     }
 
     fn read_prefix(&self, path: &Path, max: usize) -> Result<Vec<u8>> {
         use std::io::Read;
+        refuse_blocking_special(path)?;
         let f = io("read", path, std::fs::File::open(path))?;
         let mut buf = Vec::new();
         io("read", path, f.take(max as u64).read_to_end(&mut buf))?;
