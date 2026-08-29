@@ -13,7 +13,7 @@ members = [
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/joezhoujinjing/sudohand"
+repository = "https://github.com/sudoprivacy/sudohand"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
