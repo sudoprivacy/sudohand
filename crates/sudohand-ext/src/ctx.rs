@@ -169,9 +169,23 @@ impl Ctx {
     ) -> Result<serde_json::Value> {
         let wf = E::registry().resolve(name)?;
         let report = self.run_workflow(&wf, sudohand_flow::Vars(to_json_map(vars)))?;
+        // Propagate failure as a non-zero exit so a caller — including
+        // another workflow running this via `wx flow …` — can react.
+        if report.cancelled {
+            return Err(Error::invalid(format!("workflow {name:?} cancelled")));
+        }
+        if !report.ok {
+            let at = report
+                .steps
+                .iter()
+                .rev()
+                .find(|s| !s.ok)
+                .map(|s| format!(" at {}: {}", s.id, s.error.clone().unwrap_or_default()))
+                .unwrap_or_default();
+            return Err(Error::io(format!("workflow {name:?} failed{at}")));
+        }
         Ok(serde_json::json!({
-            "ok": report.ok, "cancelled": report.cancelled,
-            "workflow": name, "steps": report.steps, "vars": report.vars,
+            "ok": true, "workflow": name, "steps": report.steps, "vars": report.vars,
         }))
     }
 }
