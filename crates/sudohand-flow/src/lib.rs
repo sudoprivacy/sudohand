@@ -29,14 +29,16 @@
 #![deny(unsafe_code)]
 
 mod dispatch;
+mod prompt;
 mod registry;
 mod runner;
 mod step;
 mod vars;
 
 pub use dispatch::{CliDispatch, Dispatch};
+pub use prompt::{Prompter, Stdio};
 pub use registry::{Entry, Registry, WorkflowFn};
 pub use runner::{Report, Runner, StepReport};
-pub use step::{Step, Workflow};
+pub use step::{Action, Step, Workflow};
 pub use sudohand_core::{Error, Result};
 pub use vars::Vars;
