@@ -44,6 +44,7 @@ with Android's `adb`.
 `praxis-desktop` is ported from `ai-desktop-control` (backend trait,
 value types, `MacBackend`, `FakeBackend`) and wired up as
 `praxis desktop status|apps|screenshot|ax-tree|activate|click|type|paste-file|key`;
+(+ `locate|workflows|flow` via the `agent` feature);
 `praxis-core` carries the shared `Error`, JSON-CLI contract, base64 and
 permission probing. `praxis-fs` (`praxis fs read|write|ls|stat|mkdir|rm|mv|cp|exists`) and
 `praxis-shell` (`praxis shell run`) are thin over `std::fs` /
