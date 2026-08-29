@@ -130,6 +130,8 @@ pub enum Step {
     Goto { id: String, to: String },
     /// Stop the workflow successfully.
     End { id: String },
+    /// Stop the workflow as failed, with `message` (templated).
+    Fail { id: String, message: String },
 }
 
 impl Step {
@@ -210,6 +212,16 @@ impl Step {
         Step::End { id: id.into() }
     }
 
+    /// A terminal step that fails the workflow with `message` (may use
+    /// `{{var}}`). Use it for a real failure branch (a plain shell `exit 1`
+    /// does not fail the workflow — `suh shell run` still exits 0).
+    pub fn fail(id: &str, message: &str) -> Step {
+        Step::Fail {
+            id: id.into(),
+            message: message.into(),
+        }
+    }
+
     pub fn id(&self) -> &str {
         match self {
             Step::Action(a) => &a.id,
@@ -218,7 +230,8 @@ impl Step {
             | Step::Select { id, .. }
             | Step::Branch { id, .. }
             | Step::Goto { id, .. }
-            | Step::End { id } => id,
+            | Step::End { id }
+            | Step::Fail { id, .. } => id,
         }
     }
 }

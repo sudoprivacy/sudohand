@@ -357,3 +357,21 @@ fn loop_guard_trips_on_runaway() {
     // graph-flow stops at the step cap; run does not hang
     assert!(report.steps.len() <= 10);
 }
+
+#[test]
+fn fail_step_fails_the_workflow_with_reason() {
+    let wf = Workflow::new("t")
+        .step(
+            Step::branch("b", Cond::truthy("missing"))
+                .then("ok_end")
+                .els("bad"),
+        )
+        .step(Step::fail("bad", "contact {{who}} not found"))
+        .step(Step::end("ok_end"));
+    let report = Runner::new(FakeDispatch::new())
+        .run(&wf, Vars::from_pairs([("who", "Zoe")]))
+        .unwrap();
+    assert!(!report.ok && !report.cancelled);
+    let bad = report.steps.iter().find(|s| s.id == "bad").unwrap();
+    assert_eq!(bad.error.as_deref(), Some("contact Zoe not found"));
+}
