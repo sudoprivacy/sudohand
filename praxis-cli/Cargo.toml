@@ -17,3 +17,4 @@ praxis-browser = { workspace = true }
 praxis-fs = { workspace = true }
 praxis-shell = { workspace = true }
 clap = { workspace = true }
+serde_json = { workspace = true }

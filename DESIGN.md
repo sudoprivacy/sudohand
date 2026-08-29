@@ -52,7 +52,8 @@ Do the port after adb/adc each stabilized (both just landed their current
 state) — this is the right moment, before they grow more divergent conventions.
 
 ## Conventions to keep
-- JSON on stdout; `{"error":{code,message}}` on stderr; exit 1 on failure.
+- JSON on stdout; `{"error":{kind,message}}` on stderr (adc's exact shape;
+  `kind` ∈ permission_denied/not_found/invalid_input/io/internal); exit 1 on failure.
 - No policy/session/transport/confirmation in any crate.
 - CI: `cargo build` + `cargo clippy --all-targets -- -D warnings` +
   `cargo test` + `cargo fmt --check`. Pin one toolchain across the

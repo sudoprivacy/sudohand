@@ -8,3 +8,13 @@ description = "Desktop actuator: window list, accessibility tree, synthetic inpu
 
 [dependencies]
 praxis-core = { workspace = true }
+serde = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+accessibility-sys = "0.1"
+core-foundation = "0.10"
+core-graphics = "0.24"
+image = { version = "0.25", default-features = false, features = ["png"] }
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSArray", "NSObject", "NSEnumerator", "NSURL", "objc2-core-foundation"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSRunningApplication", "NSWorkspace", "NSPasteboard", "libc", "objc2-core-foundation"] }

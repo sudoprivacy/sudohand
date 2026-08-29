@@ -1,0 +1,4 @@
+# One toolchain across the workspace so local clippy matches CI (see DESIGN.md).
+[toolchain]
+channel = "stable"
+components = ["clippy", "rustfmt"]
