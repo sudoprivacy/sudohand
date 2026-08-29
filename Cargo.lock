@@ -2369,6 +2369,7 @@ dependencies = [
  "serde_json",
  "sudohand-core",
  "sudohand-desktop",
+ "sudohand-flow",
  "sudohand-fs",
  "sudohand-shell",
 ]

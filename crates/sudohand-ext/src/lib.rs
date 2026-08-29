@@ -71,6 +71,7 @@ pub use ctx::Ctx;
 pub use manifest::{Manifest, Requires};
 pub use sudohand_core::{Error, Result};
 pub use sudohand_desktop::registry::Registry;
+pub use sudohand_flow;
 
 use clap::{CommandFactory, FromArgMatches};
 use serde_json::Value;
@@ -85,6 +86,7 @@ pub mod prelude {
     pub use serde_json::{json, Value};
     pub use sudohand_desktop::workflow::{Runner, Step, WindowPick};
     pub use sudohand_desktop::DesktopBackend;
+    pub use sudohand_flow::{Step as FlowStep, Vars, Workflow};
     pub use sudohand_fs::FsBackend;
     pub use sudohand_shell::ShellBackend;
 }

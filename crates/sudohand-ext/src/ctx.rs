@@ -93,6 +93,27 @@ impl Ctx {
         self.suh_bin.as_deref()
     }
 
+    /// A [`Dispatch`](sudohand_flow::Dispatch) that runs generic-workflow
+    /// steps by exec'ing the calling `suh` (`SUH_BIN`, else `suh` on PATH).
+    /// This is the cross-actuator path: a step's `["desktop","locate",…]`
+    /// becomes `suh desktop locate …`.
+    pub fn dispatch(&self) -> sudohand_flow::CliDispatch {
+        match &self.suh_bin {
+            Some(b) => sudohand_flow::CliDispatch { bin: b.clone() },
+            None => sudohand_flow::CliDispatch::default(),
+        }
+    }
+
+    /// Run a generic cross-actuator [`Workflow`](sudohand_flow::Workflow)
+    /// through [`Ctx::dispatch`].
+    pub fn run_workflow(
+        &self,
+        wf: &sudohand_flow::Workflow,
+        vars: sudohand_flow::Vars,
+    ) -> Result<sudohand_flow::Report> {
+        sudohand_flow::Runner::new(self.dispatch()).run(wf, vars)
+    }
+
     pub fn requires(&self) -> &Requires {
         &self.requires
     }

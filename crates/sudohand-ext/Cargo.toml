@@ -9,6 +9,7 @@ description = "Write a `suh` extension: the Extension trait, runtime Ctx, manife
 [dependencies]
 sudohand-core = { workspace = true }
 sudohand-desktop = { workspace = true, features = ["agent"] }
+sudohand-flow = { workspace = true }
 sudohand-fs = { workspace = true }
 sudohand-shell = { workspace = true }
 clap = { workspace = true }
