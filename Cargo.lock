@@ -2292,13 +2292,11 @@ name = "sudohand-browser"
 version = "0.0.0"
 dependencies = [
  "aes",
- "async-trait",
  "base64",
  "cbc",
  "chromiumoxide_cdp",
  "chromiumoxide_types",
  "futures-util",
- "graph-flow",
  "hmac",
  "image",
  "pbkdf2",
@@ -2345,10 +2343,8 @@ name = "sudohand-desktop"
 version = "0.0.0"
 dependencies = [
  "accessibility-sys",
- "async-trait",
  "core-foundation",
  "core-graphics",
- "graph-flow",
  "image",
  "objc2",
  "objc2-app-kit",
@@ -2357,7 +2353,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sudohand-core",
- "tokio",
 ]
 
 [[package]]

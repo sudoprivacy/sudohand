@@ -1,0 +1,70 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh '/Users/jinjingzhou/.hydra/hooks/completion-worker-556.sh'",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HYDRA_CLI=$(command -v hydra 2>/dev/null || true); [ -n \"$HYDRA_CLI\" ] || HYDRA_CLI=\"$HOME/.hydra/bin/hydra\"; [ -x \"$HYDRA_CLI\" ] && \"$HYDRA_CLI\" hooks signal --agent 'claude' --worker-id 556 --lifecycle-epoch 'ab7c1f34-6519-4846-ad40-ca2ec58aff3e' --event 'PermissionRequest' --json >/dev/null 2>&1 || true",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HYDRA_CLI=$(command -v hydra 2>/dev/null || true); [ -n \"$HYDRA_CLI\" ] || HYDRA_CLI=\"$HOME/.hydra/bin/hydra\"; [ -x \"$HYDRA_CLI\" ] && \"$HYDRA_CLI\" hooks signal --agent 'claude' --worker-id 556 --lifecycle-epoch 'ab7c1f34-6519-4846-ad40-ca2ec58aff3e' --event 'PreToolUse' --json >/dev/null 2>&1 || true",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HYDRA_CLI=$(command -v hydra 2>/dev/null || true); [ -n \"$HYDRA_CLI\" ] || HYDRA_CLI=\"$HOME/.hydra/bin/hydra\"; [ -x \"$HYDRA_CLI\" ] && \"$HYDRA_CLI\" hooks signal --agent 'claude' --worker-id 556 --lifecycle-epoch 'ab7c1f34-6519-4846-ad40-ca2ec58aff3e' --event 'PostToolUse' --json >/dev/null 2>&1 || true",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HYDRA_CLI=$(command -v hydra 2>/dev/null || true); [ -n \"$HYDRA_CLI\" ] || HYDRA_CLI=\"$HOME/.hydra/bin/hydra\"; [ -x \"$HYDRA_CLI\" ] && \"$HYDRA_CLI\" hooks signal --agent 'claude' --worker-id 556 --lifecycle-epoch 'ab7c1f34-6519-4846-ad40-ca2ec58aff3e' --event 'PostToolUseFailure' --json >/dev/null 2>&1 || true",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HYDRA_CLI=$(command -v hydra 2>/dev/null || true); [ -n \"$HYDRA_CLI\" ] || HYDRA_CLI=\"$HOME/.hydra/bin/hydra\"; [ -x \"$HYDRA_CLI\" ] && \"$HYDRA_CLI\" hooks signal --agent 'claude' --worker-id 556 --lifecycle-epoch 'ab7c1f34-6519-4846-ad40-ca2ec58aff3e' --event 'StopFailure' --json >/dev/null 2>&1 || true",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

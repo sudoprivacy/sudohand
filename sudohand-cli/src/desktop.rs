@@ -1,8 +1,8 @@
 //! `suh desktop <command> [flags]` — a thin CLI over `sudohand-desktop`.
-//! Subcommands, flags and JSON output mirror `adc` one-to-one, including the
-//! agent layer (`locate` / `workflows` / `flow`, feature `agent` of
-//! sudohand-desktop). Flows are desktop-only by design — no cross-actuator
-//! workflows.
+//! Subcommands, flags and JSON output mirror `adc` one-to-one, plus the VLM
+//! actions `locate` / `ask` (feature `agent` of sudohand-desktop). Workflow
+//! orchestration is not here — cross-actuator react workflows live in
+//! `sudohand-flow` and drive these actions via the CLI.
 //!
 //! Only the stateless commands are exposed: the ref-based actions
 //! (`ax_press`/`ax_set_value`/`ax_focus`) need the `ref` map from an `ax_tree`
@@ -110,22 +110,6 @@ pub enum Cmd {
         question: String,
         #[arg(long)]
         model: Option<String>,
-    },
-    /// List the registered workflows (name, description, variables).
-    Workflows,
-    /// Run a registered workflow by name (scripted clicks first, VLM
-    /// fallback on failure).
-    Flow {
-        name: String,
-        /// `--var name=value`, substituted into `{{name}}` placeholders.
-        #[arg(long = "var")]
-        vars: Vec<String>,
-        /// Grounding model (default qwen3.6-27b).
-        #[arg(long)]
-        model: Option<String>,
-        /// Verification model (default qwen3.6-flash).
-        #[arg(long)]
-        ask_model: Option<String>,
     },
 }
 
@@ -287,42 +271,7 @@ pub fn run_with(
             json!({"question": question, "answer": answer, "yes": yes,
                    "model": vlm.ask_model, "window": wid, "ms": t0.elapsed().as_millis()})
         }
-        Cmd::Workflows => {
-            json!({"workflows": sudohand_desktop::registry::Registry::builtins().list()})
-        }
-        Cmd::Flow {
-            name,
-            vars,
-            model,
-            ask_model,
-        } => {
-            let map = parse_vars(vars)?;
-            let mut vlm = sudohand_desktop::vlm::DashScopeVlm::from_env()?;
-            if let Some(m) = model {
-                vlm.locate_model = m;
-            }
-            if let Some(m) = ask_model {
-                vlm.ask_model = m;
-            }
-            let runner =
-                sudohand_desktop::workflow::Runner::new(b_arc.clone(), std::sync::Arc::new(vlm));
-            let graph =
-                sudohand_desktop::registry::Registry::builtins().prepare(&name, &runner, &map)?;
-            let report = sudohand_desktop::flow::run_graph_blocking(graph, map)?;
-            json!({"ok": true, "workflow": name, "steps": report})
-        }
     })
-}
-
-fn parse_vars(vars: Vec<String>) -> Result<std::collections::HashMap<String, String>> {
-    let mut map = std::collections::HashMap::new();
-    for v in vars {
-        let (k, val) = v.split_once('=').ok_or_else(|| {
-            sudohand_desktop::Error::invalid(format!("--var {v:?}: expected name=value"))
-        })?;
-        map.insert(k.to_string(), val.to_string());
-    }
-    Ok(map)
 }
 
 /// The app's biggest on-screen window with a title, else biggest on-screen,

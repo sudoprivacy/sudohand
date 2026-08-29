@@ -52,23 +52,22 @@ shell. If shell is ever exposed, it needs its own authz model
 Do the port after adb/adc each stabilized (both just landed their current
 state) — this is the right moment, before they grow more divergent conventions.
 
-## Two kinds of flow: single-actuator vs generic (2026-08-30)
-Single-actuator flows live inside their actuator: `sudohand-desktop`'s agent
-layer (VLM locate, workflow DSL, graph-flow orchestration, registry; `agent`
-feature) and `sudohand-browser`'s own (`flow` feature: step DSL over the tool
-locators, `form-signup` / `page-extract`). These stay branching + VLM-self-
-healing but domain-bound.
+## One workflow engine: sudohand-flow (2026-08-30, revised)
+There is a single workflow engine, `sudohand-flow`: a `Workflow` is a Rust
+`Step` sequence compiled to a `graph_flow` graph, each step running one
+basic action — any `suh` subcommand (fs/shell/desktop/browser or an
+extension's) via a `Dispatch` (`CliDispatch` execs `$SUH_BIN`) — with
+results bound into `{{var}}`s and routing by id (`on_ok`/`on_fail`,
+`Branch` on a `Cond`, `Goto` loops) plus interactive confirm/prompt/select.
+It links no actuator crate; VLM element location/judgement are the
+`desktop locate` / `desktop ask` actions (browser gets its own), chained by
+variable. The earlier per-actuator flow engines (`sudohand-desktop::flow`
+and `sudohand-browser::flow`, graph_flow + VLM self-heal, domain-bound)
+have been **removed** — desktop/browser keep only their VLM actions and
+geometry helpers; graph_flow lives only in sudohand-flow. Extensions
+register workflows into a `sudohand_flow::Registry` and run them via
+`Ctx::run_workflow` / `Ctx::flow`.
 
-**Generic cross-actuator workflows** (`sudohand-flow`, 2026-08-30) *reverse*
-the earlier "no cross-actuator workflows" rule. A `Workflow` is a Rust
-sequence of `Step`s; each step runs one basic action — any `suh` subcommand
-(fs/shell/desktop/browser or an extension's) — via a `Dispatch` trait
-(`CliDispatch` execs `$SUH_BIN`; tests fake it), binding results into
-`{{var}}`s. The engine links no actuator crate: it speaks only the CLI/JSON
-contract, so it composes across domains and even extension commands, and VLM
-location is just a `desktop locate` action chained by variable. It is linear
-+ retry today (branching to come); the single-actuator flows keep the
-branching/VLM cases. Extensions reach it through `Ctx::run_workflow`.
 
 ## Extensions = external executables (2026-08-29)
 `suh <name> …` for a non-built-in `<name>` execs `suh-<name>` (git / cargo /
