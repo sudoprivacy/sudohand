@@ -1,4 +1,6 @@
-use praxis_shell::{FakeShell, RealShell, RunRequest, RunResult, ShellBackend};
+#[cfg(unix)]
+use praxis_shell::RealShell;
+use praxis_shell::{FakeShell, RunRequest, RunResult, ShellBackend};
 
 fn req(program: &str, args: &[&str]) -> RunRequest {
     RunRequest {
@@ -150,5 +152,71 @@ mod real {
             RealShell::new().run(&req("", &[])).unwrap_err().code(),
             "invalid_input"
         );
+    }
+}
+
+/// Randomised invariants for the real backend: whatever the mix of delay,
+/// output size, exit code, timeout and output cap, the call returns
+/// promptly and reports consistently.
+#[cfg(unix)]
+#[test]
+fn real_backend_invariants_under_random_requests() {
+    let sh = RealShell::new();
+    let mut seed = 0x9E37_79B9_7F4A_7C15u64;
+    let mut rnd = |n: u64| {
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        (seed >> 33) % n
+    };
+    for case in 0..48 {
+        let delay_ms = rnd(400);
+        let bytes = rnd(300_000) as usize;
+        let exit = rnd(4) as i32;
+        let timeout = if rnd(2) == 0 { None } else { Some(rnd(400)) };
+        let cap = match rnd(3) {
+            0 => None,
+            1 => Some(rnd(1000) as usize),
+            _ => Some(1 << 20),
+        };
+        let script = format!(
+            "sleep {}; head -c {bytes} /dev/zero | tr '\\0' x; exit {exit}",
+            delay_ms as f64 / 1000.0
+        );
+        let r = RunRequest {
+            program: script.clone(),
+            via_shell: true,
+            timeout_ms: timeout,
+            max_output_bytes: cap,
+            ..Default::default()
+        };
+        let t = std::time::Instant::now();
+        let out = sh.run(&r).unwrap();
+        let took = t.elapsed().as_millis() as u64;
+        let budget = timeout.map_or(delay_ms, |tm| tm.min(delay_ms)) + 2000;
+        assert!(
+            took <= budget,
+            "case {case}: took {took}ms > {budget}ms: {script}"
+        );
+        // A child killed by the timeout (it was still sleeping) vs. one that
+        // finished: the two are mutually exclusive and self-consistent.
+        if out.timed_out {
+            assert!(
+                timeout.is_some_and(|tm| tm <= delay_ms + 150),
+                "case {case}: timed out with timeout {timeout:?} vs delay {delay_ms}"
+            );
+            assert!(out.exit_code.is_none() && out.signal.is_some(), "{out:?}");
+        } else {
+            assert!(
+                timeout.is_none_or(|tm| tm + 150 >= delay_ms),
+                "case {case}: finished although timeout {timeout:?} < delay {delay_ms}"
+            );
+            assert_eq!(out.exit_code, Some(exit), "case {case}: {out:?}");
+            let expect = cap.map_or(bytes, |c| bytes.min(c));
+            assert_eq!(out.stdout.len(), expect, "case {case}: {script}");
+            assert_eq!(out.stdout_truncated, cap.is_some_and(|c| bytes > c));
+            assert!(out.stdout.bytes().all(|b| b == b'x'));
+        }
+        assert!(!out.stderr_truncated && out.stderr.is_empty());
     }
 }
