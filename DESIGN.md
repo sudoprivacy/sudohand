@@ -21,12 +21,11 @@ per-crate platform `cfg` stay clean (desktop is macOS-only via AX/CG;
 browser/fs/shell are cross-platform). Integrators link only what they need.
 
 ## Naming decisions (2026-08-29)
-- Umbrella = **sudohand** (the "hands" of the sudo agent stack; renamed
-  from `praxis` on 2026-08-29 — crates, binary and CLI renamed wholesale,
-  nothing else changed). Considered earlier: `computer-control` (plain but
-  generic), `genie` (rejected — saturated in AI: Google Genie / Netflix
-  Genie / WSL `genie`; and it connotes the assistant/brain layer, not the
-  actuator layer), `praxis` (Greek "action/doing"; fine but obscure).
+- Umbrella = **sudohand** (the "hands" of the sudo agent stack; pairs with
+  apeiron; distinctive). Considered: `computer-control` (plain but generic),
+  `genie` (rejected — saturated in AI: Google Genie / Netflix Genie / WSL
+  `genie`; and it connotes the assistant/brain layer, not the actuator
+  layer), a Greek "action/doing" word (fine but obscure).
 - **Drop `adb`/`adc`/`ad*`**: `adb` collides with Android Debug Bridge on
   PATH, and the `ad` prefix already expands inconsistently (ai-**dev**-browser
   vs ai-**desktop**-control). Use domain subcommands: `sudohand browser|desktop|fs|shell`.
