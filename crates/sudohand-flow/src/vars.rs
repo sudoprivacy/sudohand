@@ -33,7 +33,7 @@ impl Vars {
     }
 
     /// Look up `a.b.c` — a top-level var then object fields / array indices.
-    fn lookup(&self, path: &str) -> Option<Value> {
+    pub fn lookup(&self, path: &str) -> Option<Value> {
         let mut parts = path.split('.');
         let mut cur = self.0.get(parts.next()?)?.clone();
         for p in parts {

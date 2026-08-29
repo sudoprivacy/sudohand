@@ -4,8 +4,49 @@
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::sync::Mutex as M2;
 use sudohand_core::{Error, Result};
-use sudohand_flow::{Dispatch, Runner, Step, Vars, Workflow};
+use sudohand_flow::{Dispatch, Prompter, Runner, Step, Vars, Workflow};
+
+/// Answers scripted up front: confirms, lines, and select indices.
+struct ScriptedPrompter {
+    confirms: M2<Vec<bool>>,
+    lines: M2<Vec<String>>,
+    selects: M2<Vec<usize>>,
+}
+impl ScriptedPrompter {
+    fn new() -> Self {
+        Self {
+            confirms: M2::new(vec![]),
+            lines: M2::new(vec![]),
+            selects: M2::new(vec![]),
+        }
+    }
+    fn confirms(self, v: Vec<bool>) -> Self {
+        *self.confirms.lock().unwrap() = v;
+        self
+    }
+    fn selects(self, v: Vec<usize>) -> Self {
+        *self.selects.lock().unwrap() = v;
+        self
+    }
+}
+impl Prompter for ScriptedPrompter {
+    fn line(&self, _m: &str, default: Option<&str>) -> sudohand_core::Result<String> {
+        let mut l = self.lines.lock().unwrap();
+        Ok(if l.is_empty() {
+            default.unwrap_or("").to_string()
+        } else {
+            l.remove(0)
+        })
+    }
+    fn confirm(&self, _m: &str) -> sudohand_core::Result<bool> {
+        Ok(self.confirms.lock().unwrap().remove(0))
+    }
+    fn select(&self, _m: &str, _o: &[String]) -> sudohand_core::Result<usize> {
+        Ok(self.selects.lock().unwrap().remove(0))
+    }
+}
 
 struct FakeDispatch {
     calls: Mutex<Vec<Vec<String>>>,
@@ -126,4 +167,80 @@ fn missing_var_is_invalid_input() {
         .unwrap_err();
     assert!(matches!(err, Error::InvalidInput(_)), "{err}");
     assert!(err.to_string().contains("who"));
+}
+
+#[test]
+fn select_confirm_and_action_chain() {
+    // `wx accounts` returns a list; select picks one; confirm proceeds;
+    // then an action uses the bound wxid.
+    let fake = FakeDispatch::new().script(
+        "wx accounts",
+        vec![Ok(
+            json!({"accounts":[{"wxid":"a_1","n":3},{"wxid":"b_2","n":9}]}),
+        )],
+    );
+    let wf = Workflow::new("init")
+        .step(Step::run("scan", ["wx", "accounts"]).bind("accts"))
+        .step(Step::select(
+            "pick",
+            "account?",
+            "accts.accounts",
+            "{{it.wxid}} ({{it.n}})",
+            "{{it.wxid}}",
+            "account",
+        ))
+        .step(Step::confirm("ok", "log out {{account}}?"))
+        .step(Step::run(
+            "cap",
+            ["wx", "capture", "--account", "{{account}}"],
+        ));
+    let prompter = ScriptedPrompter::new()
+        .selects(vec![1])
+        .confirms(vec![true]);
+    let report = Runner::with_prompter(fake, prompter)
+        .run(&wf, Vars::new())
+        .unwrap();
+    assert!(report.ok && !report.cancelled);
+    assert_eq!(report.vars["account"], json!("b_2"));
+    assert_eq!(
+        report.steps.last().unwrap().run,
+        ["wx", "capture", "--account", "b_2"]
+    );
+}
+
+#[test]
+fn single_account_auto_selected() {
+    let fake = FakeDispatch::new().script(
+        "wx accounts",
+        vec![Ok(json!({"accounts":[{"wxid":"solo"}]}))],
+    );
+    let wf = Workflow::new("init")
+        .step(Step::run("scan", ["wx", "accounts"]).bind("accts"))
+        .step(Step::select(
+            "pick",
+            "?",
+            "accts.accounts",
+            "{{it.wxid}}",
+            "{{it.wxid}}",
+            "account",
+        ));
+    // no select answer scripted -> must be auto-picked
+    let report = Runner::with_prompter(fake, ScriptedPrompter::new())
+        .run(&wf, Vars::new())
+        .unwrap();
+    assert_eq!(report.vars["account"], json!("solo"));
+}
+
+#[test]
+fn declined_confirm_cancels_cleanly() {
+    let wf = Workflow::new("init")
+        .step(Step::confirm("ok", "proceed?"))
+        .step(Step::run("never", ["fs", "exists", "--path", "/"]));
+    let prompter = ScriptedPrompter::new().confirms(vec![false]);
+    let report = Runner::with_prompter(FakeDispatch::new(), prompter)
+        .run(&wf, Vars::new())
+        .unwrap();
+    assert!(!report.ok);
+    assert!(report.cancelled);
+    assert_eq!(report.steps.len(), 1); // stopped at the confirm; action never ran
 }
