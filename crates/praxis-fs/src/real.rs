@@ -4,6 +4,11 @@ use crate::backend::{Entry, EntryKind, FsBackend};
 use praxis_core::{Error, Result};
 use std::path::Path;
 
+#[cfg(unix)]
+const EXDEV: i32 = 18;
+#[cfg(not(unix))]
+const EXDEV: i32 = 17;
+
 #[derive(Debug, Default)]
 pub struct RealFs;
 
@@ -119,7 +124,19 @@ impl FsBackend for RealFs {
     }
 
     fn rename(&self, from: &Path, to: &Path) -> Result<()> {
-        io("rename", from, std::fs::rename(from, to))
+        match std::fs::rename(from, to) {
+            Ok(()) => Ok(()),
+            // Across filesystems `rename` fails with EXDEV; move a file by
+            // copy + delete instead (directories are not moved that way).
+            Err(e)
+                if e.raw_os_error() == Some(EXDEV)
+                    && std::fs::symlink_metadata(from).is_ok_and(|m| m.is_file()) =>
+            {
+                io("copy", from, std::fs::copy(from, to))?;
+                io("remove", from, std::fs::remove_file(from))
+            }
+            Err(e) => io("rename", from, Err(e)),
+        }
     }
 
     fn copy(&self, from: &Path, to: &Path) -> Result<u64> {
@@ -129,6 +146,15 @@ impl FsBackend for RealFs {
                 "copy {}: is a directory",
                 from.display()
             )));
+        }
+        // Copying a file onto itself truncates it to zero bytes.
+        if let (Ok(a), Ok(b)) = (std::fs::canonicalize(from), std::fs::canonicalize(to)) {
+            if a == b {
+                return Err(Error::invalid(format!(
+                    "copy {}: source and destination are the same file",
+                    from.display()
+                )));
+            }
         }
         io("copy", from, std::fs::copy(from, to))
     }

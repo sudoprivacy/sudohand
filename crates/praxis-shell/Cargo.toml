@@ -9,3 +9,6 @@ description = "Shell actuator: run a command, capture stdout/stderr/exit (gated 
 [dependencies]
 praxis-core = { workspace = true }
 serde = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
