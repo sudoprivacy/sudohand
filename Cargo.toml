@@ -8,6 +8,7 @@ members = [
     "crates/sudohand-shell",
     "crates/sudohand-ext",
     "crates/sudohand-flow",
+    "crates/sudohand-vlm",
     "sudohand-cli",
 ]
 
@@ -28,6 +29,7 @@ sudohand-fs = { path = "crates/sudohand-fs" }
 sudohand-shell = { path = "crates/sudohand-shell" }
 sudohand-ext = { path = "crates/sudohand-ext" }
 sudohand-flow = { path = "crates/sudohand-flow" }
+sudohand-vlm = { path = "crates/sudohand-vlm" }
 
 [profile.release]
 strip = true

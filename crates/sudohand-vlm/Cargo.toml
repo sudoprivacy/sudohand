@@ -1,0 +1,13 @@
+[package]
+name = "sudohand-vlm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared VLM client: locate an element and answer yes/no about a screenshot. Used by the desktop and browser actuators."
+
+[dependencies]
+sudohand-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "native-tls"] }

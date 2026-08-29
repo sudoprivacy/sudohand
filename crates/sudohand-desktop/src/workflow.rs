@@ -71,14 +71,6 @@ pub fn pick_window(b: &dyn DesktopBackend, bundle: &str) -> Result<u32> {
         .ok_or_else(|| Error::not_found(format!("no window for {bundle}")))
 }
 
-/// Whether a VLM answer reads as "yes" (used by `desktop ask`).
-pub fn is_yes(answer: &str) -> bool {
-    let a = answer.trim().to_lowercase();
-    let head = a.chars().take(12).collect::<String>();
-    (head.starts_with("yes") || head.starts_with('是')) && !head.contains("no")
-        || (a.contains("yes") && !a.contains("no"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,14 +82,5 @@ mod tests {
         let shot = crate::DesktopBackend::screenshot(&*b, "x", 42, None).unwrap();
         let p = norm_to_point(NormPoint { x: 1000.0, y: 0.0 }, &shot);
         assert_eq!(p, (100.0 + 800.0, 50.0));
-    }
-
-    #[test]
-    fn yes_detection() {
-        assert!(is_yes("Yes"));
-        assert!(is_yes("yes, the title is Kai"));
-        assert!(is_yes("是的"));
-        assert!(!is_yes("no"));
-        assert!(!is_yes("No, it is not"));
     }
 }

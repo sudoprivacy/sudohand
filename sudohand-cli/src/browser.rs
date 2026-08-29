@@ -845,6 +845,52 @@ pub enum Cmd {
         #[arg(long, default_value_t = 30.0)]
         timeout: f64,
     },
+    /// Ask the VLM where an element is on the page; returns a clickable CSS
+    /// point (usable by `mouse_click --x --y`).
+    #[command(name = "locate", alias = "vlm_locate")]
+    Locate {
+        #[command(flatten)]
+        conn: Conn,
+        /// Natural-language description of the element.
+        #[arg(long)]
+        find: String,
+        #[arg(long)]
+        model: Option<String>,
+    },
+    /// Ask the VLM a yes/no question about the page; returns {answer, yes}.
+    #[command(name = "ask", alias = "vlm_ask")]
+    Ask {
+        #[command(flatten)]
+        conn: Conn,
+        #[arg(long)]
+        question: String,
+        #[arg(long)]
+        model: Option<String>,
+    },
+}
+
+/// Screenshot the active tab to a temp file (css-scaled, capped), returning
+/// the PNG bytes and the image dims + `scale_factor` (CSS px per image px).
+async fn vlm_screenshot(tab: &Tab) -> sudohand_browser::Result<(Vec<u8>, u32, u32, f64)> {
+    let path = std::env::temp_dir().join(format!("suh_browser_vlm_{}.png", std::process::id()));
+    let opts = ScreenshotOptions {
+        path: Some(path.clone()),
+        full_page: false,
+        css_scale: true,
+        max_long_edge: 1400,
+        max_total_pixels: 0,
+        image_cap: None,
+    };
+    let meta = sudohand_browser::page::page_screenshot(tab, &opts).await?;
+    let width = meta.get("width").and_then(Value::as_u64).unwrap_or(0) as u32;
+    let height = meta.get("height").and_then(Value::as_u64).unwrap_or(0) as u32;
+    let sf = meta
+        .get("scale_factor")
+        .and_then(Value::as_f64)
+        .unwrap_or(1.0);
+    let png = std::fs::read(&path).map_err(sudohand_browser::Error::from)?;
+    let _ = std::fs::remove_file(&path);
+    Ok((png, width, height, sf))
 }
 
 async fn browser_and_tab(conn: &Conn) -> sudohand_browser::Result<(BrowserClient, Tab)> {
@@ -970,6 +1016,58 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 image_cap: image_cap.as_deref().map(ImageCap::from_json).transpose()?,
             };
             sudohand_browser::tools::page_screenshot(&tab, &opts).await
+        }
+        Cmd::Locate { conn, find, model } => {
+            let (_b, tab) = browser_and_tab(&conn).await?;
+            let (png, width, height, sf) = vlm_screenshot(&tab).await?;
+            let mut vlm = sudohand_vlm::DashScopeVlm::from_env()
+                .map_err(|e| sudohand_browser::Error::Invalid(e.to_string()))?;
+            if let Some(m) = model {
+                vlm.locate_model = m;
+            }
+            let locate_model = vlm.locate_model.clone();
+            let t0 = std::time::Instant::now();
+            let find2 = find.clone();
+            let n =
+                tokio::task::spawn_blocking(move || sudohand_vlm::Vlm::locate(&vlm, &png, &find2))
+                    .await
+                    .map_err(|e| sudohand_browser::Error::Invalid(format!("vlm join: {e}")))?
+                    .map_err(|e| sudohand_browser::Error::Invalid(e.to_string()))?;
+            let ix = n.x / 1000.0 * f64::from(width);
+            let iy = n.y / 1000.0 * f64::from(height);
+            Ok(json!({
+                "find": find, "model": locate_model,
+                "normalized": [n.x, n.y],
+                "image": {"x": ix, "y": iy},
+                "point": {"x": ix * sf, "y": iy * sf},
+                "ms": t0.elapsed().as_millis(),
+            }))
+        }
+        Cmd::Ask {
+            conn,
+            question,
+            model,
+        } => {
+            let (_b, tab) = browser_and_tab(&conn).await?;
+            let (png, _w, _h, _sf) = vlm_screenshot(&tab).await?;
+            let mut vlm = sudohand_vlm::DashScopeVlm::from_env()
+                .map_err(|e| sudohand_browser::Error::Invalid(e.to_string()))?;
+            if let Some(m) = model {
+                vlm.ask_model = m;
+            }
+            let ask_model = vlm.ask_model.clone();
+            let t0 = std::time::Instant::now();
+            let question2 = question.clone();
+            let answer =
+                tokio::task::spawn_blocking(move || sudohand_vlm::Vlm::ask(&vlm, &png, &question2))
+                    .await
+                    .map_err(|e| sudohand_browser::Error::Invalid(format!("vlm join: {e}")))?
+                    .map_err(|e| sudohand_browser::Error::Invalid(e.to_string()))?;
+            Ok(json!({
+                "question": question, "answer": answer,
+                "yes": sudohand_vlm::is_yes(&answer),
+                "model": ask_model, "ms": t0.elapsed().as_millis(),
+            }))
         }
         Cmd::PageInfo { conn } => {
             let (_b, tab) = browser_and_tab(&conn).await?;
