@@ -1594,94 +1594,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "praxis-browser"
-version = "0.0.0"
-dependencies = [
- "aes",
- "async-trait",
- "base64",
- "cbc",
- "chromiumoxide_cdp",
- "chromiumoxide_types",
- "futures-util",
- "graph-flow",
- "hmac",
- "image",
- "pbkdf2",
- "png 0.17.16",
- "praxis-core",
- "regex-lite",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-tungstenite",
-]
-
-[[package]]
-name = "praxis-cli"
-version = "0.0.0"
-dependencies = [
- "clap",
- "praxis-browser",
- "praxis-core",
- "praxis-desktop",
- "praxis-fs",
- "praxis-shell",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "praxis-core"
-version = "0.0.0"
-dependencies = [
- "core-foundation",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "praxis-desktop"
-version = "0.0.0"
-dependencies = [
- "accessibility-sys",
- "async-trait",
- "core-foundation",
- "core-graphics",
- "graph-flow",
- "image",
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
- "praxis-core",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "praxis-fs"
-version = "0.0.0"
-dependencies = [
- "praxis-core",
- "serde",
-]
-
-[[package]]
-name = "praxis-shell"
-version = "0.0.0"
-dependencies = [
- "libc",
- "praxis-core",
- "serde",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2374,6 +2286,94 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "sudohand-browser"
+version = "0.0.0"
+dependencies = [
+ "aes",
+ "async-trait",
+ "base64",
+ "cbc",
+ "chromiumoxide_cdp",
+ "chromiumoxide_types",
+ "futures-util",
+ "graph-flow",
+ "hmac",
+ "image",
+ "pbkdf2",
+ "png 0.17.16",
+ "regex-lite",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "sudohand-core",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
+name = "sudohand-cli"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "serde_json",
+ "sudohand-browser",
+ "sudohand-core",
+ "sudohand-desktop",
+ "sudohand-fs",
+ "sudohand-shell",
+ "tokio",
+]
+
+[[package]]
+name = "sudohand-core"
+version = "0.0.0"
+dependencies = [
+ "core-foundation",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "sudohand-desktop"
+version = "0.0.0"
+dependencies = [
+ "accessibility-sys",
+ "async-trait",
+ "core-foundation",
+ "core-graphics",
+ "graph-flow",
+ "image",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sudohand-core",
+ "tokio",
+]
+
+[[package]]
+name = "sudohand-fs"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "sudohand-core",
+]
+
+[[package]]
+name = "sudohand-shell"
+version = "0.0.0"
+dependencies = [
+ "libc",
+ "serde",
+ "sudohand-core",
+]
 
 [[package]]
 name = "syn"
