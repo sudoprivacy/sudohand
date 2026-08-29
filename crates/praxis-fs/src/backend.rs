@@ -3,7 +3,7 @@
 
 use praxis_core::Result;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -17,7 +17,9 @@ pub enum EntryKind {
 /// One directory entry / stat result.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Entry {
-    pub path: PathBuf,
+    /// The path as given/joined, lossily UTF-8 (a non-UTF-8 name must not
+    /// make a whole listing unserializable).
+    pub path: String,
     pub name: String,
     pub kind: EntryKind,
     /// Bytes for files; 0 otherwise.

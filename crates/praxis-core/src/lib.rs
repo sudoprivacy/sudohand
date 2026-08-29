@@ -120,13 +120,19 @@ pub struct ErrorEnvelope<'a> {
 pub fn print_result<T: Serialize>(r: Result<T>) -> std::process::ExitCode {
     use std::io::Write;
     match r {
-        Ok(v) => {
-            let json = serde_json::to_string_pretty(&v).unwrap_or_else(|_| "null".into());
-            // A closed stdout (`praxis … | head -1`) is not our failure:
-            // exit quietly instead of panicking on EPIPE.
-            let _ = writeln!(std::io::stdout().lock(), "{json}");
-            std::process::ExitCode::SUCCESS
-        }
+        Ok(v) => match serde_json::to_string_pretty(&v) {
+            Ok(json) => {
+                // A closed stdout (`praxis … | head -1`) is not our failure:
+                // exit quietly instead of panicking on EPIPE.
+                let _ = writeln!(std::io::stdout().lock(), "{json}");
+                std::process::ExitCode::SUCCESS
+            }
+            Err(e) => {
+                let e = Error::internal(format!("could not serialize result: {e}"));
+                let _ = writeln!(std::io::stderr().lock(), "{}", e.envelope());
+                std::process::ExitCode::FAILURE
+            }
+        },
         Err(e) => {
             let _ = writeln!(std::io::stderr().lock(), "{}", e.envelope());
             std::process::ExitCode::FAILURE
