@@ -74,6 +74,73 @@ mod real {
     }
 
     #[test]
+    fn grandchildren_cannot_outlive_timeout_or_hold_pipes() {
+        let sh = RealShell::new();
+        // Timeout: the grandchild `sleep` would keep stdout open forever.
+        let mut r = req("sleep 30 & wait", &[]);
+        r.via_shell = true;
+        r.timeout_ms = Some(200);
+        let t = std::time::Instant::now();
+        let out = sh.run(&r).unwrap();
+        assert!(out.timed_out && out.signal.is_some());
+        assert!(
+            t.elapsed() < std::time::Duration::from_secs(3),
+            "{:?}",
+            t.elapsed()
+        );
+
+        // No timeout: parent exits, a backgrounded grandchild still holds
+        // the pipe; we return after the grace period with what was written.
+        let mut r = req("echo before; sleep 20 & exit 0", &[]);
+        r.via_shell = true;
+        let t = std::time::Instant::now();
+        let out = sh.run(&r).unwrap();
+        assert_eq!((out.exit_code, out.stdout.trim()), (Some(0), "before"));
+        assert!(
+            t.elapsed() < std::time::Duration::from_secs(3),
+            "{:?}",
+            t.elapsed()
+        );
+
+        // A child ignoring SIGTERM still dies (SIGKILL on the group).
+        let mut r = req("trap '' TERM; sleep 30", &[]);
+        r.via_shell = true;
+        r.timeout_ms = Some(200);
+        assert!(sh.run(&r).unwrap().timed_out);
+    }
+
+    #[test]
+    fn stdin_never_read_does_not_block_timeout() {
+        let sh = RealShell::new();
+        let mut r = req("sleep", &["30"]);
+        r.stdin = Some(vec![b'x'; 1 << 20]);
+        r.timeout_ms = Some(200);
+        let t = std::time::Instant::now();
+        assert!(sh.run(&r).unwrap().timed_out);
+        assert!(t.elapsed() < std::time::Duration::from_secs(3));
+        // …and a reader still gets all of it.
+        let mut r = req("wc", &["-c"]);
+        r.stdin = Some(vec![b'x'; 1 << 20]);
+        assert_eq!(sh.run(&r).unwrap().stdout.trim(), "1048576");
+    }
+
+    #[test]
+    fn bad_cwd_and_path_override() {
+        let sh = RealShell::new();
+        let mut r = req("ls", &[]);
+        r.cwd = Some("/definitely/not/a/dir".into());
+        let e = sh.run(&r).unwrap_err();
+        assert_eq!(e.code(), "not_found");
+        assert!(e.to_string().starts_with("cwd "), "{e}");
+
+        // `--sh` must not depend on PATH to find the shell.
+        let mut r = req("echo hi", &[]);
+        r.via_shell = true;
+        r.env = vec![("PATH".into(), "/nonexistent".into())];
+        assert_eq!(sh.run(&r).unwrap().stdout.trim(), "hi");
+    }
+
+    #[test]
     fn spawn_failure_is_not_found() {
         let e = RealShell::new()
             .run(&req("/definitely/not/a/program", &[]))

@@ -38,6 +38,9 @@ fn scenario(fs: &dyn FsBackend, root: &Path) {
 
     let c = root.join("c.txt");
     assert_eq!(fs.copy(&a, &c).unwrap(), 11);
+    // Copying onto itself must not truncate the file.
+    assert_eq!(fs.copy(&a, &a).unwrap_err().code(), "invalid_input");
+    assert_eq!(fs.read(&a).unwrap(), b"hello world");
     assert_eq!(fs.copy(&sub, &c).unwrap_err().code(), "invalid_input");
     let d = root.join("d.txt");
     fs.rename(&c, &d).unwrap();

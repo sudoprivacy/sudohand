@@ -197,6 +197,12 @@ impl FsBackend for FakeFs {
     }
     fn copy(&self, from: &Path, to: &Path) -> Result<u64> {
         self.log(format!("copy {} -> {}", from.display(), to.display()));
+        if from == to {
+            return Err(Error::invalid(format!(
+                "copy {}: source and destination are the same file",
+                from.display()
+            )));
+        }
         let data = match self.nodes.lock().unwrap().get(from) {
             Some(Node::File(d)) => d.clone(),
             Some(Node::Dir) => {

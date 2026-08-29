@@ -1676,6 +1676,7 @@ dependencies = [
 name = "praxis-shell"
 version = "0.0.0"
 dependencies = [
+ "libc",
  "praxis-core",
  "serde",
 ]
