@@ -1,0 +1,19 @@
+[package]
+name = "praxis-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The `praxis` umbrella CLI — dispatches to the browser/desktop/fs/shell actuators."
+
+[[bin]]
+name = "praxis"
+path = "src/main.rs"
+
+[dependencies]
+praxis-core = { workspace = true }
+praxis-desktop = { workspace = true }
+praxis-browser = { workspace = true }
+praxis-fs = { workspace = true }
+praxis-shell = { workspace = true }
+clap = { workspace = true }

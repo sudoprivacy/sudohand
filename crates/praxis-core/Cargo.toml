@@ -1,0 +1,11 @@
+[package]
+name = "praxis-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared value types, error model, and JSON-CLI conventions for the praxis actuators."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

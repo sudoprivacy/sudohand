@@ -1,0 +1,10 @@
+[package]
+name = "praxis-browser"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Browser actuator: drive Chrome over CDP — navigate, act, read, screenshot (absorbs adb / ai-dev-browser)."
+
+[dependencies]
+praxis-core = { workspace = true }

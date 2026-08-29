@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/praxis-core",
+    "crates/praxis-desktop",
+    "crates/praxis-browser",
+    "crates/praxis-fs",
+    "crates/praxis-shell",
+    "praxis-cli",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/joezhoujinjing/praxis"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+praxis-core = { path = "crates/praxis-core" }
+praxis-desktop = { path = "crates/praxis-desktop" }
+praxis-browser = { path = "crates/praxis-browser" }
+praxis-fs = { path = "crates/praxis-fs" }
+praxis-shell = { path = "crates/praxis-shell" }
+
+[profile.release]
+strip = true

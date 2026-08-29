@@ -1,0 +1,10 @@
+[package]
+name = "praxis-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Desktop actuator: window list, accessibility tree, synthetic input, screenshots (absorbs adc / ai-desktop-control)."
+
+[dependencies]
+praxis-core = { workspace = true }

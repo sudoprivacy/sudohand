@@ -1,0 +1,10 @@
+[package]
+name = "praxis-shell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shell actuator: run a command and capture stdout/stderr/exit (cross-platform). SEE lib.rs — kept off by integrators by default."
+
+[dependencies]
+praxis-core = { workspace = true }
