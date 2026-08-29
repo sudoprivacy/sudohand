@@ -52,14 +52,23 @@ shell. If shell is ever exposed, it needs its own authz model
 Do the port after adb/adc each stabilized (both just landed their current
 state) — this is the right moment, before they grow more divergent conventions.
 
-## Flows stay inside one actuator (2026-08-29)
-adc's agent layer (VLM locate, workflow DSL, graph-flow orchestration,
-registry) lives in `sudohand-desktop` behind the `agent` feature (off by
-default for the library; on in `sudohand-cli`). `sudohand-browser` has its own
-(`flow` feature: step DSL over the tool locators, graph-flow orchestration,
-registry with `form-signup` / `page-extract`). **No cross-actuator
-workflows** — a flow is desktop-only or browser-only; composing domains is
-the integrator's job.
+## Two kinds of flow: single-actuator vs generic (2026-08-30)
+Single-actuator flows live inside their actuator: `sudohand-desktop`'s agent
+layer (VLM locate, workflow DSL, graph-flow orchestration, registry; `agent`
+feature) and `sudohand-browser`'s own (`flow` feature: step DSL over the tool
+locators, `form-signup` / `page-extract`). These stay branching + VLM-self-
+healing but domain-bound.
+
+**Generic cross-actuator workflows** (`sudohand-flow`, 2026-08-30) *reverse*
+the earlier "no cross-actuator workflows" rule. A `Workflow` is a Rust
+sequence of `Step`s; each step runs one basic action — any `suh` subcommand
+(fs/shell/desktop/browser or an extension's) — via a `Dispatch` trait
+(`CliDispatch` execs `$SUH_BIN`; tests fake it), binding results into
+`{{var}}`s. The engine links no actuator crate: it speaks only the CLI/JSON
+contract, so it composes across domains and even extension commands, and VLM
+location is just a `desktop locate` action chained by variable. It is linear
++ retry today (branching to come); the single-actuator flows keep the
+branching/VLM cases. Extensions reach it through `Ctx::run_workflow`.
 
 ## Extensions = external executables (2026-08-29)
 `suh <name> …` for a non-built-in `<name>` execs `suh-<name>` (git / cargo /
