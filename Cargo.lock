@@ -2374,6 +2374,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sudohand-flow"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sudohand-core",
+]
+
+[[package]]
 name = "sudohand-fs"
 version = "0.0.0"
 dependencies = [
