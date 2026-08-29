@@ -87,7 +87,7 @@ fn unknown_command_is_not_found() {
         .args(["definitely-not-installed", "x"])
         .output()
         .unwrap();
-    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(out.status.code(), Some(4)); // not_found
     let v: serde_json::Value = serde_json::from_slice(&out.stderr).unwrap();
     assert_eq!(v["error"]["kind"], "not_found");
     assert!(out.stdout.is_empty());
@@ -189,7 +189,7 @@ fn install_from_file_then_update_and_uninstall() {
     assert_eq!(v["uninstalled"], "pinger");
     assert!(!installed.exists());
     let out = suh_in(&["ext", "uninstall", "pinger"]);
-    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(out.status.code(), Some(4)); // not_found
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&out.stderr).unwrap()["error"]["kind"],
         "not_found"
@@ -219,7 +219,7 @@ fn install_refuses_nonconformant_unless_forced() {
             .unwrap()
     };
     let out = run(&[]);
-    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(out.status.code(), Some(2)); // invalid_input
     let err = serde_json::from_slice::<serde_json::Value>(&out.stderr).unwrap();
     assert_eq!(err["error"]["kind"], "invalid_input");
     assert!(err["error"]["message"]

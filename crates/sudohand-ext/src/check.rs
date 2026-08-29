@@ -153,8 +153,9 @@ pub fn run(path: &Path) -> Report {
     push(
         "error_envelope",
         invoke(path, &["__suh_check_no_such_command__"]).and_then(|o| {
-            if o.code != Some(1) {
-                return Err(format!("exit {:?} (expected 1)", o.code));
+            match o.code {
+                Some(0) | None => return Err(format!("exit {:?} (expected non-zero)", o.code)),
+                _ => {}
             }
             if !o.stdout.trim().is_empty() {
                 return Err("stdout not empty on error".into());
