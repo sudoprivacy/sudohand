@@ -70,8 +70,8 @@ pub mod manifest;
 pub use ctx::Ctx;
 pub use manifest::{Manifest, Requires};
 pub use sudohand_core::{Error, Result};
-pub use sudohand_desktop::registry::Registry;
 pub use sudohand_flow;
+pub use sudohand_flow::Registry;
 
 use clap::{CommandFactory, FromArgMatches};
 use serde_json::Value;
@@ -150,15 +150,15 @@ pub trait Extension {
         &[]
     }
 
-    /// Register this extension's workflows — Rust graphs over the desktop
-    /// actions, see [`sudohand_desktop::flow`]. Use `Self::NAME` as the
+    /// Register this extension's generic workflows — cross-actuator graphs
+    /// over `suh` actions (see [`sudohand_flow`]). Use `Self::NAME` as the
     /// `source`. They show up in `workflows`, run via `flow <name>` and
     /// [`Ctx::flow`], and are listed in the manifest.
     fn workflows(_registry: &mut Registry) {}
 
-    /// Desktop built-ins plus [`Extension::workflows`].
+    /// The extension's registered workflows.
     fn registry() -> Registry {
-        let mut r = Registry::builtins();
+        let mut r = Registry::new();
         Self::workflows(&mut r);
         r
     }
@@ -364,7 +364,10 @@ pub fn dispatch<E: Extension>(ctx: &Ctx, parsed: Parsed<E::Cmd>) -> Result<Value
             vars,
             locate,
             ask,
-        } => ctx.flow::<E>(&name, vars, locate.as_deref(), ask.as_deref()),
+        } => {
+            let _ = (locate, ask); // per-action --model is set on the action itself
+            ctx.flow::<E>(&name, vars)
+        }
     }
 }
 
