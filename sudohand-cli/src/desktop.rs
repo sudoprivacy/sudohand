@@ -279,10 +279,16 @@ pub fn run_with(
             let wid = pick_target(b, &bundle, window, window_title.as_deref())?;
             let shot = b.screenshot(&bundle, wid, Some(1100))?;
             let t0 = std::time::Instant::now();
-            let n = vlm.locate(&shot.png, &find)?;
-            let (x, y) = sudohand_desktop::workflow::norm_to_point(n, &shot);
-            json!({"find": find, "model": vlm.locate_model, "normalized": [n.x, n.y],
-                   "point": {"x": x, "y": y}, "window": wid, "ms": t0.elapsed().as_millis()})
+            match vlm.locate_opt(&shot.png, &find)? {
+                Some(n) => {
+                    let (x, y) = sudohand_desktop::workflow::norm_to_point(n, &shot);
+                    json!({"found": true, "find": find, "model": vlm.locate_model,
+                           "normalized": [n.x, n.y], "point": {"x": x, "y": y},
+                           "window": wid, "ms": t0.elapsed().as_millis()})
+                }
+                None => json!({"found": false, "find": find, "model": vlm.locate_model,
+                               "window": wid, "ms": t0.elapsed().as_millis()}),
+            }
         }
         Cmd::Ask {
             bundle,

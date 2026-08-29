@@ -454,6 +454,22 @@ impl Task for StepTask {
             }
             Step::Goto { id: _, to } => NextAction::GoTo(to.clone()),
             Step::End { id: _ } => NextAction::End,
+            Step::Fail { id, message } => {
+                let msg = vars.subst(message).unwrap_or_else(|_| message.clone());
+                push_report(
+                    &ctx,
+                    StepReport {
+                        id: id.clone(),
+                        run: vec![],
+                        ok: false,
+                        attempts: 0,
+                        result: None,
+                        error: Some(msg),
+                    },
+                );
+                mark(&ctx, "fail");
+                NextAction::End
+            }
         };
         Ok(TaskResult::new(None, next))
     }

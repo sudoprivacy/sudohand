@@ -21,6 +21,12 @@ pub struct NormPoint {
 pub trait Vlm: Send + Sync {
     /// Where on `png` is the element described by `description`?
     fn locate(&self, png: &[u8], description: &str) -> Result<NormPoint>;
+    /// Like [`Vlm::locate`] but the element may be absent: `Ok(None)` means
+    /// the model reported it is not on screen (so a caller can react instead
+    /// of clicking a hallucinated point). Default: wrap [`Vlm::locate`].
+    fn locate_opt(&self, png: &[u8], description: &str) -> Result<Option<NormPoint>> {
+        self.locate(png, description).map(Some)
+    }
     /// Free-form question about `png`; the runner uses it for yes/no checks.
     fn ask(&self, png: &[u8], question: &str) -> Result<String>;
 }
@@ -124,20 +130,24 @@ impl DashScopeVlm {
 
 impl Vlm for DashScopeVlm {
     fn locate(&self, png: &[u8], description: &str) -> Result<NormPoint> {
+        self.locate_opt(png, description)?
+            .ok_or_else(|| Error::not_found(format!("vlm: element not found: {description}")))
+    }
+
+    fn locate_opt(&self, png: &[u8], description: &str) -> Result<Option<NormPoint>> {
+        // Grounding only — the model is asked to point, not to judge
+        // existence (it does that unreliably). `Ok(None)` here means the
+        // reply was not a parseable point at all. Callers that need a real
+        // "is X present?" decision should use `ask` (a yes/no model),
+        // which is dependable, and use `locate` only to position.
         let prompt = format!(
             "这是一张 macOS 应用窗口截图。请定位下面描述的 UI 元素的中心点,\
              输出 JSON {{\"target\": [x, y]}},坐标为 0-1000 归一化,左上角为原点,\
              不要输出其他内容。\n目标:{description}"
         );
         let content = self.chat(&self.locate_model, png, &prompt)?;
-        parse_point(&content).ok_or_else(|| {
-            Error::io(format!(
-                "vlm {}: could not parse a point from {content:?}",
-                self.locate_model
-            ))
-        })
+        Ok(parse_point(&content))
     }
-
     fn ask(&self, png: &[u8], question: &str) -> Result<String> {
         self.chat(&self.ask_model, png, question)
     }
