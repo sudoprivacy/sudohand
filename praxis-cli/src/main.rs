@@ -17,6 +17,8 @@
 #![deny(unsafe_code)]
 
 mod desktop;
+mod fs;
+mod shell;
 
 use clap::{Parser, Subcommand};
 
@@ -41,22 +43,28 @@ enum Domain {
         cmd: desktop::Cmd,
     },
     /// Filesystem operations.
-    Fs,
+    Fs {
+        #[command(subcommand)]
+        cmd: fs::Cmd,
+    },
     /// Run a shell command (gated by the integrator; off by default).
-    Shell,
+    Shell {
+        #[command(subcommand)]
+        cmd: shell::Cmd,
+    },
 }
 
 fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
-    let todo = |domain: &str, crate_note: &str| {
-        praxis_core::print_result::<()>(Err(praxis_core::Error::internal(format!(
-            "praxis {domain}: not yet implemented — {crate_note}"
-        ))))
-    };
     match cli.command {
-        Domain::Browser => todo("browser", praxis_browser::placeholder()),
+        Domain::Browser => {
+            praxis_core::print_result::<()>(Err(praxis_core::Error::internal(format!(
+                "praxis browser: not yet implemented — {}",
+                praxis_browser::placeholder()
+            ))))
+        }
         Domain::Desktop { cmd } => praxis_core::print_result(desktop::run(cmd)),
-        Domain::Fs => todo("fs", praxis_fs::placeholder()),
-        Domain::Shell => todo("shell", praxis_shell::placeholder()),
+        Domain::Fs { cmd } => praxis_core::print_result(fs::run(cmd)),
+        Domain::Shell { cmd } => praxis_core::print_result(shell::run(cmd)),
     }
 }

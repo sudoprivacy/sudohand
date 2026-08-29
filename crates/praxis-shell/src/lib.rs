@@ -1,7 +1,9 @@
 //! `praxis-shell` — shell actuator.
 //!
-//! Runs a command and captures stdout/stderr/exit code. Thin wrapper
-//! over `std::process::Command`.
+//! Runs one command and captures stdout / stderr / exit status, with an
+//! optional timeout and output cap. [`RealShell`] is a thin wrapper over
+//! `std::process::Command`; [`FakeShell`] returns canned results and
+//! records every request for side-effect-free tests.
 //!
 //! ## RED LINE
 //! Shell is the most dangerous actuator. Per the apeiron-bridge
@@ -12,10 +14,14 @@
 //! does not link / register this crate). If shell is ever exposed, it
 //! needs its own authz model (command allow-list, cwd fence, timeout,
 //! dry-run) distinct from fs/browser/desktop.
-//!
-//! Placeholder until the runner lands.
 
-/// Placeholder until the shell runner is implemented.
-pub fn placeholder() -> &'static str {
-    "praxis-shell: command runner goes here (gated by the integrator)"
-}
+#![deny(unsafe_code)]
+
+pub mod backend;
+pub mod fake;
+pub mod real;
+
+pub use backend::{RunRequest, RunResult, ShellBackend};
+pub use fake::FakeShell;
+pub use praxis_core::{Error, Result};
+pub use real::RealShell;

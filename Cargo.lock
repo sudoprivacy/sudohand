@@ -449,6 +449,7 @@ name = "praxis-fs"
 version = "0.0.0"
 dependencies = [
  "praxis-core",
+ "serde",
 ]
 
 [[package]]
@@ -456,6 +457,7 @@ name = "praxis-shell"
 version = "0.0.0"
 dependencies = [
  "praxis-core",
+ "serde",
 ]
 
 [[package]]
