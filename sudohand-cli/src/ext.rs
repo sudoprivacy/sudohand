@@ -12,8 +12,11 @@
 //! Lookup order for `suh-<name>` (first hit wins):
 //!
 //! 1. every directory in `$SUH_EXT_PATH` (colon-separated);
-//! 2. `~/.suh/extensions/suh-<name>` and `~/.suh/extensions/<name>/suh-<name>`;
-//! 3. the directory holding the running `suh` executable;
+//! 2. the directory holding the running `suh` — where `suh ext install` puts
+//!    it, git-style next to `suh` on `$PATH`, so it stays visible even when a
+//!    sandbox hides `$HOME`;
+//! 3. `~/.suh/extensions/suh-<name>` and `~/.suh/extensions/<name>/suh-<name>`
+//!    (legacy location for installs made before extensions moved next to `suh`);
 //! 4. every directory in `$PATH`.
 //!
 //! The child inherits stdio and the environment, plus `SUH_BIN` (absolute
@@ -52,11 +55,11 @@ fn search_dirs(
                 .map(|d| (d, "ext_path")),
         );
     }
-    if let Some(h) = home {
-        dirs.push((h.join(".suh").join("extensions"), "home"));
-    }
     if let Some(d) = exe_dir {
         dirs.push((d.to_path_buf(), "sibling"));
+    }
+    if let Some(h) = home {
+        dirs.push((h.join(".suh").join("extensions"), "home"));
     }
     if let Some(p) = path {
         dirs.extend(
@@ -184,9 +187,11 @@ pub fn exec(name: &str, args: &[OsString]) -> ExitCode {
         None => {
             let err = if valid_name(name) {
                 Error::not_found(format!(
-                    "unknown command {name:?}: not a built-in domain and no `suh-{name}` \
-                     extension found (searched $SUH_EXT_PATH, ~/.suh/extensions, the suh \
-                     binary's directory and $PATH; `suh ext list` shows what is installed)"
+                    "no `suh-{name}` extension found: {name:?} is not a built-in domain, and \
+                     no executable `suh-{name}` is on $SUH_EXT_PATH, next to `suh`, in \
+                     ~/.suh/extensions, or on $PATH. Install it with `suh ext install \
+                     <source>` (`suh ext list` shows what's found). If it IS installed, a \
+                     sandbox may be hiding it — check $HOME and $PATH."
                 ))
             } else {
                 Error::invalid(format!(
@@ -383,8 +388,8 @@ mod tests {
             [
                 ("/a".to_string(), "ext_path"),
                 ("/b".to_string(), "ext_path"),
-                ("/home/u/.suh/extensions".to_string(), "home"),
                 ("/opt/suh".to_string(), "sibling"),
+                ("/home/u/.suh/extensions".to_string(), "home"),
                 ("/usr/bin".to_string(), "PATH"),
             ]
         );
