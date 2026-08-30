@@ -46,7 +46,10 @@ const DENY_DOMAINS: &[&str] = &["shell", "ext", "describe", "serve", "mcp", "hel
 /// Start the server and block until it stops. Builds its own multi-thread
 /// runtime so `main` can stay synchronous like the rest of the CLI.
 pub fn run(bind: String, token: Option<String>) -> std::process::ExitCode {
-    let rt = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
+    let rt = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
         Ok(rt) => rt,
         Err(e) => {
             eprintln!("{}", err_envelope("internal", &format!("runtime: {e}")));
@@ -66,7 +69,10 @@ async fn serve(bind: &str, token: Option<String>) -> Result<(), String> {
     let listener = tokio::net::TcpListener::bind(bind)
         .await
         .map_err(|e| format!("bind {bind}: {e}"))?;
-    eprintln!("suh serve: listening on ws://{bind} (auth: {})", if token.is_some() { "token" } else { "none" });
+    eprintln!(
+        "suh serve: listening on ws://{bind} (auth: {})",
+        if token.is_some() { "token" } else { "none" }
+    );
     loop {
         let (stream, peer) = match listener.accept().await {
             Ok(x) => x,
@@ -84,10 +90,7 @@ async fn serve(bind: &str, token: Option<String>) -> Result<(), String> {
     }
 }
 
-async fn handle_conn(
-    stream: tokio::net::TcpStream,
-    token: Option<String>,
-) -> Result<(), String> {
+async fn handle_conn(stream: tokio::net::TcpStream, token: Option<String>) -> Result<(), String> {
     let ws = tokio_tungstenite::accept_async(stream)
         .await
         .map_err(|e| format!("ws handshake: {e}"))?;
@@ -96,18 +99,22 @@ async fn handle_conn(
     // Optional auth: the first frame must be {"type":"auth","token":"…"}.
     if let Some(expected) = &token {
         let ok = match read.next().await {
-            Some(Ok(Message::Text(t))) => serde_json::from_str::<Value>(&t)
-                .ok()
-                .filter(|v| v.get("type").and_then(Value::as_str) == Some("auth"))
-                .and_then(|v| v.get("token").and_then(Value::as_str).map(str::to_owned))
-                .as_deref()
-                == Some(expected.as_str()),
+            Some(Ok(Message::Text(t))) => {
+                serde_json::from_str::<Value>(&t)
+                    .ok()
+                    .filter(|v| v.get("type").and_then(Value::as_str) == Some("auth"))
+                    .and_then(|v| v.get("token").and_then(Value::as_str).map(str::to_owned))
+                    .as_deref()
+                    == Some(expected.as_str())
+            }
             _ => false,
         };
         if !ok {
             let _ = write
                 .send(Message::Text(
-                    json!({"type":"error","message":"unauthorized"}).to_string().into(),
+                    json!({"type":"error","message":"unauthorized"})
+                        .to_string()
+                        .into(),
                 ))
                 .await;
             return Ok(());
@@ -130,7 +137,11 @@ async fn handle_conn(
             _ => continue,
         };
         let reply = handle_call(&text).await;
-        if write.send(Message::Text(reply.to_string().into())).await.is_err() {
+        if write
+            .send(Message::Text(reply.to_string().into()))
+            .await
+            .is_err()
+        {
             break;
         }
     }
@@ -173,12 +184,12 @@ fn ready_frame() -> Value {
 async fn handle_call(text: &str) -> Value {
     let msg: Value = match serde_json::from_str(text) {
         Ok(v) => v,
-        Err(e) => return json!({"type":"result","ok":false,"error":{"kind":"invalid_input","message":format!("bad json: {e}")}}),
+        Err(e) => {
+            return json!({"type":"result","ok":false,"error":{"kind":"invalid_input","message":format!("bad json: {e}")}})
+        }
     };
     let id = msg.get("id").cloned().unwrap_or(Value::Null);
-    let fail = |kind: &str, m: String| {
-        json!({"type":"result","id":id,"ok":false,"error":{"kind":kind,"message":m}})
-    };
+    let fail = |kind: &str, m: String| json!({"type":"result","id":id,"ok":false,"error":{"kind":kind,"message":m}});
 
     if msg.get("type").and_then(Value::as_str) != Some("call") {
         return fail("invalid_input", "expected {\"type\":\"call\"}".into());
@@ -188,10 +199,16 @@ async fn handle_call(text: &str) -> Value {
         None => return fail("invalid_input", "missing method".into()),
     };
     let Some((domain, action)) = method.split_once('.') else {
-        return fail("invalid_input", format!("method must be <domain>.<action>, got {method:?}"));
+        return fail(
+            "invalid_input",
+            format!("method must be <domain>.<action>, got {method:?}"),
+        );
     };
     if DENY_DOMAINS.contains(&domain) || domain.is_empty() || action.is_empty() {
-        return fail("permission_denied", format!("method {method:?} is not exposed"));
+        return fail(
+            "permission_denied",
+            format!("method {method:?} is not exposed"),
+        );
     }
 
     let params = msg.get("params").cloned().unwrap_or(json!({}));
@@ -203,7 +220,11 @@ async fn handle_call(text: &str) -> Value {
         .or_else(|| std::env::current_exe().ok())
         .unwrap_or_else(|| "suh".into());
 
-    match tokio::process::Command::new(&exe).args(&argv).output().await {
+    match tokio::process::Command::new(&exe)
+        .args(&argv)
+        .output()
+        .await
+    {
         Ok(o) => {
             let exit = o.status.code().unwrap_or(-1);
             if o.status.success() {
@@ -268,11 +289,35 @@ fn scalar(v: &Value) -> String {
 /// `suh describe`; this allowlist is the interim source.
 fn is_read_only(action: &str) -> bool {
     const READ: &[&str] = &[
-        "status", "apps", "ax-tree", "ax-find", "find-window", "locate", "ask", "screenshot",
-        "read", "ls", "stat", "exists", "browser_list", "page_info", "page_html",
-        "page_screenshot", "page_discover", "page_pdf", "page_wait_url", "page_wait_element",
-        "page_wait_ready", "tab_list", "storage_get", "cookies_list", "find_by_text",
-        "find_by_html_id", "find_by_xpath", "html_by_ref", "screenshot_by_ref",
+        "status",
+        "apps",
+        "ax-tree",
+        "ax-find",
+        "find-window",
+        "locate",
+        "ask",
+        "screenshot",
+        "read",
+        "ls",
+        "stat",
+        "exists",
+        "browser_list",
+        "page_info",
+        "page_html",
+        "page_screenshot",
+        "page_discover",
+        "page_pdf",
+        "page_wait_url",
+        "page_wait_element",
+        "page_wait_ready",
+        "tab_list",
+        "storage_get",
+        "cookies_list",
+        "find_by_text",
+        "find_by_html_id",
+        "find_by_xpath",
+        "html_by_ref",
+        "screenshot_by_ref",
     ];
     READ.contains(&action)
 }

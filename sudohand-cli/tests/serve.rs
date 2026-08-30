@@ -68,7 +68,9 @@ async fn ready_catalog_call_and_denial() {
         .expect("desktop.status advertised");
     assert_eq!(status["readOnly"], true);
     // shell must not be advertised.
-    assert!(methods.iter().all(|m| !m["method"].as_str().unwrap().starts_with("shell.")));
+    assert!(methods
+        .iter()
+        .all(|m| !m["method"].as_str().unwrap().starts_with("shell.")));
 
     // 2. A read call succeeds and preserves the exit code.
     ws.send(Message::Text(
@@ -106,7 +108,13 @@ async fn token_auth_rejects_wrong_token() {
     let port = free_port();
     let _server = Server(
         std::process::Command::new(env!("CARGO_BIN_EXE_suh"))
-            .args(["serve", "--bind", &format!("127.0.0.1:{port}"), "--token", "s3cret"])
+            .args([
+                "serve",
+                "--bind",
+                &format!("127.0.0.1:{port}"),
+                "--token",
+                "s3cret",
+            ])
             .stderr(std::process::Stdio::null())
             .spawn()
             .expect("spawn suh serve"),
