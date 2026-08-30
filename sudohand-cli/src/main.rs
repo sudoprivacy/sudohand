@@ -23,6 +23,7 @@ mod desktop;
 mod ext;
 mod ext_install;
 mod fs;
+mod serve;
 mod shell;
 
 use clap::{Parser, Subcommand};
@@ -37,7 +38,7 @@ use std::ffi::OsString;
                   $SUH_EXT_PATH, ~/.suh/extensions, next to this binary, or $PATH \
                   (`suh ext list`)."
 )]
-struct Cli {
+pub(crate) struct Cli {
     #[command(subcommand)]
     command: Domain,
 }
@@ -72,6 +73,18 @@ enum Domain {
     /// Print the command tree (domain, action, description) as TSV, plus the
     /// exit-code contract — the machine-readable API for an agent.
     Describe,
+    /// Expose the actuators over a WebSocket. Agents — a remote apeiron pod or
+    /// a local sudocode — connect here as clients; suh still runs on this
+    /// machine. One action per frame; `shell` and the meta commands are refused.
+    Serve {
+        /// Address to bind. Localhost-only by default; widen deliberately.
+        #[arg(long, default_value = "127.0.0.1:8787")]
+        bind: String,
+        /// If set, the client's first frame must be
+        /// `{"type":"auth","token":"…"}` matching this value.
+        #[arg(long)]
+        token: Option<String>,
+    },
     /// `suh <name> …` → run the `suh-<name>` extension.
     #[command(external_subcommand)]
     External(Vec<OsString>),
@@ -146,6 +159,7 @@ fn main() -> std::process::ExitCode {
             print!("{}", describe());
             std::process::ExitCode::SUCCESS
         }
+        Domain::Serve { bind, token } => serve::run(bind, token),
         Domain::External(argv) => {
             let (name, args) = argv.split_first().expect("clap gives at least the name");
             ext::exec(&name.to_string_lossy(), args)
