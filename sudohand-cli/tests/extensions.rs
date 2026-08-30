@@ -137,11 +137,13 @@ fn json(out: &std::process::Output) -> serde_json::Value {
 fn install_from_file_then_update_and_uninstall() {
     let h = home("file");
     let src = h.join("src");
+    let ext = h.join("bin");
     let script = conformant_script(&src, "pinger", "1.0.0");
     let suh_in = |args: &[&str]| {
         suh()
             .env("HOME", &h)
-            .env("SUH_EXT_PATH", "")
+            .env("SUH_EXT_DIR", &ext)
+            .env("SUH_EXT_PATH", &ext)
             .env("PATH", std::env::var("PATH").unwrap())
             .args(args)
             .output()
@@ -158,11 +160,11 @@ fn install_from_file_then_update_and_uninstall() {
     assert_eq!(v["installed"], "pinger");
     assert_eq!(v["version"], "1.0.0");
     assert_eq!(v["source"]["kind"], "file");
-    let installed = h.join(".suh/extensions/pinger/suh-pinger");
+    let installed = ext.join("suh-pinger");
     assert!(installed.is_file());
-    assert!(h.join(".suh/extensions/pinger/install.json").is_file());
+    assert!(ext.join("suh-pinger.install.json").is_file());
 
-    // dispatch now finds it via ~/.suh/extensions
+    // dispatch now finds it via $SUH_EXT_PATH
     let out = suh_in(&["pinger", "ping"]);
     assert_eq!(json(&out)["pong"], "1.0.0");
 
@@ -175,7 +177,7 @@ fn install_from_file_then_update_and_uninstall() {
         .find(|e| e["name"] == "pinger")
         .unwrap();
     assert_eq!(e["version"], "1.0.0");
-    assert_eq!(e["source"], "home");
+    assert_eq!(e["source"], "ext_path");
 
     // the source file changes; update re-copies it
     conformant_script(&src, "pinger", "1.1.0");
@@ -184,7 +186,7 @@ fn install_from_file_then_update_and_uninstall() {
     assert_eq!(v["previous_version"], "1.0.0");
     assert_eq!(json(&suh_in(&["pinger", "ping"]))["pong"], "1.1.0");
 
-    // uninstall removes the managed dir
+    // uninstall removes the managed binary
     let v = json(&suh_in(&["ext", "uninstall", "pinger"]));
     assert_eq!(v["uninstalled"], "pinger");
     assert!(!installed.exists());
@@ -208,12 +210,14 @@ fn install_refuses_nonconformant_unless_forced() {
     )
     .unwrap();
     std::fs::set_permissions(&bad, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let ext = h.join("bin");
     let run = |extra: &[&str]| {
         let mut args = vec!["ext", "install", bad.to_str().unwrap()];
         args.extend_from_slice(extra);
         suh()
             .env("HOME", &h)
-            .env("SUH_EXT_PATH", "")
+            .env("SUH_EXT_DIR", &ext)
+            .env("SUH_EXT_PATH", &ext)
             .args(args)
             .output()
             .unwrap()
@@ -226,7 +230,7 @@ fn install_refuses_nonconformant_unless_forced() {
         .as_str()
         .unwrap()
         .contains("--force"));
-    assert!(!h.join(".suh/extensions/bad").exists());
+    assert!(!ext.join("suh-bad").exists());
 
     let out = run(&["--force"]);
     assert!(
@@ -234,7 +238,7 @@ fn install_refuses_nonconformant_unless_forced() {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-    assert!(h.join(".suh/extensions/bad/suh-bad").is_file());
+    assert!(ext.join("suh-bad").is_file());
     let _ = std::fs::remove_dir_all(h);
 }
 
@@ -242,6 +246,7 @@ fn install_refuses_nonconformant_unless_forced() {
 #[test]
 fn install_from_cargo_project() {
     let h = home("cargo");
+    let ext = h.join("bin");
     let proj = h.join("suh-tiny");
     std::fs::create_dir_all(proj.join("src")).unwrap();
     std::fs::write(
@@ -270,7 +275,8 @@ fn install_from_cargo_project() {
     .unwrap();
     let out = suh()
         .env("HOME", &h)
-        .env("SUH_EXT_PATH", "")
+        .env("SUH_EXT_DIR", &ext)
+        .env("SUH_EXT_PATH", &ext)
         .args(["ext", "install", proj.to_str().unwrap()])
         .output()
         .unwrap();
@@ -285,7 +291,8 @@ fn install_from_cargo_project() {
     assert_eq!(v["source"]["kind"], "project");
     let out = suh()
         .env("HOME", &h)
-        .env("SUH_EXT_PATH", "")
+        .env("SUH_EXT_DIR", &ext)
+        .env("SUH_EXT_PATH", &ext)
         .args(["tiny", "ping"])
         .output()
         .unwrap();

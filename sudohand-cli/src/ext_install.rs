@@ -1,5 +1,7 @@
-//! `suh ext install|uninstall|update` — put an extension under
-//! `~/.suh/extensions/<name>/` where the search path finds it.
+//! `suh ext install|uninstall|update` — put an extension **next to `suh`**
+//! (git-style `suh-<name>` in the same directory as the running binary),
+//! where the search path finds it via `$PATH` — which stays visible even when
+//! a sandbox has hidden `$HOME` (unlike the old `~/.suh/extensions/` home).
 //!
 //! Sources, told apart by looking at the argument:
 //!
@@ -11,9 +13,9 @@
 //!
 //! The name comes from the binary's `--manifest`, never from the argument.
 //! Before anything is written the binary must pass the conformance check
-//! (`--force` skips that). Each install leaves an `install.json` beside
-//! the binary recording the source, so `update` can redo it and `list`
-//! can show the version.
+//! (`--force` skips that). Each install leaves a `suh-<name>.install.json`
+//! record next to the binary (the bin dir is shared, so the record is named
+//! per-binary), so `update` can redo it and `list` can show the version.
 
 use crate::ext::{self, Extension};
 use serde::{Deserialize, Serialize};
@@ -61,14 +63,38 @@ pub fn suh_home() -> Result<PathBuf> {
         .ok_or_else(|| Error::internal("HOME is not set"))
 }
 
-pub fn extensions_dir() -> Result<PathBuf> {
-    Ok(suh_home()?.join("extensions"))
+/// Where extensions install: the directory of the running `suh`, so a
+/// `suh-<name>` lands next to `suh` on `$PATH` (visible even when a sandbox
+/// hides `$HOME`). `$SUH_EXT_DIR` overrides it — for a read-only bin dir, or
+/// tests; a custom dir must then also be on `$SUH_EXT_PATH`/`$PATH` for
+/// dispatch to find it.
+pub fn install_dir() -> Result<PathBuf> {
+    if let Some(d) = std::env::var_os("SUH_EXT_DIR").filter(|d| !d.is_empty()) {
+        return Ok(PathBuf::from(d));
+    }
+    std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(Path::to_path_buf))
+        .ok_or_else(|| Error::internal("cannot locate the `suh` binary's directory"))
 }
 
-/// Read the `install.json` next to an installed binary, if any.
+/// The per-binary record path: `<bin>.install.json` next to the executable.
+/// A bare `install.json` can't be used because the bin dir is shared.
+fn record_path(bin: &Path) -> PathBuf {
+    let file = bin
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    bin.with_file_name(format!("{file}.{RECORD}"))
+}
+
+/// Read an install record for `bin`: the per-binary `<bin>.install.json`
+/// first, then the legacy `<dir>/install.json` (old `~/.suh/extensions`
+/// layout) so pre-move installs still report their source.
 pub fn record_for(bin: &Path) -> Option<Record> {
-    let p = bin.parent()?.join(RECORD);
-    serde_json::from_slice(&std::fs::read(p).ok()?).ok()
+    let read =
+        |p: PathBuf| -> Option<Record> { serde_json::from_slice(&std::fs::read(p).ok()?).ok() };
+    read(record_path(bin)).or_else(|| read(bin.parent()?.join(RECORD)))
 }
 
 /// Parse the source argument. Local paths win when they exist; otherwise
@@ -307,7 +333,7 @@ fn install_binary(bin: &Path, source: Source, force: bool) -> Result<serde_json:
             "manifest name {name:?} is not a valid extension name"
         )));
     }
-    let dir = extensions_dir()?.join(&name);
+    let dir = install_dir()?;
     std::fs::create_dir_all(&dir).map_err(|e| Error::from_io(&e))?;
     let dest = dir.join(format!("suh-{name}"));
     // Replace atomically-ish: write beside, then rename over (a running
@@ -329,7 +355,7 @@ fn install_binary(bin: &Path, source: Source, force: bool) -> Result<serde_json:
         manifest,
     };
     std::fs::write(
-        dir.join(RECORD),
+        record_path(&dest),
         serde_json::to_vec_pretty(&record).map_err(|e| Error::internal(e.to_string()))?,
     )
     .map_err(|e| Error::from_io(&e))?;
@@ -359,8 +385,7 @@ fn managed(name: &str) -> Result<(PathBuf, Option<Record>)> {
             "{name:?} is not a valid extension name"
         )));
     }
-    let dir = extensions_dir()?.join(name);
-    let bin = dir.join(format!("suh-{name}"));
+    let bin = install_dir()?.join(format!("suh-{name}"));
     if !bin.is_file() {
         return Err(Error::not_found(match ext::find(name) {
             Some(Extension { path, .. }) => format!(
@@ -370,15 +395,17 @@ fn managed(name: &str) -> Result<(PathBuf, Option<Record>)> {
             None => format!("no installed extension `{name}`"),
         }));
     }
-    Ok((dir, record_for(&bin)))
+    let record = record_for(&bin);
+    Ok((bin, record))
 }
 
 pub fn uninstall(name: &str) -> Result<serde_json::Value> {
-    let (dir, record) = managed(name)?;
-    std::fs::remove_dir_all(&dir).map_err(|e| Error::from_io(&e))?;
+    let (bin, record) = managed(name)?;
+    std::fs::remove_file(&bin).map_err(|e| Error::from_io(&e))?;
+    let _ = std::fs::remove_file(record_path(&bin));
     Ok(json!({
         "uninstalled": name,
-        "path": dir,
+        "path": bin,
         "version": record.map(|r| r.version),
     }))
 }

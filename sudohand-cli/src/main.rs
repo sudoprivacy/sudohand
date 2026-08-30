@@ -34,8 +34,8 @@ use std::ffi::OsString;
     version,
     about = "AI computer-control actuators: browser + desktop + filesystem + shell",
     after_help = "Extensions: `suh <name> …` runs the executable `suh-<name>` found on \
-                  $SUH_EXT_PATH, ~/.suh/extensions, next to this binary, or $PATH \
-                  (`suh ext list`)."
+                  $SUH_EXT_PATH, next to this binary (where `suh ext install` puts it), \
+                  ~/.suh/extensions, or $PATH (`suh ext list`)."
 )]
 struct Cli {
     #[command(subcommand)]
