@@ -4,7 +4,9 @@
 mod model;
 mod profile;
 mod state;
+mod worker;
 
 pub use model::{Job, JobResult, JobStatus};
 pub use profile::{ProfileManager, ProfileMode};
 pub use state::{load_state, save_state, PoolState};
+pub use worker::{Worker, WorkerStats, WorkerStatus};

@@ -2,6 +2,22 @@
 use serde_json::{json, Value};
 use sudohand_browser::pool::{load_state, save_state, Job, JobResult, JobStatus, PoolState};
 use sudohand_browser::pool::{ProfileManager, ProfileMode};
+use sudohand_browser::pool::{Worker, WorkerStatus};
+
+#[test]
+fn worker_status_matches_python_snapshot() {
+    let mut worker = Worker::new(3, 9353);
+    assert_eq!(worker.stats.success_rate(), 0.0);
+    let mut job = Job::new("fetch");
+    job.job_id = "active".into();
+    worker.current_job = Some(job);
+    worker.status = WorkerStatus::Busy;
+    worker.stats.success = 2;
+    worker.stats.fail = 1;
+    worker.stats.total_time = 12.5;
+    let reference: Value = serde_json::from_str(include_str!("fixtures/pool-worker.json")).unwrap();
+    assert_eq!(worker.to_dict(), reference);
+}
 
 #[test]
 fn cookie_profile_modes() {

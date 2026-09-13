@@ -88,7 +88,7 @@ async def main():
                     targets = await command(cdp, 'Target.getTargets')
                     print('Extension connection diagnostics:', targets, flush=True)
                     for target in targets['targetInfos']:
-                        if target['type'] == 'service_worker' and target['url'].startswith('chrome-extension:'):
+                        if target['type'] == 'service_worker' and target['url'].startswith(f"chrome-extension://{loaded['id']}/"):
                             attached = await command(cdp, 'Target.attachToTarget', {'targetId': target['targetId'], 'flatten': True})
                             command.sequence += 1
                             await cdp.send(json.dumps({'id': command.sequence, 'sessionId': attached['sessionId'], 'method': 'Runtime.evaluate', 'params': {'expression': '({socketState: socket?.readyState, connecting, extensionId: chrome.runtime.id})', 'returnByValue': True}}))

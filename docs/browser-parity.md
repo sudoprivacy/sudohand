@@ -165,3 +165,16 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   shared progress, wait/selection/cancellation and client lifecycle remain to implement.
 - CfT extension diagnostics show its service worker exists but its WebSocket remains
   CONNECTING; a no-proxy-server trial did not resolve it. Root cause remains open.
+
+- Run 34785206445 on commit 3b3274a: Linux job 103799308688 passed every stage,
+  including actual extension, all typing cases, and native XTEST input under Xvfb.
+  macOS basic browser regression now passes with the bundle-layout correction.
+  Windows browser library regression passes, but multiple CLI differential stages
+  fail; inspect job 103799308624 logs before assuming the fault is cookie-specific.
+- Worker status/statistics snapshots now match a fixture emitted by Python's Worker
+  API. Five SDK model/profile/persistence tests pass; scheduling still outstanding.
+- Browser crate Windows cross-check passed with the new pool models. Full CLI
+  cross-check on this macOS host needs a MinGW C compiler for existing ring; actual
+  Windows CI remains the runtime gate. Local CfT extension handshake also remained
+  pending after test-only browser network permission grants, ruling out that simple
+  permission workaround. No user profile permissions were changed.
