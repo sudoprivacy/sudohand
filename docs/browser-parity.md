@@ -4,8 +4,10 @@ Reference: `sudoprivacy/ai-dev-browser` commit
 `94170d23f65f5f9140792d1de4a158c086a39325` (2026-09-13).
 Starting sudohand revision: `c62b244a43d53bb87e1f14e97c5858ce41480745`.
 
-**Status: implementation and verification in progress. This is not a claim of
-complete parity.** Command declarations alone do not establish working behavior.
+**Scope: browser capability parity against the pinned reference, with the
+intentional compatibility choices below.** This does not promise identical
+Python imports, every Python regex construct, or identical behavior on every
+website. Command declarations alone do not establish working behavior.
 
 ## Verified coverage
 
@@ -16,41 +18,47 @@ complete parity.** Command declarations alone do not establish working behavior.
 | Cookies | Full live/offline arrays, long values, Unicode, HttpOnly, domain/session/expiry semantics; Windows synthetic DPAPI/AES-GCM decryption passed hosted CI. Legacy pickle protocols 2/4/5 import into real Chrome with equivalent fields. |
 | Cookie filtering | Actual saved-file comparison for empty patterns, quoted dictionary fields, booleans, lookbehind and numbered/named backreferences. Files remain JSON. |
 | Inventory and cleanup | Native process inventory, validated launch registry, dry-run, scoped orphan cleanup, idempotency and preservation of external Chrome. Stop-all is restricted to validated managed browsers. |
-| Page and locators | URL/HTML/JS/console contracts, readiness/URL deadlines, HTML-id/XPath/text locators in top and same-origin frames, seven discovery option combinations. CSS/text element waits check visibility, deadlines and usable element refs. |
-| Ref operations and artifacts | Focus, hover, HTML, Home key, selection and multi-file upload checked against DOM state. Screenshot dimensions, caps and coordinate metadata; PDF file structure/size; binary download file contents. |
-| Input | Twelve verified-typing cases through two locators; trusted/synthetic/JS click fallback and explicit OS opt-out. Real native mouse passed on local macOS, hosted Linux/Xvfb and hosted Windows (run 34787941181). An intermittent Windows visible-browser launch failure remains under diagnosis. |
-| Extension | Independently implemented extension and WebSocket bridge, actual Chrome handshake, target routing, separate CLI reuse, clicks/screenshots, popup adoption, preservation of unrelated tabs and bridge shutdown without killing Chrome. Hosted Linux, macOS and Windows extension tests have passed. |
+| Page and locators | URL/HTML/JS/console contracts, readiness/URL deadlines, HTML-id/XPath/text locators in top and same-origin frames, cross-origin iframe evaluation, seven discovery option combinations. CSS/text element waits check visibility, deadlines and usable element refs. |
+| Ref operations and artifacts | Focus, hover, HTML, Home key, selection and multi-file upload checked against DOM state. Row clicks, checkbox/double-click effects, container/element scrolling, storage/window/tab lifecycle. Screenshot dimensions, caps and coordinate metadata; PDF file structure/size; binary download and download-link file/event contents. |
+| Input | Twelve verified-typing cases through two locators; trusted/synthetic/JS click fallback and explicit OS opt-out. Real native mouse passed on local macOS, hosted Linux/Xvfb and hosted Windows (run 34787941181). |
+| Extension | Independently implemented extension and WebSocket bridge, actual Chrome handshake, target routing, separate CLI reuse, clicks/screenshots, popup adoption, preservation of unrelated tabs, bridge shutdown without killing Chrome and reconnection after bridge restart. Transport tests cover rejecting a second profile and accepting it after the owner disconnects. Hosted Linux, macOS and Windows extension tests have passed. |
 | Rust SDK pool | Job/result/state schemas compared to reference-generated fixtures; 12 scheduler tests for retries, scaling, held jobs, shared progress, selection, cancellation, recovery and interrupted shutdown. Real two-Chrome test covers concurrent execution, per-worker cookies, restoration and cleanup. See [the pool guide](browser-pool.md). |
 | CLI lifecycle | Flattened parser groups and boxed command futures avoid Windows/Tokio stack overflow. A real pipe-EOF regression requires Chrome to remain alive after the launching CLI exits; passed on Windows. |
 
 The main Rust browser integration suite has 26 real Chrome tests. The complete
-workspace passed locally after the regex/text-ref changes; the subsequent pool
-shutdown change passed all 12 scheduler tests and strict workspace Clippy.
+workspace, formatting and strict workspace Clippy passed locally at `0ec1b96`;
+the browser crate also passed Windows cross-compilation. A local synthetic login
+smoke test exercised both implementations through visible launch, persistent
+cookie creation, browser close and headless export. This does not test a real
+website's interactive authentication or MFA.
 
-## Remaining acceptance work
+## Cross-platform acceptance
 
-- [ ] Resolve Windows download and visible-browser/native-input failures on the
-  current branch; diagnose the intermittent reference proxy-start failure.
-- [ ] Finish remaining operation/default/error/iframe/session comparisons,
-  including row clicks, scrolling, download-link and extension restart/account
-  lifecycle. Existing Rust tests cover portions of this surface but are not a
-  substitute for the remaining differential checks.
-- [x] Compare SDK scheduling against a running Python reference: eight scenarios
-  cover both queue policies and retry budgets 0/1/2/unlimited, with exact call
-  order, terminal results, error ancestry, business outcomes, statistics and
-  close counts. CI regenerates the shared fixture; Rust executes the same cases.
-- [ ] Verify final-head cross-platform CI, workspace format, strict Clippy and
-  tests, then open the PR with actual results and compatibility notes.
+Last completed run:
+[34789303637](https://github.com/sudoprivacy/sudohand/actions/runs/34789303637)
+(`0ec1b96`): Linux and macOS passed completely. Windows passed every
+CLI differential stage, including downloads, extension cleanup and native input;
+one of 26 Rust browser integration tests failed while launching Chrome, before
+exercising its page behavior. The browser never published DevTools within 60s.
+The SDK tests later in that Rust command did not run after the failure.
 
-Run [34787792557](https://github.com/sudoprivacy/sudohand/actions/runs/34787792557)
-passed complete Linux and macOS jobs. Windows passed real browser/SDK, pipe EOF,
-extension, click and typing stages but failed proxy/download/native stages.
-Run [34787941181](https://github.com/sudoprivacy/sudohand/actions/runs/34787941181)
-also passed complete Linux/macOS jobs; its Windows proxy and native mouse stages
-passed, with only the download stage failing. The earlier proxy/visible-browser
-failures need a race diagnosis. These are earlier-head
-results, not a final acceptance result. Superseded workflow cancellations are
-not counted as test failures or passes.
+Earlier runs passed complete Linux and macOS jobs and Windows browser/SDK,
+pipe-EOF, cookie/proxy, extension, typing and native mouse behavior. Windows
+runtime exposed a silent download failure with canonical verbatim paths; the
+Windows runtime now passes after normalizing drive/UNC paths before Chrome. Separate
+post-test Windows file-lock failures led to fixture cleanup that waits for its
+owned Chrome descendants. The startup investigation separately reproduced an unread-stderr pipe deadlock:
+a noisy Chrome wrapper failed before the fix and started successfully after it.
+Startup now drains stderr continuously, retains only a 16 KiB diagnostic tail,
+and includes it on timeout. A real subprocess writes 1 MiB through the pipe in
+a regression test. This is not proof of the original Windows timeout's cause;
+the new revision still requires cross-platform validation. Neither superseded
+cancellations nor earlier-head passes count as final-candidate acceptance.
+
+The running Python scheduler differential covers eight scenarios: both queue
+policies and retry budgets 0/1/2/unlimited, with exact call order, terminal
+results, error ancestry, business outcomes, statistics and close counts. CI
+regenerates the fixture; Rust executes and compares the same cases.
 
 ## Compatibility choices
 
@@ -120,17 +128,8 @@ The extension fixture uses a mock keychain, as the regular launcher already does
 Bounded subprocess capture uses temporary files so inherited descendant streams
 cannot defeat a timeout; the separate pipe-EOF test checks production behavior.
 
-Latest local additions passed: download-link file/event contracts, storage and
-window behavior, tab lifecycle, cross-origin iframe evaluation, row clicks,
-container/element scrolling, and extension reconnection after bridge restart.
-Windows diagnostics isolated the download failure to suh; normalize the Windows
-verbatim drive/UNC path before passing it to Chrome. The patch passed unit,
-Clippy and Windows cross-compilation checks; hosted runtime verification remains.
-The extension/click failures in run 34788477947 occurred after their behavior
-assertions passed, while deleting files still held by Chrome descendants. Test
-cleanup now captures and waits for only its own process tree before removing
-profiles. Three process-harness tests pass.
-
-The most recent local native mouse rerun could not exercise input because the
-Mac was locked (confirmed via the session API). Native tests now check that
-precondition explicitly; they require an unlocked, foreground fixture window.
+The latest local native mouse rerun could not exercise input because the Mac
+was locked (confirmed via the session API). Earlier local macOS native input
+passed. Native tests now check that precondition explicitly; they require an
+unlocked, foreground fixture window. Hosted Linux and Windows exercise real
+native input; hosted macOS exercises the CDP and extension paths.

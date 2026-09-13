@@ -1,7 +1,6 @@
 //! Browser lifecycle: `browser_start` / `browser_stop` / `browser_list`.
 //! Port of `core/browser.py`.
 
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -197,10 +196,10 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
             break;
         }
         if let Ok(Some(_status)) = launched.child.try_wait() {
-            let mut stderr = String::new();
-            if let Some(mut s) = launched.child.stderr.take() {
-                let _ = s.read_to_string(&mut stderr);
-            }
+            let mut stderr = launched
+                .stderr
+                .as_ref()
+                .map_or_else(String::new, crate::launch_stderr::LaunchStderr::snapshot);
             if stderr.trim().is_empty() {
                 stderr = "Chrome exited silently. Possible causes:\n  - Another Chrome is using this profile\n  - Profile directory is corrupted\n  - Insufficient permissions".to_string();
             }
@@ -210,9 +209,18 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
     }
     if !listening {
         let _ = kill_process_tree(pid);
+        let stderr = launched
+            .stderr
+            .as_ref()
+            .map_or_else(String::new, crate::launch_stderr::LaunchStderr::snapshot);
+        let diagnostic = if stderr.trim().is_empty() {
+            String::new()
+        } else {
+            format!("\nRecent Chrome stderr:\n{stderr}")
+        };
         return Ok(json!({
             "error": format!(
-                "Chrome started (PID {pid}) but DevTools/initial page on port {port} was not ready after {timeout}s — process killed to release profile lockfile. Retry with startup_timeout=<larger> if your environment is slow."
+                "Chrome started (PID {pid}) but DevTools/initial page on port {port} was not ready after {timeout}s — process killed to release profile lockfile. Retry with startup_timeout=<larger> if your environment is slow.{diagnostic}"
             ),
             "pid": pid,
         }));
@@ -227,7 +235,7 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
     )
     .await;
     // Detach: the Child handle must not reap/kill Chrome when we exit.
-    drop(launched.child.stderr.take());
+    drop(launched.stderr.take());
     let mut out = serde_json::Map::new();
     out.insert("port".into(), json!(port));
     out.insert("pid".into(), json!(pid));

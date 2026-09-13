@@ -164,6 +164,7 @@ pub struct Launched {
     pub user_data_dir: PathBuf,
     /// Executable used.
     pub chrome_path: PathBuf,
+    pub(crate) stderr: Option<crate::launch_stderr::LaunchStderr>,
 }
 
 /// Set `session.restore_on_startup = 5` in the profile's Preferences.
@@ -302,13 +303,27 @@ pub fn launch_chrome(opts: &LaunchOptions) -> Result<Launched> {
         const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
         cmd.creation_flags(CREATE_NEW_PROCESS_GROUP);
     }
-    let child = cmd
+    let mut child = cmd
         .spawn()
         .map_err(|e| Error::Chrome(format!("Failed to launch Chrome: {e}")))?;
+    let stderr = match child
+        .stderr
+        .take()
+        .map(crate::launch_stderr::LaunchStderr::start)
+        .transpose()
+    {
+        Ok(capture) => capture,
+        Err(error) => {
+            let _ = crate::port::kill_process_tree(child.id());
+            let _ = child.wait();
+            return Err(error.into());
+        }
+    };
     Ok(Launched {
         child,
         user_data_dir,
         chrome_path,
+        stderr,
     })
 }
 

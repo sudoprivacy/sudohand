@@ -58,6 +58,7 @@ pub mod human;
 mod identity;
 pub mod image_cap;
 pub mod js;
+mod launch_stderr;
 pub mod login;
 pub mod mouse;
 pub mod page;
