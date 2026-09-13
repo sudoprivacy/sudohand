@@ -17,7 +17,7 @@ use sudohand_browser::{
 };
 
 struct BrowserWorker {
-    _chrome: Chrome,
+    chrome: Option<Chrome>,
     _browser: BrowserClient,
     tab: Tab,
     options: WorkerOptions,
@@ -57,6 +57,21 @@ impl PoolClient for BrowserWorker {
                 "this fixture owns disposable Chrome instances"
             );
             tools::cookies_save(&self.tab, self.options.cookies_file.as_deref(), None).await?;
+            // Dropping the process guard signals Chrome; on Linux the socket
+            // can outlive that signal. close() promises completed cleanup.
+            drop(self.chrome.take());
+            tokio::time::timeout(Duration::from_secs(5), async {
+                while sudohand_browser::port::is_port_in_use(self.options.port) {
+                    tokio::time::sleep(Duration::from_millis(25)).await;
+                }
+            })
+            .await
+            .map_err(|_| {
+                sudohand_browser::Error::Invalid(format!(
+                    "worker Chrome port {} stayed open after shutdown",
+                    self.options.port
+                ))
+            })?;
             Ok(())
         })
     }
@@ -104,7 +119,7 @@ async fn independent_chromes_persist_per_worker_cookies_and_close() {
                 tools::cookies_load(&tab, options.cookies_file.as_deref()).await?;
             }
             Ok(Box::new(BrowserWorker {
-                _chrome: chrome,
+                chrome: Some(chrome),
                 _browser: browser,
                 tab,
                 options,

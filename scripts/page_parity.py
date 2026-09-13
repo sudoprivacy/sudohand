@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare page/navigation contracts on a local, deterministic HTTP fixture."""
+"""Compare page/navigation and file output contracts on a local HTTP fixture."""
 import argparse
 import http.server
 import json
@@ -10,6 +10,9 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
+
+from PIL import Image
 
 
 def main():
@@ -20,7 +23,7 @@ def main():
     html = '<!doctype html><html><head><meta charset="utf-8"><title>Parity 页面</title></head><body><h1>Fixture 🙂</h1><input id="field" value="hello"><p>Deterministic content</p></body></html>'
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            body = html.encode()
+            body = b'fixture download \x00\xff' if self.path == '/fixture.bin' else html.encode()
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))
@@ -84,12 +87,67 @@ def main():
                 equivalent('page_wait_url', '--exact', url, omit=('elapsed',))
                 equivalent('page_wait_url', '--pattern', '/fixt.*', omit=('elapsed',))
                 equivalent('page_wait_url', '--exact', '', '--pattern', '/fixture', omit=('elapsed',))
-                equivalent('page_wait_url', '--exact', url, '--timeout', '0', omit=('elapsed',))
+                # A negative deadline is deterministic; Python wall-clock resolution
+                # can make a zero deadline either match once or expire first.
+                equivalent('page_wait_url', '--exact', url, '--timeout=-1', omit=('elapsed',))
                 equivalent('page_wait_url', '--exact', url + '/absent', '--timeout', '0', omit=('elapsed',))
                 equivalent('page_reload')
                 equivalent('page_wait_ready', '--idle-time', '0')
                 equivalent('page_reload', '--no-ignore-cache')
                 equivalent('page_wait_ready', '--idle-time', '0')
+                for label, flags in [
+                    ('viewport', []), ('full-page', ['--full-page']),
+                    ('raw-pixels', ['--no-css-scale']),
+                    ('long-edge', ['--max-long-edge', '320']),
+                    ('pixel-budget', ['--max-total-pixels', '60000']),
+                ]:
+                    path = Path(temporary) / f'{label}.png'
+                    outcomes = []
+                    for implementation in (python, rust):
+                        result = implementation('page_screenshot', *connection, '--path', path, *flags)
+                        assert Path(result['path']) == path and result['size'] == path.stat().st_size, result
+                        with Image.open(path) as image:
+                            image.load()
+                            assert image.size == (result['width'], result['height']), result
+                            metadata = json.loads(image.info['ai_dev_browser'])
+                            assert metadata['image_width'] == image.width and metadata['image_height'] == image.height, metadata
+                            assert metadata['scale_factor'] == result['scale_factor'], (metadata, result)
+                        if label == 'long-edge':
+                            assert max(result['width'], result['height']) <= 320
+                        if label == 'pixel-budget':
+                            assert result['width'] * result['height'] <= 60000
+                        result.pop('size')  # Encoder byte sizes differ; each was checked against disk.
+                        outcomes.append((result, metadata))
+                        path.unlink()
+                    assert outcomes[0] == outcomes[1], (label, outcomes)
+                    print(f'PASS screenshot {label}: dimensions, cap and embedded coordinate metadata', flush=True)
+                for label, flags in [('portrait', []), ('landscape', ['--landscape'])]:
+                    path = Path(temporary) / f'{label}.pdf'
+                    outcomes = []
+                    for implementation in (python, rust):
+                        result = implementation('page_pdf', *connection, '--path', path, *flags)
+                        content = path.read_bytes()
+                        assert content.startswith(b'%PDF-') and b'%%EOF' in content, result
+                        assert result['size'] == len(content) and result['pages'] == 1, result
+                        result.pop('size')  # PDF timestamps can change byte length between calls.
+                        outcomes.append(result)
+                        path.unlink()
+                    assert outcomes[0] == outcomes[1], (label, outcomes)
+                    print(f'PASS PDF {label}: file signature, byte count and result contract', flush=True)
+                folder = Path(temporary) / 'downloads'
+                folder.mkdir()
+                outcomes = []
+                for implementation in (python, rust):
+                    result = implementation('download', *connection, '--url', url.rsplit('/', 1)[0] + '/fixture.bin', '--path', folder)
+                    file = folder / 'fixture.bin'
+                    deadline = time.monotonic() + 5
+                    while not file.exists() and time.monotonic() < deadline:
+                        time.sleep(.05)
+                    assert file.read_bytes() == b'fixture download \x00\xff', result
+                    outcomes.append(result)
+                    file.unlink()
+                assert outcomes[0] == outcomes[1], outcomes
+                print('PASS download: matching result and exact binary file contents', flush=True)
             finally:
                 assert rust('browser_stop', *connection).get('stopped')
     finally:

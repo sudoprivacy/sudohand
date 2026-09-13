@@ -232,3 +232,17 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   returning the live URL. Reproducing that stale result would mislead callers.
 - Page contract suite is now included in the three-platform workflow. Strict
   workspace Clippy passes after these changes; full parity audit remains open.
+
+- File output differential checks pass locally: viewport/full-page/raw/capped
+  screenshots have matching dimensions and embedded coordinate metadata, each
+  reported byte size matches disk, portrait/landscape PDFs have valid signatures
+  and matching result schemas, and downloads contain the exact binary fixture.
+  Encoder/PDF byte sizes are validated independently, not required to be equal.
+- Corrected a timing-sensitive test: Python's time.time() can return the same
+  value twice, so timeout=0 with an already matching URL is nondeterministic.
+  A negative deadline tests timeout precedence deterministically; zero-deadline
+  nonmatching and missing-selector cases remain covered.
+- Linux run 34786748286 exposed a shutdown race in the real pool test client's
+  close implementation: dropping its Chrome guard signals the process without
+  awaiting socket release. The client now waits up to five seconds for its own
+  port to close before returning; the final no-listener assertion is retained.
