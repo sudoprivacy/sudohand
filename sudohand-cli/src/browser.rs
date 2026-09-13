@@ -1081,9 +1081,16 @@ async fn ensure_bridge() -> sudohand_browser::Result<()> {
 }
 
 fn transport(explicit: Option<&str>) -> String {
+    transport_with_env(
+        explicit,
+        std::env::var("AI_DEV_BROWSER_TRANSPORT").ok().as_deref(),
+    )
+}
+
+fn transport_with_env(explicit: Option<&str>, configured: Option<&str>) -> String {
     explicit
         .map(str::to_owned)
-        .or_else(|| std::env::var("AI_DEV_BROWSER_TRANSPORT").ok())
+        .or_else(|| configured.map(str::to_owned))
         .unwrap_or_else(|| "cdp".into())
 }
 
@@ -1889,4 +1896,66 @@ pub fn run(cmd: Cmd) -> sudohand_core::Result<Value> {
         .build()
         .map_err(|e| sudohand_core::Error::internal(format!("tokio: {e}")))?;
     rt.block_on(run_flow(cmd))
+}
+
+#[cfg(test)]
+mod parity_defaults {
+    use super::*;
+
+    #[test]
+    fn scalar_and_boolean_defaults_match_reference_parser() {
+        let expected: Vec<Value> =
+            serde_json::from_str(include_str!("../tests/fixtures/browser-cli-defaults.json"))
+                .unwrap();
+        let mut command = Cmd::augment_subcommands(clap::Command::new("browser"));
+        command.build();
+        let mut differences = Vec::new();
+        for row in expected {
+            let name = row["command"].as_str().unwrap();
+            let flag = row["flag"].as_str().unwrap();
+            let action = command.find_subcommand(name).unwrap();
+            let argument = action
+                .get_arguments()
+                .find(|arg| arg.get_long() == Some(flag))
+                .unwrap();
+            let mut actual = argument
+                .get_default_values()
+                .first()
+                .map(|value| value.to_string_lossy().into_owned());
+            // These two implementations store opposite sides of --no-*:
+            // argparse stores the enabled value; our SetTrue stores disabled.
+            if flag.starts_with("no-") && matches!(argument.get_action(), clap::ArgAction::SetTrue)
+            {
+                actual = actual
+                    .and_then(|value| value.parse::<bool>().ok())
+                    .map(|value| (!value).to_string());
+            }
+            // Transport resolves an absent flag after consulting the environment.
+            if name == "browser_connect" && flag == "transport" {
+                actual = Some(transport_with_env(actual.as_deref(), None));
+            }
+            let wanted = &row["default"];
+            let matches = match (actual.as_deref(), wanted) {
+                (Some(actual), Value::String(wanted)) => actual == wanted,
+                (Some(actual), Value::Bool(wanted)) => actual.parse::<bool>().ok() == Some(*wanted),
+                (Some(actual), Value::Number(wanted)) => {
+                    actual.parse::<f64>().ok() == wanted.as_f64()
+                }
+                _ => false,
+            };
+            if !matches {
+                differences.push(format!(
+                    "{name} --{flag}: reference={wanted}, rust={actual:?}"
+                ));
+            }
+        }
+        assert!(differences.is_empty(), "{}", differences.join("\n"));
+    }
+
+    #[test]
+    fn transport_default_and_explicit_precedence() {
+        assert_eq!(transport_with_env(None, None), "cdp");
+        assert_eq!(transport_with_env(None, Some("extension")), "extension");
+        assert_eq!(transport_with_env(Some("cdp"), Some("extension")), "cdp");
+    }
 }

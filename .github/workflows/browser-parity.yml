@@ -64,9 +64,10 @@ jobs:
         run: |
           cargo build -p sudohand-cli
           cargo test -p sudohand-cli --test browser_dispatch
+          cargo test -p sudohand-cli parity_defaults
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
-          python scripts/cli_parity.py --suh "$executable" --reference .parity-reference
+          python scripts/cli_parity.py --suh "$executable" --reference .parity-reference --check-defaults sudohand-cli/tests/fixtures/browser-cli-defaults.json
       - name: Real browser and SDK regression
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash

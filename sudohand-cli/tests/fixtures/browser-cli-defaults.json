@@ -1,0 +1,372 @@
+[
+  {
+    "command": "browser_cleanup",
+    "flag": "dry-run",
+    "default": false
+  },
+  {
+    "command": "browser_connect",
+    "flag": "transport",
+    "default": "cdp"
+  },
+  {
+    "command": "browser_list",
+    "flag": "all-workspaces",
+    "default": false
+  },
+  {
+    "command": "browser_start",
+    "flag": "temp",
+    "default": false
+  },
+  {
+    "command": "browser_start",
+    "flag": "reuse",
+    "default": "any"
+  },
+  {
+    "command": "browser_start",
+    "flag": "silent-stderr",
+    "default": false
+  },
+  {
+    "command": "browser_start",
+    "flag": "no-stealth",
+    "default": true
+  },
+  {
+    "command": "browser_stop",
+    "flag": "stop-all",
+    "default": false
+  },
+  {
+    "command": "click_by_ref",
+    "flag": "no-human-like",
+    "default": true
+  },
+  {
+    "command": "click_by_text",
+    "flag": "timeout",
+    "default": 10
+  },
+  {
+    "command": "click_by_text",
+    "flag": "no-human-like",
+    "default": true
+  },
+  {
+    "command": "click_row_by_text",
+    "flag": "double",
+    "default": false
+  },
+  {
+    "command": "click_row_by_text",
+    "flag": "nth",
+    "default": 0
+  },
+  {
+    "command": "click_row_by_text",
+    "flag": "checkbox",
+    "default": false
+  },
+  {
+    "command": "cookies_extract_offline",
+    "flag": "browser",
+    "default": "chrome"
+  },
+  {
+    "command": "cookies_import",
+    "flag": "browser",
+    "default": "chrome"
+  },
+  {
+    "command": "dialog_respond",
+    "flag": "action",
+    "default": "accept"
+  },
+  {
+    "command": "dialog_respond",
+    "flag": "auto-handle",
+    "default": false
+  },
+  {
+    "command": "dialog_respond",
+    "flag": "wait-timeout",
+    "default": 0
+  },
+  {
+    "command": "download_link",
+    "flag": "timeout",
+    "default": 30.0
+  },
+  {
+    "command": "drag_by_ref",
+    "flag": "steps",
+    "default": 10
+  },
+  {
+    "command": "find_by_text",
+    "flag": "interactable-only",
+    "default": false
+  },
+  {
+    "command": "highlight_by_ref",
+    "flag": "duration",
+    "default": 2.0
+  },
+  {
+    "command": "mouse_click",
+    "flag": "button",
+    "default": "left"
+  },
+  {
+    "command": "mouse_click",
+    "flag": "modifiers",
+    "default": 0
+  },
+  {
+    "command": "mouse_click",
+    "flag": "double",
+    "default": false
+  },
+  {
+    "command": "mouse_click",
+    "flag": "no-human-like",
+    "default": true
+  },
+  {
+    "command": "mouse_click",
+    "flag": "no-move",
+    "default": true
+  },
+  {
+    "command": "mouse_drag",
+    "flag": "steps",
+    "default": 10
+  },
+  {
+    "command": "mouse_move",
+    "flag": "steps",
+    "default": 10
+  },
+  {
+    "command": "mouse_move",
+    "flag": "no-human-like",
+    "default": true
+  },
+  {
+    "command": "page_discover",
+    "flag": "no-interactable-only",
+    "default": true
+  },
+  {
+    "command": "page_discover",
+    "flag": "no-include-coordinates",
+    "default": true
+  },
+  {
+    "command": "page_discover",
+    "flag": "no-include-iframes",
+    "default": true
+  },
+  {
+    "command": "page_discover",
+    "flag": "no-dom-scan",
+    "default": true
+  },
+  {
+    "command": "page_discover",
+    "flag": "dom-limit",
+    "default": 200
+  },
+  {
+    "command": "page_emulate_focus",
+    "flag": "no-enabled",
+    "default": true
+  },
+  {
+    "command": "page_goto",
+    "flag": "tab-new",
+    "default": false
+  },
+  {
+    "command": "page_goto",
+    "flag": "no-wait",
+    "default": true
+  },
+  {
+    "command": "page_html",
+    "flag": "outer",
+    "default": false
+  },
+  {
+    "command": "page_pdf",
+    "flag": "landscape",
+    "default": false
+  },
+  {
+    "command": "page_pdf",
+    "flag": "no-print-background",
+    "default": true
+  },
+  {
+    "command": "page_pdf",
+    "flag": "scale",
+    "default": 1.0
+  },
+  {
+    "command": "page_pdf",
+    "flag": "paper-width",
+    "default": 8.5
+  },
+  {
+    "command": "page_pdf",
+    "flag": "paper-height",
+    "default": 11.0
+  },
+  {
+    "command": "page_pdf",
+    "flag": "margin-top",
+    "default": 0.0
+  },
+  {
+    "command": "page_pdf",
+    "flag": "margin-bottom",
+    "default": 0.0
+  },
+  {
+    "command": "page_pdf",
+    "flag": "margin-left",
+    "default": 0.0
+  },
+  {
+    "command": "page_pdf",
+    "flag": "margin-right",
+    "default": 0.0
+  },
+  {
+    "command": "page_pdf",
+    "flag": "page-ranges",
+    "default": ""
+  },
+  {
+    "command": "page_reload",
+    "flag": "no-ignore-cache",
+    "default": true
+  },
+  {
+    "command": "page_screenshot",
+    "flag": "full-page",
+    "default": false
+  },
+  {
+    "command": "page_screenshot",
+    "flag": "no-css-scale",
+    "default": true
+  },
+  {
+    "command": "page_screenshot",
+    "flag": "max-long-edge",
+    "default": 1280
+  },
+  {
+    "command": "page_screenshot",
+    "flag": "max-total-pixels",
+    "default": 1150000
+  },
+  {
+    "command": "page_scroll",
+    "flag": "direction",
+    "default": "down"
+  },
+  {
+    "command": "page_scroll",
+    "flag": "amount",
+    "default": 25
+  },
+  {
+    "command": "page_scroll",
+    "flag": "to-bottom",
+    "default": false
+  },
+  {
+    "command": "page_scroll",
+    "flag": "to-top",
+    "default": false
+  },
+  {
+    "command": "page_wait_element",
+    "flag": "timeout",
+    "default": 30
+  },
+  {
+    "command": "page_wait_ready",
+    "flag": "timeout",
+    "default": 30
+  },
+  {
+    "command": "page_wait_ready",
+    "flag": "idle-time",
+    "default": 0.5
+  },
+  {
+    "command": "page_wait_url",
+    "flag": "timeout",
+    "default": 30
+  },
+  {
+    "command": "press_key",
+    "flag": "modifiers",
+    "default": 0
+  },
+  {
+    "command": "type_by_ref",
+    "flag": "clear",
+    "default": false
+  },
+  {
+    "command": "type_by_ref",
+    "flag": "enter",
+    "default": false
+  },
+  {
+    "command": "type_by_ref",
+    "flag": "keystrokes",
+    "default": false
+  },
+  {
+    "command": "type_by_ref",
+    "flag": "human-like",
+    "default": false
+  },
+  {
+    "command": "type_by_text",
+    "flag": "clear",
+    "default": false
+  },
+  {
+    "command": "type_by_text",
+    "flag": "timeout",
+    "default": 10
+  },
+  {
+    "command": "type_by_text",
+    "flag": "no-human-like",
+    "default": true
+  },
+  {
+    "command": "type_by_text",
+    "flag": "enter",
+    "default": false
+  },
+  {
+    "command": "type_by_text",
+    "flag": "keystrokes",
+    "default": false
+  },
+  {
+    "command": "window_set",
+    "flag": "focus",
+    "default": false
+  }
+]

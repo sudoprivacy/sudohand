@@ -257,3 +257,15 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
 - CI now separates successful CLI compilation/declaration checks from browser
   and SDK regression. Independent differential stages still run when a browser
   regression fails, preserving failure visibility without relaxing any gate.
+
+- Default audit now checks 33 displayed scalar defaults and a generated fixture
+  of all 74 non-null scalar/boolean defaults from the pinned argparse parsers.
+  Rust tests compare the built Clap tree, normalizing --no-* boolean polarity
+  and the deferred CDP transport fallback. Both tests and strict Clippy pass;
+  CI verifies the fixture against Python and runs the Rust comparisons.
+- Transport selection continues honoring AI_DEV_BROWSER_TRANSPORT when no flag
+  is supplied, including browser_connect. This follows the reference's public
+  documentation; its non-tab browser_connect CLI currently passes its literal
+  cdp default and does not consult that environment variable. Explicit arguments
+  still win. Nullable and environment-driven defaults need behavioral checks,
+  rather than treating absent parser values as equal effective configuration.
