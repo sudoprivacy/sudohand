@@ -119,20 +119,16 @@ pub async fn cookies_save(tab: &Tab, path: Option<&Path>, pattern: Option<&str>)
     }))
 }
 
-/// Load cookies from a JSON file into the browser. `{path, loaded}` or
+/// Load cookies from JSON or a legacy pickle file into the browser. `{path, loaded}` or
 /// `{error}` when the file is missing.
 pub async fn cookies_load(tab: &Tab, path: Option<&Path>) -> Result<Value> {
     let path = expand(path);
     if !path.exists() {
         return Ok(json!({"error": format!("Cookies file not found: {}", path.display())}));
     }
-    let raw = std::fs::read_to_string(&path)?;
-    let cookies: Vec<Value> = serde_json::from_str(&raw).map_err(|e| {
-        Error::Invalid(format!(
-            "{}: not a JSON cookie file ({e}); legacy pickle files are not supported",
-            path.display()
-        ))
-    })?;
+    let raw = std::fs::read(&path)?;
+    let cookies = decode_cookie_file(&raw)
+        .map_err(|error| Error::Invalid(format!("{}: {error}", path.display())))?;
     let params: Vec<CookieParam> = cookies
         .into_iter()
         .filter_map(|c| cookie_to_param(&c))
@@ -172,4 +168,88 @@ pub fn cookie_to_param(c: &Value) -> Option<CookieParam> {
         }
     }
     serde_json::from_value(v).ok()
+}
+
+/// Decode old Cookie instance state as data; no Python code or constructors run.
+fn decode_cookie_file(raw: &[u8]) -> Result<Vec<Value>> {
+    if let Ok(cookies) = serde_json::from_slice::<Vec<Value>>(raw) {
+        return Ok(cookies);
+    }
+    let cookies: Vec<Value> =
+        serde_pickle::from_slice(raw, serde_pickle::DeOptions::new().keep_restore_state())
+            .map_err(|error| {
+                Error::Invalid(format!("invalid JSON or legacy cookie file: {error}"))
+            })?;
+    cookies
+        .into_iter()
+        .map(|cookie| {
+            let Value::Object(mut fields) = cookie else {
+                return Err(Error::Invalid(
+                    "legacy cookie must contain a field dictionary".into(),
+                ));
+            };
+            for (old, new) in [
+                ("http_only", "httpOnly"),
+                ("same_site", "sameSite"),
+                ("source_scheme", "sourceScheme"),
+                ("source_port", "sourcePort"),
+                ("same_party", "sameParty"),
+                ("partition_key", "partitionKey"),
+                ("partition_key_opaque", "partitionKeyOpaque"),
+            ] {
+                if let Some(value) = fields.remove(old) {
+                    fields.insert(new.into(), value);
+                }
+            }
+            for key in ["priority", "sameSite", "sourceScheme"] {
+                if let Some(Value::Array(values)) = fields.get_mut(key) {
+                    if values.len() == 1 {
+                        let value = values.remove(0);
+                        fields.insert(key.into(), value);
+                    }
+                }
+            }
+            if let Some(Value::Object(partition)) = fields.get_mut("partitionKey") {
+                for (old, new) in [
+                    ("top_level_site", "topLevelSite"),
+                    ("has_cross_site_ancestor", "hasCrossSiteAncestor"),
+                ] {
+                    if let Some(value) = partition.remove(old) {
+                        partition.insert(new.into(), value);
+                    }
+                }
+            }
+            fields.retain(|_, value| !value.is_null());
+            let cookie = Value::Object(fields);
+            if cookie_to_param(&cookie).is_none() {
+                return Err(Error::Invalid("invalid fields in legacy cookie".into()));
+            }
+            Ok(cookie)
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod legacy_tests {
+    use super::*;
+
+    #[test]
+    fn python_cookie_instances_match_json_across_pickle_protocols() {
+        let expected: Vec<Value> =
+            serde_json::from_str(include_str!("../tests/fixtures/legacy-cookies.json")).unwrap();
+        for raw in [
+            include_bytes!("../tests/fixtures/legacy-cookies-p2.pickle").as_slice(),
+            include_bytes!("../tests/fixtures/legacy-cookies-p4.pickle").as_slice(),
+            include_bytes!("../tests/fixtures/legacy-cookies-p5.pickle").as_slice(),
+        ] {
+            assert_eq!(decode_cookie_file(raw).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn malformed_and_non_cookie_pickle_are_rejected() {
+        assert!(decode_cookie_file(b"not a cookie file").is_err());
+        // A global/reduce record is parsed as data, never invoked as Python.
+        assert!(decode_cookie_file(b"(lp0\ncbuiltins\neval\n(S'1 + 1'\ntRa.").is_err());
+    }
 }

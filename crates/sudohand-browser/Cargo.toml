@@ -34,6 +34,7 @@ sysinfo = { version = "0.37", default-features = false, features = ["system"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 tempfile = "3"
+serde-pickle = "1.2.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 aes-gcm = "0.10"

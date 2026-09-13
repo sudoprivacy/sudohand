@@ -12,6 +12,7 @@ import hashlib
 import http.server
 import json
 import os
+import pickle
 from pathlib import Path
 import socket
 import shlex
@@ -136,6 +137,27 @@ def main():
             old = rust('cookies_list', *flags, '--domain', 'example.test')
             assert old['cookies'][0]['value'] == 'x' * 50 + '...'
             print('PASS live: full values, HttpOnly, expiry, domain filters, schema; legacy preview preserved')
+            fixtures = Path(__file__).resolve().parents[1] / 'crates' / 'sudohand-browser' / 'tests' / 'fixtures'
+            sys.path.insert(0, reference)
+            from ai_dev_browser.cdp.network import Cookie
+            expected_cookie = json.loads((fixtures / 'legacy-cookies.json').read_text(encoding='utf-8'))[0]
+            # Keep the fixture unexpired without triggering Chrome's lifetime cap.
+            expected_cookie['expires'] = int(time.time()) + 3600
+            for protocol in (2, 4, 5):
+                source = root / f'legacy-cookies-p{protocol}.pickle'
+                source.write_bytes(pickle.dumps([Cookie.from_json(expected_cookie)], protocol=protocol))
+                outcomes = []
+                for implementation in (python, rust):
+                    rust('cdp_send', *flags, '--method', 'Storage.clearCookies')
+                    loaded = implementation('cookies_load', *flags, '--path', source)
+                    assert loaded == {'path': str(source), 'loaded': True}, loaded
+                    live = rust('cdp_send', *flags, '--method', 'Storage.getCookies')['result']['cookies']
+                    assert len(live) == 1 and live[0]['value'] == '中文-value', live
+                    assert live[0]['sameSite'] == 'Lax' and live[0]['priority'] == 'High', live
+                    assert live[0]['httpOnly'] and live[0]['secure'] and live[0]['expires'] == expected_cookie['expires'], live
+                    outcomes.append(live)
+                assert outcomes[0] == outcomes[1], (protocol, outcomes)
+            print('PASS legacy cookie migration: protocols 2/4/5 load identical live Chrome cookies')
         finally:
             result = rust('browser_stop', *flags)
             assert result.get('stopped'), result
