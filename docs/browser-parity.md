@@ -192,3 +192,15 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
 - The post-dispatch cookie/identity/proxy/cleanup differential suite passed locally.
   macOS third CI passed browser, cookies and input suites but failed the CfT
   extension handshake, matching the local reproducer. That issue remains open.
+
+- Pool scheduling is now implemented: per-worker client factories and browser
+  lifecycle, held/batch submission, dynamic workers, FIFO front/back retries,
+  terminal error metadata, business outcomes, shared progress targets, selection
+  guards, cancellation/recovery, and transactional submission checkpoints.
+  Recovery deduplicates reference snapshots that contain an active job in both
+  pending and in_progress; failed checkpoint writes do not expose a new job.
+- Per-job min_success takes precedence over shared defaults (including explicit
+  null). ui_delay is removed from invocation kwargs, temporarily applied through
+  PoolClient::replace_ui_delay, and restored after success, panic or cancellation.
+  Nine scheduler tests and five snapshot/profile tests pass. Workspace strict
+  Clippy passes with the scheduler. Full SDK differential audit is still pending.

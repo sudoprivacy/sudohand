@@ -42,8 +42,11 @@ impl PoolState {
     /// IDs, retry budgets and completed results; never rerun completed work.
     pub fn resume(&mut self) {
         self.pending.append(&mut self.in_progress);
-        self.pending
-            .retain(|job| !self.completed.contains_key(&job.job_id));
+        // The reference can put the same active job in both lists.
+        let mut seen = std::collections::HashSet::new();
+        self.pending.retain(|job| {
+            !self.completed.contains_key(&job.job_id) && seen.insert(job.job_id.clone())
+        });
         for job in &mut self.pending {
             job.status = JobStatus::Pending;
         }

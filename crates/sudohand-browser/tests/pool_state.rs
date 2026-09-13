@@ -60,6 +60,8 @@ fn python_snapshot_roundtrip_and_recovery() {
         failure.error_bases,
         ["OSError", "Exception", "BaseException"]
     );
+    // BrowserPool.save_state in Python can list the same job twice.
+    state.pending.push(state.in_progress[0].clone());
     state.resume();
     assert!(state.in_progress.is_empty());
     assert_eq!(
