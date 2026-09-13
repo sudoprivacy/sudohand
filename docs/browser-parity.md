@@ -34,35 +34,32 @@ website's interactive authentication or MFA.
 
 ## Cross-platform acceptance
 
-Last completed run:
-[34789303637](https://github.com/sudoprivacy/sudohand/actions/runs/34789303637)
-(`0ec1b96`): Linux and macOS passed completely. Windows passed every
-CLI differential stage, including downloads, extension cleanup and native input;
-one of 26 Rust browser integration tests failed while launching Chrome, before
-exercising its page behavior. The browser never published DevTools within 60s.
-The SDK tests later in that Rust command did not run after the failure.
-
-Earlier runs passed complete Linux and macOS jobs and Windows browser/SDK,
-pipe-EOF, cookie/proxy, extension, typing and native mouse behavior. Windows
-runtime exposed a silent download failure with canonical verbatim paths; the
-Windows runtime now passes after normalizing drive/UNC paths before Chrome. Separate
-post-test Windows file-lock failures led to fixture cleanup that waits for its
-owned Chrome descendants. The startup investigation separately reproduced an unread-stderr pipe deadlock:
-a noisy Chrome wrapper failed before the fix and started successfully after it.
-Startup now drains stderr continuously, retains only a 16 KiB diagnostic tail,
-and includes it on timeout. A real subprocess writes 1 MiB through the pipe in
-a regression test. This is not proof of the original Windows timeout's cause;
-the new revision still requires cross-platform validation. A second reproduced
-startup defect is also fixed: `--no-startup-window` supplied through Chrome
-argument overrides now skips the initial-page requirement, just like the same
-flag in raw extra arguments. Its real-browser regression verifies an empty
-initial tab list and subsequent on-demand tab creation. Neither superseded
-cancellations nor earlier-head passes count as final-candidate acceptance.
+[Run 34790204508](https://github.com/sudoprivacy/sudohand/actions/runs/34790204508)
+passed all Linux, macOS and Windows jobs at runtime/test revision `28ff955`.
+The subsequent documentation commit only records these results. Coverage includes
+real browser/SDK regressions, CLI pipe EOF, cookie/proxy/cleanup comparisons,
+page/download contracts, real extension transport/reconnection, click/typing,
+and real native mouse on Linux and Windows.
 
 The running Python scheduler differential covers eight scenarios: both queue
 policies and retry budgets 0/1/2/unlimited, with exact call order, terminal
 results, error ancestry, business outcomes, statistics and close counts. CI
 regenerates the fixture; Rust executes and compares the same cases.
+
+Runtime verification found and fixed silent Windows downloads caused by verbatim
+paths, fixture cleanup racing Chrome's file handles, and startup waiting for a
+page despite `--no-startup-window` supplied through argument overrides. A noisy
+Chrome wrapper also reproduced an unread-stderr pipe deadlock; it starts
+successfully after continuous stderr draining, which retains only a 16 KiB tail.
+A subprocess regression writes 1 MiB through that pipe. The ignored child helper
+is explicitly executed by its parent test; it is not a skipped browser scenario.
+
+Earlier Windows runs also recorded an isolated startup timeout (`0ec1b96`) and
+a WebSocket disconnect while discovering elements after a screenshot (`69cf4d5`).
+The exact causes of those occurrences were not established; the latest full run
+passed, but it would be inaccurate to claim those historical failures were
+conclusively fixed by the stderr change. Superseded workflow cancellations are
+not counted as failures or passes.
 
 ## Compatibility choices
 
