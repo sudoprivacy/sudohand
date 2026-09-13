@@ -1,356 +1,114 @@
-# ai-dev-browser parity work
+# ai-dev-browser compatibility
 
-Reference: ai-dev-browser default branch commit
+Reference: `sudoprivacy/ai-dev-browser` commit
 `94170d23f65f5f9140792d1de4a158c086a39325` (2026-09-13).
 Starting sudohand revision: `c62b244a43d53bb87e1f14e97c5858ce41480745`.
 
-This is an implementation and verification checklist, not a claim of parity.
-CLI discovery alone is not sufficient evidence. Preserve existing suh aliases
-while adding the reference names, flags, defaults, and result contracts.
+**Status: implementation and verification in progress. This is not a claim of
+complete parity.** Command declarations alone do not establish working behavior.
 
-## Required evidence
+## Verified coverage
 
-- [ ] All 59 reference CLI operations present; compare signatures/defaults and outputs.
-- [ ] Existing page, element, screenshot/PDF, mouse, tabs, storage, download and dialog behavior compared against local deterministic fixtures.
-- [x] Live/offline cookie extraction returns complete values and the reference array schema; empty-domain filtering and session expiry match.
-- [ ] Windows offline decryption implemented and tested using synthetic DPAPI/AES fixtures (no personal cookies).
-- [ ] Browser startup stealth default, explicit timezone/geolocation/locale and proxy-egress auto-match; identity persists across CLI calls and new targets.
-- [ ] CDP connect + extension bridge connect/disconnect, setup diagnostics, real-profile selection and popup/tab lifecycle.
-- [ ] Managed-browser inventory, orphan-only cleanup, scope validation and dry-run; external Chrome is preserved.
-- [ ] OS-input click fallback and configuration match, including clear unsupported/missing-backend errors.
-- [ ] Python SDK public capabilities inventoried; corresponding Rust browser/pool/job/persistence behavior covered, without promising Python import compatibility.
-- [ ] CLI errors, environment variables, coordinate scaling, iframe refs and session lifecycle compared.
-- [ ] Real Chrome end-to-end and differential tests pass; extension exercised in Chrome, not just a mock bridge.
-- [ ] Workspace fmt, strict Clippy, tests and relevant cross-platform CI pass.
-- [ ] PR opened with actual evidence and any compatibility notes; all requirements above verified before claiming completion.
+| Area | Evidence |
+| --- | --- |
+| CLI surface | All 59 reference operation names and 382 long-option declarations; 33 displayed defaults and 74 parsed non-null scalar/boolean defaults (`scripts/cli_parity.py`, CLI `parity_defaults` tests). Existing suh aliases remain available. |
+| Browser startup and identity | Stealth defaults, explicit timezone/geolocation/locale, persistence across independent CLI calls and new tabs. Local proxy fixture verifies geo lookup travels through Chrome; no public geo service is required. |
+| Cookies | Full live/offline arrays, long values, Unicode, HttpOnly, domain/session/expiry semantics; Windows synthetic DPAPI/AES-GCM decryption passed hosted CI. Legacy pickle protocols 2/4/5 import into real Chrome with equivalent fields. |
+| Cookie filtering | Actual saved-file comparison for empty patterns, quoted dictionary fields, booleans, lookbehind and numbered/named backreferences. Files remain JSON. |
+| Inventory and cleanup | Native process inventory, validated launch registry, dry-run, scoped orphan cleanup, idempotency and preservation of external Chrome. Stop-all is restricted to validated managed browsers. |
+| Page and locators | URL/HTML/JS/console contracts, readiness/URL deadlines, HTML-id/XPath/text locators in top and same-origin frames, seven discovery option combinations. CSS/text element waits check visibility, deadlines and usable element refs. |
+| Ref operations and artifacts | Focus, hover, HTML, Home key, selection and multi-file upload checked against DOM state. Screenshot dimensions, caps and coordinate metadata; PDF file structure/size; binary download file contents. |
+| Input | Twelve verified-typing cases through two locators; trusted/synthetic/JS click fallback and explicit OS opt-out. Real native mouse passed on local macOS, hosted Linux/Xvfb and hosted Windows (run 34787941181). An intermittent Windows visible-browser launch failure remains under diagnosis. |
+| Extension | Independently implemented extension and WebSocket bridge, actual Chrome handshake, target routing, separate CLI reuse, clicks/screenshots, popup adoption, preservation of unrelated tabs and bridge shutdown without killing Chrome. Hosted Linux, macOS and Windows extension tests have passed. |
+| Rust SDK pool | Job/result/state schemas compared to reference-generated fixtures; 12 scheduler tests for retries, scaling, held jobs, shared progress, selection, cancellation, recovery and interrupted shutdown. Real two-Chrome test covers concurrent execution, per-worker cookies, restoration and cleanup. See [the pool guide](browser-pool.md). |
+| CLI lifecycle | Flattened parser groups and boxed command futures avoid Windows/Tokio stack overflow. A real pipe-EOF regression requires Chrome to remain alive after the launching CLI exits; passed on Windows. |
 
-## Evidence log
+The main Rust browser integration suite has 26 real Chrome tests. The complete
+workspace passed locally after the regex/text-ref changes; the subsequent pool
+shutdown change passed all 12 scheduler tests and strict workspace Clippy.
 
-- Initial audit: 54 identical command names; missing reference names include
-  browser_connect, browser_disconnect, browser_cleanup, cookies_extract_live,
-  cookies_extract_offline. Existing cookies_list truncates values at 50 characters
-  and wraps them in an object, so it is not an alias for cookies_extract_live.
-- Local baseline probe used a synthetic 80-character cookie on `.example.test`:
-  ai-dev-browser returned 80 characters; suh cookies_list returned 50 + ellipsis.
+## Remaining acceptance work
 
-- Cookie differential suite passed locally against the pinned reference: full values, Unicode offline values, session/persistent expiry, HttpOnly, empty/missing/domain filters and legacy preview preservation. Windows crypto implementation is pending Windows validation.
+- [ ] Resolve Windows download and visible-browser/native-input failures on the
+  current branch; diagnose the intermittent reference proxy-start failure.
+- [ ] Finish remaining operation/default/error/iframe/session comparisons,
+  including row clicks, scrolling, download-link and extension restart/account
+  lifecycle. Existing Rust tests cover portions of this surface but are not a
+  substitute for the remaining differential checks.
+- [x] Compare SDK scheduling against a running Python reference: eight scenarios
+  cover both queue policies and retry budgets 0/1/2/unlimited, with exact call
+  order, terminal results, error ancestry, business outcomes, statistics and
+  close counts. CI regenerates the shared fixture; Rust executes the same cases.
+- [ ] Verify final-head cross-platform CI, workspace format, strict Clippy and
+  tests, then open the PR with actual results and compatibility notes.
 
-- Real Chrome regression after stealth/registry changes: 26 integration tests passed.
-- Identity differential passed for independent Rust/Python CLI calls and a new tab.
-  A local fake forward proxy served a deliberately unresolvable geo hostname:
-  both implementations queried through Chrome, parsed ipinfo-style location,
-  persisted Europe/Paris, and left locale unchanged. No public geo service used.
-- macOS strict Clippy passed for browser + CLI; Windows target check passed for
-  identity and cookie changes. These cross-compiles do not validate Windows runtime behavior.
+Run [34787792557](https://github.com/sudoprivacy/sudohand/actions/runs/34787792557)
+passed complete Linux and macOS jobs. Windows passed real browser/SDK, pipe EOF,
+extension, click and typing stages but failed proxy/download/native stages.
+Run [34787941181](https://github.com/sudoprivacy/sudohand/actions/runs/34787941181)
+also passed complete Linux/macOS jobs; its Windows proxy and native mouse stages
+passed, with only the download stage failing. The earlier proxy/visible-browser
+failures need a race diagnosis. These are earlier-head
+results, not a final acceptance result. Superseded workflow cancellations are
+not counted as test failures or passes.
 
-## Intentional compatibility details under review
+## Compatibility choices
 
-- Inventory uses native Rust `sysinfo`, with `process_inventory: "sysinfo"`
-  instead of claiming that Python's optional `psutil` is installed. Browser rows
-  and `by_origin` follow the reference full-inventory schema; temporary profiles
-  have a null workspace slug and external rows can have a null debugging port.
-- Cleanup protects any process with a listening debugging port, even if its CDP
-  endpoint is temporarily unresponsive. Managed profile checks use path components,
-  and temporary ownership also requires the OS temporary directory. This avoids
-  prefix collisions and preserves external browser processes.
+- Keep suh's structured error envelope and nonzero failure exits. Recovery hints
+  are independently worded; tests compare their presence/usefulness rather than
+  copying the reference documentation verbatim.
+- `page_goto` reports the live destination URL. The reference returns a stale
+  pre-navigation target snapshot even when navigation succeeds.
+- `storage_get/storage_set` use working Tab storage methods. The pinned reference
+  CLI calls nonexistent `get_local_storage/set_local_storage` methods.
+- `browser_connect` honors the transport environment variable; an explicit flag
+  wins. The reference's standalone CLI currently forces its default CDP value.
+- The old `cookies_list` preview remains available; `cookies_extract_live` returns
+  complete values. Legacy pickle import parses data without executing Python
+  globals/constructors. New files use interoperable JSON.
+- User regexes support lookaround and backreferences through fancy-regex, with a
+  bounded backtracking budget; this is not a promise that every Python `re`
+  construct has identical semantics. Cookie filters search dictionary-style text.
+- Inventory identifies its native backend as `sysinfo`, rather than claiming
+  Python `psutil` is present. Process cleanup validates profile ownership and
+  protects live debug listeners, including temporarily unresponsive ones.
+- Pool recovery deduplicates reference checkpoints containing the same active job
+  twice. Graceful worker removal finishes its current task. These intentionally
+  correct reference behavior rather than duplicating lost/duplicate work.
+- The Rust SDK supplies equivalent capabilities through Rust traits and futures;
+  it does not provide Python source/import compatibility.
+- ai-dev-browser is AGPL-3.0; sudohand is MIT. The extension and new implementations
+  are independent, not copied reference assets relabeled as MIT.
 
-## Reproduce the differential suite
+## Reproduction
 
-Use a Python environment with the pinned reference's dependencies (including
-`psutil`; on Windows also `cryptography`) and an installed Chrome. Then:
+Install Chrome and a Python environment with `websockets`, `websocket-client`,
+`Pillow`, `deprecated`, `psutil`, `cryptography` and `rapidfuzz`. Check out the
+pinned reference revision, then run from this repository:
 
 ```sh
 cargo build -p sudohand-cli
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace -- --test-threads=4
+python scripts/test_parity_process.py
+python scripts/stdio_parity.py --suh target/debug/suh
+python scripts/cli_parity.py --suh target/debug/suh --reference /path/to/ai-dev-browser --check-defaults sudohand-cli/tests/fixtures/browser-cli-defaults.json
+python scripts/pool_parity.py --reference /path/to/ai-dev-browser --fixture crates/sudohand-browser/tests/fixtures/pool-scheduler.json
 python scripts/browser_parity.py --suh target/debug/suh --reference /path/to/ai-dev-browser
+python scripts/page_parity.py --suh target/debug/suh --reference /path/to/ai-dev-browser
+python scripts/click_parity.py --suh target/debug/suh --reference /path/to/ai-dev-browser
+python scripts/typing_parity.py --suh target/debug/suh --reference /path/to/ai-dev-browser
+python scripts/extension_parity.py --suh target/debug/suh --chrome /path/to/chrome --reference /path/to/ai-dev-browser
 ```
 
-The script isolates HOME/USERPROFILE, creates only synthetic cookie databases,
-uses a local proxy fixture, and scopes real orphan cleanup to its own named profile.
+On Windows use `target/debug/suh.exe`. `AI_DEV_BROWSER_CHROME` selects Chrome for
+other scripts. The native mouse test additionally needs `pyautogui` and a visible
+desktop (Linux CI uses Xvfb); pass `--native` to `click_parity.py`. It restores the
+cursor and closes its disposable browser. All cookie/profile fixtures are
+synthetic and cleanup is scoped to processes owned by the tests.
 
-- Scoped cleanup differential passed locally: synthetic orphan and external Chrome
-  inventory, Python/Rust dry-run agreement, actual named-profile orphan termination,
-  external process survival, and idempotent second cleanup. No unrelated processes killed.
-- All 26 real Chrome integration tests passed again after inventory/cleanup changes.
-  Strict Windows-target Clippy also passed with sysinfo; Windows runtime remains untested.
-- Remaining major implementation work: CDP/extension connect/disconnect, extension
-  transport and real Chrome extension tests, native OS click fallback, complete command
-  contract comparison, SDK pool/job/persistence inventory, and actual cross-platform CI.
-- Reference extension source is AGPL-3.0 while sudohand declares MIT. Do not copy
-  reference extension assets into this repository as MIT; implement protocol behavior
-  independently and retain accurate attribution for any separately licensed material.
-
-- Rust bridge synthetic transport test passed: colliding request IDs across
-  drivers, target routing, events, pending-command failure on disconnect,
-  shutdown/idempotency, and rejection of website WebSocket origins.
-- Real Chrome extension tests passed using a disposable profile and the assets
-  extracted from the built binary: bridge handshake, Python/Rust connect and JS
-  result agreement, independent calls reuse a dedicated tab, actual click state
-  change, PNG screenshot, popup adoption and URL routing, untouched pre-existing
-  tab, and bridge shutdown while Chrome stays alive. Input dispatch activates its
-  owned tab to avoid inactive-tab mouse acknowledgement timeouts.
-- Blanket-stop test passed with a separately launched unregistered debugging
-  Chrome in the discovery band: only the registered fixture was stopped.
-- Three-platform GitHub Actions parity workflow added, pinned to the reference
-  revision. Actual hosted Windows/Linux/macOS results are still pending.
-
-- Whole-workspace strict Clippy passed. Whole-workspace tests passed with
-  `--test-threads=4`. A preceding unrestricted run had one Chrome launch timeout
-  before its test reached tab operations (25 other browser tests passed); the
-  exact startup cause is unproven. CI bounds browser-test concurrency to four.
-
-- CLI declaration audit: all 59 reference command names are present. Remaining
-  declared flag gaps were `click_by_ref/text --os-click` and
-  `type_by_text --no-human-like`; these are now implemented. Declaration coverage
-  does not yet prove all defaults and output contracts.
-- Click differential passed for trusted, synthetic, JS-click, unchanged-page,
-  by-ref and explicit OS opt-out cases; typing with no-human-like matched actual
-  input contents. The 26 Chrome regression tests passed with the verified-click
-  implementation. The coordinate fixture now exposes its counter through the title
-  so successful clicks have observable feedback rather than triggering fallback.
-- Native mouse dispatch implemented with Enigo (macOS/Windows) and x11rb/XTEST (Linux); Windows target
-  compilation passed. Real native input comparison is pending Linux Xvfb CI.
-- First Linux hosted run passed 48 unit, bridge, 26 real-browser and cookie/identity/
-  proxy tests, then found that sysinfo included Chrome threads as cleanup candidates.
-  Disabled task enumeration and sorted process IDs to match main-process inventory.
-
-- Windows hosted run passed 25 real-browser tests but observed an extra blank
-  tab in tabs_list_and_switch. Startup previously allowed the first page list to
-  be empty; strengthened readiness to require its initial page (except explicit
-  --no-startup-window). Kept exact tab-count assertions. All 26 tests then passed
-  locally with the new readiness gate.
-- Native input uses system APIs on macOS/Windows and pure-Rust X11/XTEST on Linux;
-  Linux and Windows cross-target checks passed. CI now includes actual native
-  mouse comparisons on Xvfb and Windows. JSON subprocess decoding is explicit
-  UTF-8 so Unicode fixtures do not depend on Windows' locale code page.
-
-- Local macOS visible-window native input passed against Python's pyautogui
-  path: the fixture ignores the first trusted click and all synthetic clicks,
-  then accepts the actual native fallback. Both implementations reported method=os
-  and exactly two trusted clicks. The fixture closes its browser and restores the cursor.
-- Full source audit additionally found verified input filling in the reference
-  (typed/verified/method/methods_tried with value readback and fallback). Existing
-  Rust typing still needs this behavioral parity; accepting no-human-like alone
-  is insufficient. BrowserPool/Job/Worker/persistence also remain to implement.
-- Old macOS hosted run (Chrome for Testing 153.0.8010.36) failed page attachment
-  in 24 tests with WebSocket listener stopped. Local installed Chrome passes;
-  exact CfT build downloaded for reproduction. Cause is not yet established.
-
-- Shared verified filling implemented for both input locators. Differential suite
-  `scripts/typing_parity.py` passed all 12 scenarios through both Python/Rust CLIs:
-  default timing, Unicode replacement, empty replacement, preferred keys/human,
-  key-code-gated fallback, native setter fallback, total rejection, partial input,
-  contenteditable, readonly setter, and Enter. Results and actual page values match.
-  The reference CLI defaults type_by_text humanization to true even though its SDK
-  uses the false-by-default config; the Rust CLI now preserves that distinction.
-- CfT 153 macOS attachment failure reproduced locally by removing the outer
-  application directory's .app suffix: WebSocket listener stopped after 90 seconds.
-  The same executable in the intact .app passed all 26 real Chrome regression tests.
-  CI now copies setup-chrome's relocated directory into a proper .app bundle.
-- Second hosted Linux run passed cookie/identity/proxy/cleanup, then failed extension
-  connect-result equality; diagnostics now print both results. Windows passed its
-  real browser regression but its offline-cookie CLI overflowed the main stack;
-  the synthetic suite now isolates the plaintext baseline and closes SQLite handles.
-  Independent differential stages continue after sibling failures to reveal coverage.
-- Actual CfT macOS extension handshake still fails locally (ordinary installed
-  Chrome previously passed). Added isolated worker diagnostics; cause remains open.
-- Workspace strict Clippy passed after verified filling. Hosted cross-platform checks,
-  extension gaps, Windows offline runtime and SDK pool/profile/job/persistence remain.
-
-- SDK foundations added: Job/JobResult/JobStatus, version-one PoolState, atomic
-  replacement with file sync, recovery of pending/interrupted jobs, structured
-  failure identity and retry budgets, and shared/per-worker/temp cookie paths.
-  Four tests passed, including exact JSON roundtrip of a fixture produced by the
-  pinned Python API, malformed-file handling, overwrite and profile isolation.
-  This is not yet BrowserPool scheduling: dynamic workers, execution, queue policy,
-  shared progress, wait/selection/cancellation and client lifecycle remain to implement.
-- CfT extension diagnostics show its service worker exists but its WebSocket remains
-  CONNECTING; a no-proxy-server trial did not resolve it. Root cause remains open.
-
-- Run 34785206445 on commit 3b3274a: Linux job 103799308688 passed every stage,
-  including actual extension, all typing cases, and native XTEST input under Xvfb.
-  macOS basic browser regression now passes with the bundle-layout correction.
-  Windows browser library regression passes, but multiple CLI differential stages
-  fail; inspect job 103799308624 logs before assuming the fault is cookie-specific.
-- Worker status/statistics snapshots now match a fixture emitted by Python's Worker
-  API. Five SDK model/profile/persistence tests pass; scheduling still outstanding.
-- Browser crate Windows cross-check passed with the new pool models. Full CLI
-  cross-check on this macOS host needs a MinGW C compiler for existing ring; actual
-  Windows CI remains the runtime gate. Local CfT extension handshake also remained
-  pending after test-only browser network permission grants, ruling out that simple
-  permission workaround. No user profile permissions were changed.
-
-- Windows run 34785206445 failed before any cookie crypto: even plaintext offline
-  extraction and browser_start/browser_connect overflowed the CLI main stack.
-  Native debug assembly identified two independent large frames: ~946 KiB for
-  the async command match and ~1.89 MiB for Clap's single browser enum parser.
-  A local suh serve regression also reproduced stack overflow on its Tokio worker.
-- Split the parser into flattened command groups and boxed each command's own
-  future. CLI names/flags stay flat. The actual CLI error-envelope regression,
-  both serve tests, all 59 reference --help calls, and a 1 MiB stack CLI probe pass.
-  Whole-workspace tests and strict Clippy pass after the refactor; the CLI stack
-  regression is now included in CI before real-browser differential tests.
-- The post-dispatch cookie/identity/proxy/cleanup differential suite passed locally.
-  macOS third CI passed browser, cookies and input suites but failed the CfT
-  extension handshake, matching the local reproducer. That issue remains open.
-
-- Pool scheduling is now implemented: per-worker client factories and browser
-  lifecycle, held/batch submission, dynamic workers, FIFO front/back retries,
-  terminal error metadata, business outcomes, shared progress targets, selection
-  guards, cancellation/recovery, and transactional submission checkpoints.
-  Recovery deduplicates reference snapshots that contain an active job in both
-  pending and in_progress; failed checkpoint writes do not expose a new job.
-- Per-job min_success takes precedence over shared defaults (including explicit
-  null). ui_delay is removed from invocation kwargs, temporarily applied through
-  PoolClient::replace_ui_delay, and restored after success, panic or cancellation.
-  Nine scheduler tests and five snapshot/profile tests pass. Workspace strict
-  Clippy passes with the scheduler. Full SDK differential audit is still pending.
-
-- macOS CfT extension reproduction is resolved locally: the WebSocket net log
-  stalled before a TCP connection. Using the regular launcher's existing
-  --use-mock-keychain flag in the disposable extension fixture allows handshake;
-  no system keychain or personal browser configuration is changed. Two complete
-  CfT 153 extension runs then passed (connection, Python/Rust output, click,
-  screenshot, owned-tab reuse, popup routing and disconnect preserving Chrome).
-- A separate first-tab race surfaced after that fix: Chrome can return an empty
-  url while pendingUrl already contains about:blank. Extension target discovery
-  now uses pendingUrl as fallback, matching the reference. The real fixture now
-  asserts the initial tab URL rather than accepting equality of empty values.
-- Pool status coverage now checks held plus active jobs counted once, busy worker
-  state, completed business failures and shutdown. Ten scheduler tests pass.
-  Windows differential stage is still running; added command progress and timed
-  Python stack dumps to locate stalls in the next hosted run.
-
-- Added real Python/Rust page/navigation differential fixtures, including Unicode
-  HTML character counts, inner/outer HTML, JS values and observation envelopes,
-  readiness success/timeout, URL exact/regex/empty selectors, timeout precedence,
-  and cached/uncached reload. Fixed the readiness failure CLI envelope and URL
-  waiting to follow the public reference function, rather than its separate
-  internal helper (which adds validation and a descriptive timeout message).
-- Intentional navigation correction: the pinned Python page_goto returns the
-  pre-navigation target URL even after the page loads. The fixture asserts that
-  behavior and verifies both implementations' actual location.href; suh keeps
-  returning the live URL. Reproducing that stale result would mislead callers.
-- Page contract suite is now included in the three-platform workflow. Strict
-  workspace Clippy passes after these changes; full parity audit remains open.
-
-- File output differential checks pass locally: viewport/full-page/raw/capped
-  screenshots have matching dimensions and embedded coordinate metadata, each
-  reported byte size matches disk, portrait/landscape PDFs have valid signatures
-  and matching result schemas, and downloads contain the exact binary fixture.
-  Encoder/PDF byte sizes are validated independently, not required to be equal.
-- Corrected a timing-sensitive test: Python's time.time() can return the same
-  value twice, so timeout=0 with an already matching URL is nondeterministic.
-  A negative deadline tests timeout precedence deterministically; zero-deadline
-  nonmatching and missing-selector cases remain covered.
-- Linux run 34786748286 exposed a shutdown race in the real pool test client's
-  close implementation: dropping its Chrome guard signals the process without
-  awaiting socket release. The client now waits up to five seconds for its own
-  port to close before returning; the final no-listener assertion is retained.
-
-- Automated declaration audit scripts/cli_parity.py generates the reference's
-  actual argparse parsers: all 59 public commands and 382 long-flag declarations
-  are present in suh. This does not assert default-value or output equivalence.
-- Page differential suite additionally passes console primitive/special-value
-  serialization, warning/error levels and object/array descriptions. A Promise
-  expression's observed result/console envelope also matches the reference;
-  this is not a promise that raw js_evaluate awaits JavaScript promises.
-- CI now separates successful CLI compilation/declaration checks from browser
-  and SDK regression. Independent differential stages still run when a browser
-  regression fails, preserving failure visibility without relaxing any gate.
-
-- Default audit now checks 33 displayed scalar defaults and a generated fixture
-  of all 74 non-null scalar/boolean defaults from the pinned argparse parsers.
-  Rust tests compare the built Clap tree, normalizing --no-* boolean polarity
-  and the deferred CDP transport fallback. Both tests and strict Clippy pass;
-  CI verifies the fixture against Python and runs the Rust comparisons.
-- Transport selection continues honoring AI_DEV_BROWSER_TRANSPORT when no flag
-  is supplied, including browser_connect. This follows the reference's public
-  documentation; its non-tab browser_connect CLI currently passes its literal
-  cdp default and does not consult that environment variable. Explicit arguments
-  still win. Nullable and environment-driven defaults need behavioral checks,
-  rather than treating absent parser values as equal effective configuration.
-
-- Locator differential coverage now includes visible/hidden/missing HTML ids,
-  XPath misses, same-origin iframe ids/XPaths, accessible names, text fallback,
-  hidden text and iframe button geometry. These actual CLI results match.
-- The reference CLI adds recovery hints on locator misses. suh now supplies
-  independently worded hints for find_by_html_id, find_by_xpath and find_by_text,
-  with actionable alternatives and cross-origin frame guidance. Tests validate
-  that both implementations supply guidance and compare the remaining fields
-  exactly; prose wording is intentionally not a byte-for-byte contract.
-
-- Legacy cookie migration is now implemented with serde-pickle's data-only
-  deserializer and instance-state preservation, without invoking Python globals
-  or constructors. Snake-case Cookie fields and enum state become CDP fields;
-  malformed/non-cookie records return an error. JSON remains the save format.
-  See https://docs.rs/serde-pickle/1.2.0/serde_pickle/ for the decoding model.
-- Synthetic Cookie objects generated by the pinned Python API in pickle protocols
-  2/4/5 decode identically to its JSON. Real Python/Rust CLI imports produce
-  identical live Chrome values, expiry, HttpOnly, Secure, priority and SameSite.
-  Fixtures can be reproduced with scripts/generate_cookie_fixtures.py. The live
-  fixture uses expiry one hour ahead to avoid browser lifetime clamping.
-- Windows run 34785884692 completed by timeout. Its plaintext and encrypted
-  offline-cookie differential stages both passed after the stack fix; the next
-  browser startup/inventory phase stalled. Newer runs include command and Python
-  stack diagnostics to distinguish process startup from output-pipe waits.
-- Whole-workspace tests (`--test-threads=4`) and strict Clippy pass with legacy
-  cookie support. Run 34786880027 confirms macOS extension now passes hosted CI;
-  its page failure is the already-corrected zero-timeout fixture. Windows had
-  Page.navigate/printToPDF timeouts in that older run, requiring further diagnosis.
-
-- Windows diagnostic run 34786748286 proves the browser-start stall was a pipe
-  drain: after subprocess timeout, Python remained in communicate() joining both
-  stdout/stderr reader threads. Rust's Windows spawn inherits inheritable handles
-  even when other stdio handles are selected. The CLI now clears inheritance on
-  the incoming standard handles before any worker threads start, using one
-  narrowly scoped SetHandleInformation FFI call. Intentional child stdio still
-  works through Rust's per-spawn duplicates. Browser crate remains unsafe-free.
-  Reference: https://doc.rust-lang.org/std/os/windows/process/trait.CommandExt.html#tymethod.inherit_handles
-- Added a real CLI pipe-EOF test that requires Chrome to remain alive after the
-  startup command's stdout/stderr finish. Local test passes; the Windows-specific
-  module compiles for x86_64-pc-windows-gnu. Actual Windows runtime is pending.
-- Test subprocess capture now uses temporary files so descendant handles cannot
-  defeat its deadline. Two tests cover parent exit and timeout with an explicitly
-  inherited descendant stream; both pass. The browser differential suite passes
-  with this capture path. All existing assertions remain, and the separate real
-  pipe test prevents the capture change from hiding CLI inheritance regressions.
-- Cancelled five superseded CI runs to release runners; retained the latest two.
-  Their logs also show an intermittent macOS discovery-band port collision,
-  which remains to investigate. Strict workspace Clippy passes after stdio changes.
-
-- Added real CLI by-ref comparisons: focus, HTML, hover, Home key, native option
-  selection and multi-file upload. Selection/upload are reset before each
-  implementation and checked against actual DOM state (including file names
-  and byte sizes). The page/locator/artifact suite passes with these scenarios.
-- Replaced a vacuous Rust upload test that conditionally skipped assertions on
-  lookup/upload failure. The labeled file control must now be discovered, upload
-  must succeed, and both its change event and actual selected filename are checked.
-- Pool wait errors now retain the caller's timeout duration instead of always
-  reporting zero. A regression checks wait_for, wait and wait_current_task:
-  timing out leaves the job running and it completes once, without re-execution.
-  Eleven scheduler tests, the strict upload integration test and Clippy pass.
-
-- Extended URL and cookie filter matching with lookarounds and numbered/named
-  backreferences. Cookie filters now search Python-style dictionary text (quotes,
-  spaces and booleans), while files remain JSON. Empty patterns mean all cookies.
-  Actual CLI differential checks compare every saved cookie field for seven
-  filters; URL checks require successful matches for four advanced patterns.
-  Both full local differential suites pass, along with strict workspace Clippy.
-- Expanded page discovery comparisons pass for all seven option combinations,
-  including iframe inclusion, coordinates, DOM scanning/limit and text filters.
-  Text waiting exposed a real bug: DOM.describeNode can omit parentId, leaving
-  a #text ref instead of its element. Resolve that parent from the DOM snapshot.
-  The real Chrome regression now checks the returned heading ref resolves to h1;
-  CSS/text waits, hidden/missing deadlines, recovery hints and text selection all
-  pass against the reference in scripts/page_parity.py.
-- Run 34787792557 confirms the actual Windows CLI pipe-EOF regression passes,
-  as do its real browser/SDK tests and extension transport. Its cookie and page
-  differential stages still fail and require log diagnosis. Linux and macOS
-  complete jobs pass on that revision. Final-head cross-platform CI remains open.
-
-- Pool shutdown/removal now retain unfinished join handles when their caller
-  cancels the wait. A deterministic blocked-close test checks both paths and a
-  second interrupted shutdown: it must not report success until both clients
-  finish closing. All 12 scheduler tests and strict workspace Clippy pass.
-  The SDK ownership/submission/progress/persistence contract is documented in
-  [browser-pool.md](browser-pool.md), with the real Chrome factory example.
+The workflow preserves the macOS `.app` layout required by Chrome for Testing.
+The extension fixture uses a mock keychain, as the regular launcher already does.
+Bounded subprocess capture uses temporary files so inherited descendant streams
+cannot defeat a timeout; the separate pipe-EOF test checks production behavior.

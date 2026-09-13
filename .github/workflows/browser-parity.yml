@@ -70,6 +70,7 @@ jobs:
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
           python scripts/cli_parity.py --suh "$executable" --reference .parity-reference --check-defaults sudohand-cli/tests/fixtures/browser-cli-defaults.json
+          python scripts/pool_parity.py --reference .parity-reference --fixture crates/sudohand-browser/tests/fixtures/pool-scheduler.json
       - name: CLI output closes before Chrome exits
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
