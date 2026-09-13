@@ -3,13 +3,14 @@
 --native requires a visible desktop (CI uses Xvfb), and moves its real cursor.
 """
 import argparse
-from parity_process import run_capture
+from parity_process import run_capture, capture_process_tree, finish_process_tree
 import json
 import os
 from pathlib import Path
 import socket
 import sys
 import tempfile
+import time
 
 
 def main():
@@ -23,6 +24,10 @@ def main():
         original_cursor = None
         if args.native:
             import pyautogui
+            if sys.platform == 'darwin':
+                import Quartz
+                session = Quartz.CGSessionCopyCurrentDictionary() or {}
+                assert not session.get('CGSSessionScreenIsLocked', False), 'native mouse test requires an unlocked Mac desktop'
             original_cursor = pyautogui.position()
             env['AI_DEV_BROWSER_VIEWPORT'] = 'native'
             env['AI_DEV_BROWSER_HEADLESS'] = '0'
@@ -48,6 +53,20 @@ def main():
             raise AssertionError(started)
         assert not started.get('reused'), started
         try:
+            if args.native and sys.platform == 'darwin':
+                # Native input requires the fixture app in front. CDP's target
+                # activation does not necessarily activate a macOS application.
+                import AppKit
+                workspace = AppKit.NSWorkspace.sharedWorkspace()
+                before = workspace.frontmostApplication().processIdentifier()
+                application = AppKit.NSRunningApplication.runningApplicationWithProcessIdentifier_(started['pid'])
+                assert application is not None, started
+                application.activateWithOptions_(AppKit.NSApplicationActivateIgnoringOtherApps)
+                deadline = time.monotonic() + 3
+                while workspace.frontmostApplication().processIdentifier() != started['pid'] and time.monotonic() < deadline:
+                    time.sleep(.05)
+                assert workspace.frontmostApplication().processIdentifier() == started['pid'], 'fixture Chrome must own the foreground for native input'
+                print(f'PASS native foreground precondition: previous PID {before}, fixture PID {started["pid"]}', flush=True)
             def evaluate(expression):
                 return rust('js_evaluate', *connection, '--expression', expression)['result']
             cases = [
@@ -62,10 +81,12 @@ def main():
                 outcomes = []
                 for implementation in [python, rust]:
                     evaluate('document.title="Fixture"; document.body.innerHTML=`<button id="choice" style="margin:80px;width:200px;height:80px">Choose</button><label>Username<input id="username"></label>`; window.trustedCount=0; document.activeElement?.blur(); true')
+                    if label == 'native':
+                        evaluate('window.pointerEvents=[];document.onmousedown=e=>pointerEvents.push({x:e.clientX,y:e.clientY,target:e.target.id,trusted:e.isTrusted}); true')
                     evaluate(f'document.querySelector("#choice").addEventListener("mousedown", event=>event.preventDefault()); document.querySelector("#choice").addEventListener("click", event=>{{if({predicate}) document.title="Accepted";}}); true')
                     result = implementation('click_by_text', *connection, '--text', 'Choose', '--os-click', str(label == 'native').lower())
                     outcome = {key: result[key] for key in ['clicked', 'verified', 'method', 'target']}
-                    assert outcome == {'clicked': True, 'verified': expected_method is not None, 'method': expected_method, 'target': 'button'}, (label, result)
+                    assert outcome == {'clicked': True, 'verified': expected_method is not None, 'method': expected_method, 'target': 'button'}, (label, implementation.__name__, result, evaluate('({trusted:window.trustedCount,events:window.pointerEvents,focus:document.hasFocus(),sx:screenX,sy:screenY,outer:[outerWidth,outerHeight],inner:[innerWidth,innerHeight],dpr:devicePixelRatio})'))
                     assert evaluate('document.title') == ('Accepted' if expected_method else 'Fixture'), result
                     if label == 'native':
                         assert evaluate('window.trustedCount') == 2, result
@@ -91,11 +112,15 @@ def main():
                 assert evaluate('document.querySelector("input").value') == 'fixture'
             print('PASS by-ref click, explicit OS opt-out, no-human-like typing', flush=True)
         finally:
+            processes = capture_process_tree(started['pid'])
             try:
                 assert rust('browser_stop', *connection).get('stopped')
             finally:
-                if original_cursor is not None:
-                    pyautogui.moveTo(*original_cursor)
+                try:
+                    finish_process_tree(processes)
+                finally:
+                    if original_cursor is not None:
+                        pyautogui.moveTo(*original_cursor)
 
 
 if __name__ == '__main__':

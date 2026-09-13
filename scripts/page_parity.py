@@ -25,7 +25,7 @@ def main():
         def do_GET(self):
             if self.path == '/fixture.bin':
                 body = b'fixture download \x00\xff'
-            elif self.path == '/frame':
+            elif self.path in ('/frame', '/crossframe'):
                 body = b'<html><body><input id="child-field" aria-label="Child"><button id="child-button">Child action</button></body></html>'
             else:
                 body = html.encode()
@@ -57,7 +57,7 @@ def main():
                 port = reservation.getsockname()[1]
             connection = ['--port', str(port)]
             started = rust('browser_start', *connection, '--headless', '--silent-stderr',
-                           '--override-default-args', json.dumps({'--no-sandbox': ''}))
+                           '--override-default-args', json.dumps({'--no-sandbox': '', '--site-per-process': ''}))
             assert 'error' not in started and started.get('pid') and not started.get('reused'), started
             url = f'http://127.0.0.1:{server.server_port}/fixture'
             try:
@@ -220,6 +220,91 @@ def main():
                     file.unlink()
                 assert outcomes[0] == outcomes[1], outcomes
                 print('PASS download: matching result and exact binary file contents', flush=True)
+                rust('js_evaluate', *connection, '--expression', 'document.body.insertAdjacentHTML("beforeend", \'<a id="download-link" href="/fixture.bin" download="linked.txt">Download fixture</a>\')')
+                outcomes = []
+                for implementation in (python, rust):
+                    result = implementation('download_link', *connection, '--xpath', '//*[@id="download-link"]', '--download-dir', folder, '--timeout', '5')
+                    assert result['downloaded'] and result['filename'] == 'linked.txt', (implementation.__name__, result)
+                    saved = Path(result['path'])
+                    assert saved.read_bytes() == b'fixture download \x00\xff' and result['bytes'] == saved.stat().st_size, result
+                    outcomes.append(result)
+                    saved.unlink()
+                assert outcomes[0] == outcomes[1], outcomes
+                print('PASS download_link: event completion, path, byte count and actual file contents', flush=True)
+                # The pinned reference's CLI calls nonexistent Tab methods.
+                # Record that bug, then verify suh against actual browser state.
+                for tool, extra, missing_method in [('storage_get', [], 'get_local_storage'), ('storage_set', ['--key','parity','--value','value'], 'set_local_storage')]:
+                    broken = python(tool, *connection, *extra)
+                    assert missing_method in broken.get('error', ''), (tool, broken)
+                assert rust('storage_get', *connection, '--key', 'missing') == {'key':'missing','value':None}
+                assert rust('storage_set', *connection, '--key', 'parity', '--value', '中文 value') == {'key':'parity','value':'中文 value'}
+                assert python('js_evaluate', *connection, '--expression', 'localStorage.getItem("parity")')['result'] == '中文 value'
+                assert rust('storage_get', *connection, '--key', 'parity') == {'key':'parity','value':'中文 value'}
+                assert rust('storage_set', *connection, '--items', '{"number":7,"enabled":true,"text":"fixture"}') == {'set':3}
+                stored = python('js_evaluate', *connection, '--expression', 'Object.assign({}, localStorage)')['result']
+                assert rust('storage_get', *connection) == {'items':stored,'count':4}
+                print('PASS storage: reference wrapper bug recorded; suh read/write verified against browser state', flush=True)
+                # Disable per-command default viewport enforcement before
+                # observing the custom window size on another CLI connection.
+                env['AI_DEV_BROWSER_VIEWPORT'] = 'native'
+                equivalent('window_set', '--width', '900', '--height', '600')
+                viewport = equivalent('js_evaluate', '--expression', '[innerWidth,innerHeight]')
+                assert viewport['result'] == [900,600], viewport
+                equivalent('dialog_respond')
+                for implementation in (python, rust):
+                    created = implementation('tab_new', *connection)
+                    assert created['url'] == 'about:blank', created
+                    listing = implementation('tab_list', *connection)
+                    assert listing['count'] == 2, listing
+                    blank = next(tab for tab in listing['tabs'] if tab['url'] == 'about:blank')
+                    switched = implementation('tab_switch', *connection, '--tab-id', blank['id'])
+                    assert switched == {'url':'about:blank','title':blank['title']}, switched
+                    closed = implementation('tab_close', *connection, '--tab-id', blank['id'])
+                    # The reference only disconnects the Tab WebSocket; its
+                    # page remains open. suh actually closes the page target.
+                    expected = {'remaining':2} if implementation is python else {'closed':True,'remaining':1}
+                    assert closed == expected, closed
+                    refreshed = implementation('tab_list', *connection)
+                    assert refreshed['count'] == (2 if implementation is python else 1), refreshed
+                    if implementation is python:
+                        leftover = next(tab['id'] for tab in refreshed['tabs'] if tab['url'] == 'about:blank')
+                        assert rust('tab_close', *connection, '--tab-id', leftover) == {'closed':True,'remaining':1}
+                print('PASS tabs: create/list/switch; reference close bug recorded; suh closes the page target', flush=True)
+                cross_url = f'http://localhost:{server.server_port}/crossframe'
+                rust('js_evaluate', *connection, '--expression', 'const frame=document.createElement("iframe");frame.id="cross-frame";frame.src=' + json.dumps(cross_url) + ';document.body.appendChild(frame); true')
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    targets = rust('cdp_send', *connection, '--method', 'Target.getTargets')['result']['targetInfos']
+                    if any(target['type'] == 'iframe' and target['url'] == cross_url for target in targets):
+                        break
+                    time.sleep(.05)
+                else:
+                    raise AssertionError(('cross-origin iframe target was not published', targets))
+                cross = equivalent('js_evaluate', '--frame', 'localhost', '--expression', '({url:location.href,field:!!document.querySelector("#child-field")})')
+                assert cross['result'] == {'url':cross_url,'field':True}, cross
+                print('PASS cross-origin frame: explicit session evaluates the child document', flush=True)
+                fixture_dom = '<div role="grid"><div role="row">Alpha row<input type="checkbox"></div><div role="row" id="beta">Beta row<input type="checkbox" id="picked"></div></div><div id="scroller" style="height:100px;overflow:auto"><div style="height:1000px;position:relative"><button style="position:absolute;bottom:0">End target</button></div></div>'
+                rust('js_evaluate', *connection, '--expression', 'document.body.innerHTML=' + json.dumps(fixture_dom) + '; window.rowClicks=0; window.rowDoubles=0; document.querySelector("#beta").addEventListener("click",()=>window.rowClicks++); document.querySelector("#beta").addEventListener("dblclick",()=>window.rowDoubles++); true')
+                for extra, expected in [([], [1,0,False]), (['--double'], [2,1,False]), (['--checkbox'], [1,0,True])]:
+                    outcomes = []
+                    for implementation in (python, rust):
+                        rust('js_evaluate', *connection, '--expression', 'window.rowClicks=0;window.rowDoubles=0;document.querySelector("#picked").checked=false; true')
+                        result = implementation('click_row_by_text', *connection, '--text', 'Beta row', *extra)
+                        actual = rust('js_evaluate', *connection, '--expression', '[rowClicks,rowDoubles,document.querySelector("#picked").checked]')['result']
+                        assert result['clicked'] and actual == expected, (extra, result, actual)
+                        outcomes.append(result)
+                    assert outcomes[0] == outcomes[1], (extra, outcomes)
+                print('PASS row clicks: single, double and checkbox state match', flush=True)
+                for flag, before, expected in [('--to-bottom', 0, 900), ('--to-top', 900, 0), ('--to-element', 0, None)]:
+                    outcomes = []
+                    for implementation in (python, rust):
+                        rust('js_evaluate', *connection, '--expression', f'document.querySelector("#scroller").scrollTop={before}')
+                        result = implementation('page_scroll', *connection, flag, *(['End target'] if flag == '--to-element' else []))
+                        actual = rust('js_evaluate', *connection, '--expression', 'document.querySelector("#scroller").scrollTop')['result']
+                        assert result['scrolled'] and (actual == expected if expected is not None else actual > 0), (flag, result, actual)
+                        outcomes.append(result)
+                    assert outcomes[0] == outcomes[1], (flag, outcomes)
+                print('PASS scrolling: container edges and element visibility move the actual scroller', flush=True)
             finally:
                 assert rust('browser_stop', *connection).get('stopped')
     finally:

@@ -57,6 +57,22 @@ async fn routes_colliding_ids_events_disconnect_and_shutdown() {
     })
     .await
     .unwrap();
+    let (mut other_profile, _) = connect_async(&base).await.unwrap();
+    send(
+        &mut other_profile,
+        json!({"_hello":true,"account":"other@example.test"}),
+    )
+    .await;
+    let rejected = tokio::time::timeout(Duration::from_secs(3), other_profile.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(matches!(rejected, Message::Close(_)));
+    assert_eq!(
+        bridge::status(port).await.unwrap()["account"],
+        "fixture@example.test"
+    );
     let (mut first, _) = connect_async(format!("{base}/devtools/page/11"))
         .await
         .unwrap();
@@ -108,6 +124,30 @@ async fn routes_colliding_ids_events_disconnect_and_shutdown() {
     assert_eq!(
         read(&mut first).await,
         json!({"id": 8, "error": {"message": "extension disconnected"}})
+    );
+    let (mut replacement, _) = connect_async(&base).await.unwrap();
+    send(
+        &mut replacement,
+        json!({"_hello":true,"account":"replacement@example.test"}),
+    )
+    .await;
+    tokio::time::timeout(Duration::from_secs(3), async {
+        while bridge::status(port).await.unwrap()["account"] != "replacement@example.test" {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    send(&mut first, json!({"id":9,"method":"Runtime.evaluate"})).await;
+    let request = read(&mut replacement).await;
+    send(
+        &mut replacement,
+        json!({"_gid":request["_gid"],"result":{"reconnected":true}}),
+    )
+    .await;
+    assert_eq!(
+        read(&mut first).await,
+        json!({"id":9,"result":{"reconnected":true}})
     );
     assert_eq!(
         bridge::disconnect(port).await.unwrap(),

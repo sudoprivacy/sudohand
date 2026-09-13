@@ -3,7 +3,7 @@
 Never loads an extension into, attaches to, or closes a personal browser.
 """
 import argparse
-from parity_process import run_capture
+from parity_process import run_capture, capture_process_tree, finish_process_tree
 import asyncio
 import json
 import os
@@ -142,15 +142,31 @@ async def main():
                 assert chrome.poll() is None
                 await command(cdp, 'Browser.getVersion')
                 print('PASS disconnect stops owned bridge and preserves Chrome')
+                bridge = subprocess.Popen([suh, 'browser', 'bridge-serve', '--port', str(bridge_port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                children.append(bridge)
+                reconnected = None
+                for _ in range(30):
+                    reconnected = cli('browser_connect', *flags)
+                    if reconnected['connected']:
+                        break
+                    await asyncio.sleep(.5)
+                assert reconnected['connected'], reconnected
+                own = cli('cdp_send', *flags, '--method', 'AiDevBrowser.debugState')['result']
+                assert len(own['autoTabs']) == 2, own
+                popup = cli('js_evaluate', *flags, '--tab-url', '#popup', '--expression', 'location.hash')
+                assert popup['result'] == '#popup', popup
+                after_restart = await command(cdp, 'Target.getTargets')
+                untouched = next(t for t in after_restart['targetInfos'] if t['targetId'] == personal['targetId'])
+                assert untouched['url'] == personal['url'] and chrome.poll() is None
+                assert cli('browser_disconnect')['stopped']
+                bridge.wait(timeout=5)
+                print('PASS bridge restart: extension reconnects, owned tabs and unrelated tab survive')
         finally:
             for child in reversed(children):
                 if child.poll() is None:
-                    child.terminate()
-                    try:
-                        child.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        child.kill()
-                        child.wait(timeout=5)
+                    processes = capture_process_tree(child.pid)
+                    finish_process_tree(processes, terminate=True)
+                    child.wait(timeout=5)
 
 
 if __name__ == '__main__':

@@ -59,10 +59,17 @@ not counted as test failures or passes.
   copying the reference documentation verbatim.
 - `page_goto` reports the live destination URL. The reference returns a stale
   pre-navigation target snapshot even when navigation succeeds.
+- `tab_close` closes the page target and reports the actual remaining count.
+  The reference only disconnects its Tab WebSocket, leaving the page open;
+  the test explicitly records that bug with a fresh subsequent tab listing.
 - `storage_get/storage_set` use working Tab storage methods. The pinned reference
   CLI calls nonexistent `get_local_storage/set_local_storage` methods.
 - `browser_connect` honors the transport environment variable; an explicit flag
   wins. The reference's standalone CLI currently forces its default CDP value.
+- One extension profile owns a live bridge at a time. A second profile is
+  rejected until that connection closes, preventing silent account replacement;
+  the reference instead selects the most recently connected extension. Account
+  status and subsequent reconnection are covered by the bridge transport test.
 - The old `cookies_list` preview remains available; `cookies_extract_live` returns
   complete values. Legacy pickle import parses data without executing Python
   globals/constructors. New files use interoperable JSON.
@@ -112,3 +119,18 @@ The workflow preserves the macOS `.app` layout required by Chrome for Testing.
 The extension fixture uses a mock keychain, as the regular launcher already does.
 Bounded subprocess capture uses temporary files so inherited descendant streams
 cannot defeat a timeout; the separate pipe-EOF test checks production behavior.
+
+Latest local additions passed: download-link file/event contracts, storage and
+window behavior, tab lifecycle, cross-origin iframe evaluation, row clicks,
+container/element scrolling, and extension reconnection after bridge restart.
+Windows diagnostics isolated the download failure to suh; normalize the Windows
+verbatim drive/UNC path before passing it to Chrome. The patch passed unit,
+Clippy and Windows cross-compilation checks; hosted runtime verification remains.
+The extension/click failures in run 34788477947 occurred after their behavior
+assertions passed, while deleting files still held by Chrome descendants. Test
+cleanup now captures and waits for only its own process tree before removing
+profiles. Three process-harness tests pass.
+
+The most recent local native mouse rerun could not exercise input because the
+Mac was locked (confirmed via the session API). Native tests now check that
+precondition explicitly; they require an unlocked, foreground fixture window.
