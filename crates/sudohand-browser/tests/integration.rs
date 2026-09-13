@@ -1044,41 +1044,25 @@ async fn select_by_ref_and_upload_by_ref() {
     let dir = tempfile::tempdir().unwrap();
     let f = dir.path().join("hello.txt");
     std::fs::write(&f, "hi").unwrap();
-    let file_el = els
+    let file_ref = els
         .iter()
-        .find(|e| {
-            e.role == "textbox" || e.datarole.as_deref() == Some("file") || e.role == "button"
-        })
-        .map(|_| ())
-        .and(None::<()>);
-    let _ = file_el;
-    // Locate the file input via find_by_html_id -> its ref isn't returned; use JS-less path:
-    let file_ref = {
-        let all = page_discover(
-            &tab,
-            &DiscoverOptions {
-                interactable_only: false,
-                ..Default::default()
-            },
-        )
+        .find(|element| element.name.as_deref() == Some("Upload fixture"))
+        .expect("file input must be discoverable")
+        .r#ref
+        .clone();
+    let uploaded = upload_by_ref(&tab, &file_ref, f.to_str().unwrap())
         .await
         .unwrap();
-        all.iter()
-            .find(|e| e.role == "textbox" && e.name.is_none())
-            .or_else(|| all.iter().find(|e| e.role.contains("textbox")))
-            .map(|e| e.r#ref.clone())
-    };
-    if let Some(fref) = file_ref {
-        let r = upload_by_ref(&tab, &fref, f.to_str().unwrap()).await;
-        if let Ok(r) = r {
-            if r["uploaded"] == true {
-                assert_eq!(
-                    eval_str(&tab, "document.getElementById('filecount').textContent").await,
-                    "files:1"
-                );
-            }
-        }
-    }
+    assert_eq!(uploaded["uploaded"], true, "{uploaded}");
+    assert_eq!(uploaded["files"], 1, "{uploaded}");
+    assert_eq!(
+        eval_str(&tab, "document.getElementById('filecount').textContent").await,
+        "files:1"
+    );
+    assert_eq!(
+        eval_str(&tab, "document.getElementById('file').files[0].name").await,
+        "hello.txt"
+    );
 }
 
 #[tokio::test]

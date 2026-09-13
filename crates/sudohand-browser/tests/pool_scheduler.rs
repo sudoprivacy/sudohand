@@ -538,3 +538,35 @@ async fn status_counts_held_running_and_business_failure_once() {
     assert_eq!(pool.get_status()["running"], false);
     assert_eq!(pool.get_status()["workers"], json!({}));
 }
+
+#[tokio::test]
+async fn wait_timeout_reports_budget_without_cancelling_the_job() {
+    let (events, factory) = fixture();
+    let pool = BrowserPool::start(factory, options(1)).await.unwrap();
+    let id = pool.run("gate", vec![], Map::new(), None, false).unwrap();
+    tokio::time::timeout(TIMEOUT, events.started.notified())
+        .await
+        .unwrap();
+    let budget = Duration::from_millis(10);
+    for error in [
+        pool.wait_for(&id, Some(budget)).await.unwrap_err(),
+        pool.wait(Some(std::slice::from_ref(&id)), None, Some(budget))
+            .await
+            .unwrap_err(),
+    ] {
+        match error {
+            sudohand_browser::Error::Timeout { seconds, .. } => {
+                assert_eq!(seconds, budget.as_secs_f64())
+            }
+            other => panic!("expected timeout, got {other}"),
+        }
+    }
+    let worker = *pool.workers().keys().next().unwrap();
+    assert!(!pool.wait_current_task(worker, Some(budget)).await.unwrap());
+    assert!(pool.get_result(&id).is_none());
+    assert_eq!(pool.pending_count(), 1);
+    events.gate.add_permits(1);
+    assert!(pool.wait_for(&id, Some(TIMEOUT)).await.unwrap().success);
+    assert_eq!(events.calls.lock().unwrap().len(), 1);
+    pool.shutdown(true).await.unwrap();
+}

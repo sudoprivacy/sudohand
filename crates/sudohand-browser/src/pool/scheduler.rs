@@ -564,7 +564,12 @@ impl BrowserPool {
         timeout: Option<Duration>,
     ) -> Result<bool> {
         let mut changed = self.inner.changed.subscribe();
-        let deadline = timeout.map(|duration| tokio::time::Instant::now() + duration);
+        let deadline = timeout.map(|duration| {
+            (
+                tokio::time::Instant::now() + duration,
+                duration.as_secs_f64(),
+            )
+        });
         loop {
             {
                 let state = self.inner.state.lock().expect("pool state");
@@ -585,7 +590,12 @@ impl BrowserPool {
 
     pub async fn wait_for(&self, id: &str, timeout: Option<Duration>) -> Result<JobResult> {
         let mut changed = self.inner.changed.subscribe();
-        let deadline = timeout.map(|duration| tokio::time::Instant::now() + duration);
+        let deadline = timeout.map(|duration| {
+            (
+                tokio::time::Instant::now() + duration,
+                duration.as_secs_f64(),
+            )
+        });
         loop {
             {
                 let state = self.inner.state.lock().expect("pool state");
@@ -625,7 +635,12 @@ impl BrowserPool {
             state.queue.extend(held);
         }
         self.inner.changed();
-        let deadline = timeout.map(|duration| tokio::time::Instant::now() + duration);
+        let deadline = timeout.map(|duration| {
+            (
+                tokio::time::Instant::now() + duration,
+                duration.as_secs_f64(),
+            )
+        });
         loop {
             let selecting = {
                 let state = self.inner.state.lock().expect("pool state");
@@ -704,14 +719,14 @@ impl Drop for BrowserPool {
 
 async fn wait_change(
     changed: &mut watch::Receiver<u64>,
-    deadline: Option<tokio::time::Instant>,
+    deadline: Option<(tokio::time::Instant, f64)>,
 ) -> Result<()> {
-    if let Some(deadline) = deadline {
+    if let Some((deadline, seconds)) = deadline {
         tokio::time::timeout_at(deadline, changed.changed())
             .await
             .map_err(|_| Error::Timeout {
                 method: "pool.wait".into(),
-                seconds: 0.0,
+                seconds,
             })?
             .map_err(|_| Error::Invalid("pool stopped".into()))?;
     } else {

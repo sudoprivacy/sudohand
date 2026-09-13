@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--suh', type=Path, required=True)
     parser.add_argument('--reference', type=Path, required=True)
     args = parser.parse_args()
-    html = '<!doctype html><html><head><meta charset="utf-8"><title>Parity 页面</title></head><body><h1>Fixture 🙂</h1><input id="field" aria-label="Name" value="hello"><button id="hidden" style="display:none">Hidden</button><iframe src="/frame" title="child"></iframe><p>Deterministic content</p></body></html>'
+    html = '<!doctype html><html><head><meta charset="utf-8"><title>Parity 页面</title></head><body><h1>Fixture 🙂</h1><input id="field" aria-label="Name" value="hello"><button id="hidden" style="display:none">Hidden</button><iframe src="/frame" title="child"></iframe><select id="choice" aria-label="Choice" size="2"><option value="a">Alpha</option><option value="b">Beta</option></select><input id="upload" type="file" multiple aria-label="Upload fixture"><p>Deterministic content</p></body></html>'
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             if self.path == '/fixture.bin':
@@ -118,6 +118,36 @@ def main():
                     equivalent('find_by_xpath', '--xpath', xpath)
                 for text in ('Fixture', 'Name', 'Hidden', 'absent', 'Child action'):
                     equivalent('find_by_text', '--text', text)
+                elements = rust('page_discover', *connection, '--no-interactable-only')
+                def named_ref(name):
+                    matches = [element['ref'] for element in elements if element.get('name') == name]
+                    assert len(matches) == 1, (name, elements)
+                    return matches[0]
+                field_ref = named_ref('Name')
+                equivalent('focus_by_ref', '--ref', field_ref)
+                assert rust('js_evaluate', *connection, '--expression', 'document.activeElement.id')['result'] == 'field'
+                equivalent('html_by_ref', '--ref', field_ref)
+                equivalent('hover_by_ref', '--ref', field_ref)
+                assert rust('js_evaluate', *connection, '--expression', 'document.querySelector("#field").matches(":hover")')['result'] is True
+                equivalent('press_key', '--ref', field_ref, '--key', 'Home')
+                assert rust('js_evaluate', *connection, '--expression', 'document.querySelector("#field").selectionStart')['result'] == 0
+                beta_ref = named_ref('Beta')
+                upload_ref = named_ref('Upload fixture')
+                uploads = [Path(temporary) / 'first.txt', Path(temporary) / 'second.txt']
+                for file in uploads:
+                    file.write_text(file.name, encoding='utf-8')
+                for tool, reference, extra, reset, observation, expected in [
+                    ('select_by_ref', beta_ref, [], 'document.querySelector("#choice").value="a"', 'document.querySelector("#choice").value', 'b'),
+                    ('upload_by_ref', upload_ref, ['--paths', ','.join(map(str, uploads))], 'document.querySelector("#upload").value=""', 'Array.from(document.querySelector("#upload").files, f => ({name:f.name,size:f.size}))', [{'name':f.name,'size':f.stat().st_size} for f in uploads]),
+                ]:
+                    results = []
+                    for implementation in (python, rust):
+                        rust('js_evaluate', *connection, '--expression', reset)
+                        results.append(implementation(tool, *connection, '--ref', reference, *extra))
+                        actual = rust('js_evaluate', *connection, '--expression', observation)['result']
+                        assert actual == expected, (tool, results[-1], actual)
+                    assert results[0] == results[1], (tool, results)
+                    print(f'PASS {tool}: equal result and verified page state', flush=True)
                 for label, flags in [
                     ('viewport', []), ('full-page', ['--full-page']),
                     ('raw-pixels', ['--no-css-scale']),

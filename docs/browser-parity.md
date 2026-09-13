@@ -317,3 +317,15 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
 - Cancelled five superseded CI runs to release runners; retained the latest two.
   Their logs also show an intermittent macOS discovery-band port collision,
   which remains to investigate. Strict workspace Clippy passes after stdio changes.
+
+- Added real CLI by-ref comparisons: focus, HTML, hover, Home key, native option
+  selection and multi-file upload. Selection/upload are reset before each
+  implementation and checked against actual DOM state (including file names
+  and byte sizes). The page/locator/artifact suite passes with these scenarios.
+- Replaced a vacuous Rust upload test that conditionally skipped assertions on
+  lookup/upload failure. The labeled file control must now be discovered, upload
+  must succeed, and both its change event and actual selected filename are checked.
+- Pool wait errors now retain the caller's timeout duration instead of always
+  reporting zero. A regression checks wait_for, wait and wait_current_task:
+  timing out leaves the job running and it completes once, without re-execution.
+  Eleven scheduler tests, the strict upload integration test and Clippy pass.
