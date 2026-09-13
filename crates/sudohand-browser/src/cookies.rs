@@ -66,6 +66,30 @@ pub async fn cookies_list(tab: &Tab, domain: Option<&str>) -> Result<Value> {
     Ok(json!({"cookies": simple, "count": simple.len()}))
 }
 
+/// Extract complete live cookies as an array, matching the offline extractor.
+/// A session cookie has a null expiry. An empty domain selects all cookies.
+pub async fn cookies_extract_live(tab: &Tab, domain: &str) -> Result<Value> {
+    let cookies = get_all(tab).await?;
+    Ok(Value::Array(
+        cookies
+            .into_iter()
+            .filter(|cookie| domain.is_empty() || cookie.domain.contains(domain))
+            .map(|cookie| {
+                let expires = if cookie.session || cookie.expires <= 0.0 {
+                    None
+                } else {
+                    Some(cookie.expires)
+                };
+                json!({
+                    "name": cookie.name, "value": cookie.value, "domain": cookie.domain,
+                    "path": cookie.path, "secure": cookie.secure, "httpOnly": cookie.http_only,
+                    "expires": expires,
+                })
+            })
+            .collect(),
+    ))
+}
+
 /// Save cookies as JSON; `pattern` is a regex searched in each cookie's
 /// JSON (Python `re.search`). `{path, pattern, saved}`.
 pub async fn cookies_save(tab: &Tab, path: Option<&Path>, pattern: Option<&str>) -> Result<Value> {

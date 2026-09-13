@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""Real Chrome extension checks in a disposable profile. Requires websockets.
+Never loads an extension into, attaches to, or closes a personal browser.
+"""
+import argparse
+import asyncio
+import json
+import os
+from pathlib import Path
+import socket
+import subprocess
+import sys
+import tempfile
+import urllib.request
+import websockets
+
+
+def free_port(requested=0):
+    with socket.socket() as reservation:
+        if os.name != 'nt':
+            reservation.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        reservation.bind(('127.0.0.1', requested))
+        return reservation.getsockname()[1]
+
+
+async def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--suh', type=Path, required=True)
+    parser.add_argument('--chrome', required=True)
+    parser.add_argument('--reference', type=Path, required=True)
+    args = parser.parse_args()
+    suh = str(args.suh.resolve())
+    bridge_port = free_port(9522)  # fail rather than disturb an existing bridge
+    chrome_port = free_port()
+    children = []
+    with tempfile.TemporaryDirectory(prefix='suh-extension-test-') as temporary:
+        root = Path(temporary)
+        env = dict(os.environ, HOME=str(root), USERPROFILE=str(root), PYTHONPATH=str(args.reference.resolve()))
+        def cli(name, *flags):
+            result = subprocess.run([suh, 'browser', name, *map(str, flags)], env=env, text=True, capture_output=True, timeout=40)
+            assert result.returncode == 0, (name, result.stderr)
+            return json.loads(result.stdout)
+        def reference(name, *flags):
+            result = subprocess.run([sys.executable, '-m', f'ai_dev_browser.tools.{name}', *map(str, flags)], env=env, text=True, capture_output=True, timeout=40)
+            assert result.returncode == 0, (name, result.stderr)
+            return json.loads(result.stdout)
+        async def command(ws, method, params=None):
+            command.sequence += 1
+            mid = command.sequence
+            await ws.send(json.dumps({'id': mid, 'method': method, 'params': params or {}}))
+            while True:
+                response = json.loads(await asyncio.wait_for(ws.recv(), 10))
+                if response.get('id') == mid:
+                    assert 'error' not in response, (method, response)
+                    return response.get('result', {})
+        command.sequence = 0
+        try:
+            bridge = subprocess.Popen([suh, 'browser', 'bridge-serve', '--port', str(bridge_port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            children.append(bridge)
+            chrome = subprocess.Popen([args.chrome, '--headless=new', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--enable-unsafe-extension-debugging', f'--remote-debugging-port={chrome_port}', f'--user-data-dir={root / "chrome"}', 'about:blank'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            children.append(chrome)
+            version = None
+            for _ in range(100):
+                assert chrome.poll() is None and bridge.poll() is None
+                try:
+                    with urllib.request.urlopen(f'http://127.0.0.1:{chrome_port}/json/version', timeout=1) as response:
+                        version = json.load(response)
+                    break
+                except Exception:
+                    await asyncio.sleep(.1)
+            assert version, 'Chrome debugging endpoint did not start'
+            # First CLI call extracts assets from the actual built binary.
+            setup = cli('browser_connect', '--transport', 'extension')
+            assert setup['connected'] is False and setup['bridge_running'] is True, setup
+            extension_dir = setup['extension_dir']
+            async with websockets.connect(version['webSocketDebuggerUrl']) as cdp:
+                before = await command(cdp, 'Target.getTargets')
+                personal = next(t for t in before['targetInfos'] if t['type'] == 'page')
+                loaded = await command(cdp, 'Extensions.loadUnpacked', {'path': extension_dir})
+                assert loaded.get('id'), loaded
+                connected = None
+                for _ in range(10):
+                    connected = cli('browser_connect', '--transport', 'extension')
+                    if connected['connected']:
+                        break
+                    await asyncio.sleep(.5)
+                assert connected['connected'], connected
+                print('PASS actual Chrome extension loaded; bridge handshake; CLI connection')
+                flags = ['--transport', 'extension']
+                assert reference('browser_connect', *flags) == connected
+
+                result = cli('js_evaluate', *flags, '--expression', '({value: 42, url: location.href})')
+                assert result['result']['value'] == 42, result
+                own = cli('cdp_send', *flags, '--method', 'AiDevBrowser.debugState')['result']
+                assert len(own['autoTabs']) == 1, own
+                cli('js_evaluate', *flags, '--expression', 'window.name = "suh-owned"; window.name')
+                result = cli('js_evaluate', *flags, '--expression', 'window.name')
+                assert result['result'] == 'suh-owned', result
+                assert reference('js_evaluate', *flags, '--expression', 'window.name') == result
+                cli('js_evaluate', *flags, '--expression', 'document.body.innerHTML = `<button>Activate</button>`; document.querySelector("button").addEventListener("click", () => window.clicked = true); true')
+                action = cli('click_by_text', *flags, '--text', 'Activate')
+                clicked = cli('js_evaluate', *flags, '--expression', 'window.clicked')
+                assert clicked['result'] is True, (action, clicked)
+                assert reference('js_evaluate', *flags, '--expression', 'window.clicked') == clicked
+                screenshot = root / 'extension.png'
+                cli('page_screenshot', *flags, '--path', screenshot)
+                assert screenshot.read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
+                print('PASS Python/Rust extension contract; click effect; real screenshot')
+
+                after = await command(cdp, 'Target.getTargets')
+                untouched = next(t for t in after['targetInfos'] if t['targetId'] == personal['targetId'])
+                assert untouched['url'] == personal['url'], untouched
+                print('PASS independent CLI calls reuse owned tab; pre-existing tab untouched')
+                cli('js_evaluate', *flags, '--expression', 'window.open("about:blank#popup"); true')
+                await asyncio.sleep(.5)
+                own = cli('cdp_send', *flags, '--method', 'AiDevBrowser.debugState')['result']
+                assert len(own['autoTabs']) == 2, own
+                popup = cli('js_evaluate', *flags, '--tab-url', '#popup', '--expression', 'location.hash')
+                assert popup['result'] == '#popup', popup
+                print('PASS popup adoption and --tab-url routing')
+                stop = cli('browser_disconnect')
+                assert stop['stopped'] is True and stop['was_running'] is True, stop
+                bridge.wait(timeout=5)
+                assert chrome.poll() is None
+                await command(cdp, 'Browser.getVersion')
+                print('PASS disconnect stops owned bridge and preserves Chrome')
+        finally:
+            for child in reversed(children):
+                if child.poll() is None:
+                    child.terminate()
+                    try:
+                        child.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        child.kill()
+                        child.wait(timeout=5)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

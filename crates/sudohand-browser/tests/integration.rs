@@ -49,7 +49,7 @@ async fn browser_lifecycle_start_list_stop() {
         .as_array()
         .unwrap()
         .iter()
-        .map(|b| b["port"].as_u64().unwrap())
+        .filter_map(|b| b["port"].as_u64())
         .collect();
     assert!(ports.contains(&u64::from(chrome.port)), "{listed}");
 
@@ -60,10 +60,12 @@ async fn browser_lifecycle_start_list_stop() {
         .iter()
         .find(|b| b["port"].as_u64() == Some(u64::from(chrome.port)))
         .expect("listed in all_workspaces");
-    assert_eq!(
-        ours["workspace"].as_str().unwrap(),
-        std::env::current_dir().unwrap().to_string_lossy()
+    assert_eq!(ours["origin"], "adb");
+    assert!(
+        ours["workspace"].is_null(),
+        "temporary profiles have no workspace slug"
     );
+    assert!(ours["user_data_dir"].as_str().is_some());
 
     let stopped = browser_stop(Some(chrome.port), false).await.unwrap();
     assert_eq!(stopped["count"], 1);

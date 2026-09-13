@@ -118,6 +118,8 @@ pub struct LaunchOptions {
     pub port: u16,
     /// Headless mode.
     pub headless: Headless,
+    /// Omit automation marker flags by default.
+    pub stealth: bool,
     /// Profile dir; `None` → fresh temp dir per launch.
     pub user_data_dir: Option<PathBuf>,
     /// Extra flags appended after the defaults.
@@ -141,6 +143,7 @@ impl LaunchOptions {
         Self {
             port,
             headless: Headless::Off,
+            stealth: true,
             user_data_dir: None,
             extra_args: Vec::new(),
             override_default_args: Vec::new(),
@@ -208,7 +211,6 @@ pub fn build_args(opts: &LaunchOptions, user_data_dir: &Path) -> Vec<String> {
         format!("--remote-debugging-port={}", opts.port),
         format!("--user-data-dir={}", user_data_dir.display()),
         "--remote-allow-origins=*".into(),
-        "--enable-automation".into(),
         "--no-first-run".into(),
         "--no-default-browser-check".into(),
         "--disable-background-networking".into(),
@@ -222,9 +224,12 @@ pub fn build_args(opts: &LaunchOptions, user_data_dir: &Path) -> Vec<String> {
         "--disable-translate".into(),
         "--metrics-recording-only".into(),
         "--safebrowsing-disable-auto-update".into(),
-        "--disable-blink-features=AutomationControlled".into(),
         "--use-mock-keychain".into(),
     ];
+    if !opts.stealth {
+        args.push("--enable-automation".into());
+        args.push("--disable-blink-features=AutomationControlled".into());
+    }
     if !opts.headless.enabled() {
         if let Some((w, h)) = opts.window_size {
             args.push(format!("--window-size={w},{h}"));
@@ -318,7 +323,13 @@ mod tests {
         assert!(args.contains(&"--remote-debugging-port=9999".to_string()));
         assert!(args.contains(&"--user-data-dir=/tmp/p".to_string()));
         assert!(args.contains(&"--remote-allow-origins=*".to_string()));
-        assert!(args.contains(&"--enable-automation".to_string()));
+        assert!(!args.contains(&"--enable-automation".to_string()));
+        assert!(!args.contains(&"--disable-blink-features=AutomationControlled".to_string()));
+        let mut legacy = opts.clone();
+        legacy.stealth = false;
+        let legacy_args = build_args(&legacy, Path::new("/tmp/p"));
+        assert!(legacy_args.contains(&"--enable-automation".to_string()));
+        assert!(legacy_args.contains(&"--disable-blink-features=AutomationControlled".to_string()));
         assert!(args.iter().any(|a| a.starts_with(WORKSPACE_FLAG)));
         assert_eq!(args.last().unwrap(), "about:blank");
     }

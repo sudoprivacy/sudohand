@@ -107,7 +107,7 @@ fn describe() -> String {
         }
         let subs: Vec<_> = domain
             .get_subcommands()
-            .filter(|c| c.get_name() != "help")
+            .filter(|c| c.get_name() != "help" && !c.is_hide_set())
             .collect();
         if subs.is_empty() {
             let about = domain

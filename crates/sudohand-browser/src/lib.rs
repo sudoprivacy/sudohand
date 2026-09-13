@@ -34,21 +34,27 @@
 )]
 
 pub mod actions;
+pub mod bridge;
 pub mod browser;
 pub mod cdp;
 pub mod cdp_send;
 pub mod chrome;
+pub mod cleanup;
 pub mod config;
 pub mod connection;
 pub mod cookies;
 pub mod cookies_import;
 pub mod dialog;
 pub mod download;
+#[cfg(target_os = "windows")]
+mod dpapi;
 pub mod element;
 pub mod elements;
 pub mod error;
+pub mod extension;
 pub mod geometry;
 pub mod human;
+mod identity;
 pub mod image_cap;
 pub mod js;
 pub mod login;
@@ -56,6 +62,7 @@ pub mod mouse;
 pub mod page;
 pub mod port;
 pub mod refs;
+mod registry;
 pub mod snapshot;
 pub mod sqlite;
 pub mod storage;
@@ -72,10 +79,11 @@ pub mod tools {
         click_by_ref, click_by_text, drag_by_ref, focus_by_ref, highlight_by_ref, hover_by_ref,
         html_by_ref, press_key, screenshot_by_ref, select_by_ref, type_by_ref, upload_by_ref,
     };
-    pub use crate::browser::{browser_list, browser_start, browser_stop};
+    pub use crate::browser::{browser_connect, browser_list, browser_start, browser_stop};
     pub use crate::cdp_send::cdp_send;
-    pub use crate::cookies::{cookies_list, cookies_load, cookies_save};
-    pub use crate::cookies_import::{cookies_extract, cookies_import};
+    pub use crate::cleanup::{browser_cleanup, list_chromes, CleanupScope};
+    pub use crate::cookies::{cookies_extract_live, cookies_list, cookies_load, cookies_save};
+    pub use crate::cookies_import::{cookies_extract, cookies_extract_offline, cookies_import};
     pub use crate::dialog::dialog_respond;
     pub use crate::download::{download, download_link};
     pub use crate::elements::{

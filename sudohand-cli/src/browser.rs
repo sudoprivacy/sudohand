@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use sudohand_browser::actions::TypeOptions;
 use sudohand_browser::browser::{Reuse, StartOptions};
 use sudohand_browser::chrome::Headless;
-use sudohand_browser::connection::{connect_browser, get_active_tab, BrowserClient, Tab};
+use sudohand_browser::connection::{get_active_tab, BrowserClient, Tab};
 use sudohand_browser::dialog::DialogOptions;
 use sudohand_browser::elements::{ScrollOptions, TypeByTextOptions};
 use sudohand_browser::image_cap::ImageCap;
@@ -23,6 +23,9 @@ use sudohand_browser::snapshot::DiscoverOptions;
 /// Connection-scope flags every tab-taking tool accepts.
 #[derive(Args, Debug, Clone)]
 pub struct Conn {
+    /// Browser transport (or AI_DEV_BROWSER_TRANSPORT)
+    #[arg(long, value_parser = ["cdp", "extension"])]
+    transport: Option<String>,
     /// Chrome debugging port (auto-detects: AI_DEV_BROWSER_PORT → workspace scan → 9350)
     #[arg(short, long)]
     port: Option<u16>,
@@ -39,6 +42,23 @@ pub enum ReuseArg {
 
 #[derive(Subcommand, Debug)]
 pub enum Cmd {
+    /// Check an existing browser connection without launching Chrome
+    #[command(name = "browser_connect", alias = "browser-connect")]
+    BrowserConnect {
+        #[arg(long, value_parser = ["cdp", "extension"])]
+        transport: Option<String>,
+        #[arg(long)]
+        port: Option<u16>,
+    },
+    /// Disconnect the extension bridge without closing the user's Chrome
+    #[command(name = "browser_disconnect", alias = "browser-disconnect")]
+    BrowserDisconnect,
+    /// Internal persistent extension bridge
+    #[command(name = "bridge-serve", hide = true)]
+    BridgeServe {
+        #[arg(long, default_value_t = sudohand_browser::bridge::PORT)]
+        port: u16,
+    },
     /// Start a browser instance — isolated (temp profile) unless --profile is given
     #[command(name = "browser_start", alias = "browser-start")]
     BrowserStart {
@@ -72,6 +92,24 @@ pub enum Cmd {
         /// Route Chrome's stderr to null
         #[arg(long)]
         silent_stderr: bool,
+        /// Restore legacy automation marker flags (stealth is on by default)
+        #[arg(long)]
+        no_stealth: bool,
+        /// Override the browser timezone (for example Asia/Tokyo)
+        #[arg(long)]
+        timezone: Option<String>,
+        /// Override geolocation as latitude,longitude
+        #[arg(long, allow_hyphen_values = true)]
+        geo: Option<String>,
+        /// Explicit locale override (language is never inferred from a proxy)
+        #[arg(long)]
+        locale: Option<String>,
+        /// Derive location through Chrome; defaults on when a proxy is configured
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", conflicts_with = "no_match_proxy")]
+        match_proxy: Option<bool>,
+        /// Disable proxy location lookup
+        #[arg(long)]
+        no_match_proxy: bool,
     },
     /// Stop browser instance(s)
     #[command(name = "browser_stop", alias = "browser-stop")]
@@ -79,11 +117,21 @@ pub enum Cmd {
         /// Port of the browser to stop
         #[arg(long)]
         port: Option<u16>,
-        /// Stop every debugging Chrome
+        /// Stop every registered Chrome started by this tool
         #[arg(long)]
         stop_all: bool,
     },
-    /// List debugging Chrome instances
+    /// Clean up managed orphan browsers only; scope is required
+    #[command(name = "browser_cleanup", alias = "browser-cleanup")]
+    BrowserCleanup {
+        #[arg(long, value_parser = ["temp", "profile", "workspace"])]
+        scope: String,
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// List all Chrome instances with managed/external classification
     #[command(name = "browser_list", alias = "browser-list")]
     BrowserList {
         /// Show Chromes from all workspaces
@@ -805,6 +853,25 @@ pub enum Cmd {
         #[arg(long)]
         cookies_path: Option<PathBuf>,
     },
+    /// Extract full cookies from a running browser, including HttpOnly and session cookies
+    #[command(name = "cookies_extract_live", alias = "cookies-extract-live")]
+    CookiesExtractLive {
+        #[command(flatten)]
+        conn: Conn,
+        /// Domain substring; an empty string selects all cookies
+        #[arg(long)]
+        domain: String,
+    },
+    /// Extract full cookies from the source browser's on-disk database
+    #[command(name = "cookies_extract_offline", alias = "cookies-extract-offline")]
+    CookiesExtractOffline {
+        #[arg(long)]
+        domain: String,
+        #[arg(long, default_value = "chrome")]
+        browser: String,
+        #[arg(long)]
+        user_data_dir: Option<String>,
+    },
     /// Extract + decrypt cookies for a domain (no automation browser)
     #[command(name = "cookies_extract", alias = "cookies-extract")]
     CookiesExtract {
@@ -893,8 +960,71 @@ async fn vlm_screenshot(tab: &Tab) -> sudohand_browser::Result<(Vec<u8>, u32, u3
     Ok((png, width, height, sf))
 }
 
+async fn ensure_bridge() -> sudohand_browser::Result<()> {
+    use sudohand_browser::bridge;
+    if bridge::status(bridge::PORT).await.is_some() {
+        return Ok(());
+    }
+    let mut command = std::process::Command::new(std::env::current_exe()?);
+    command
+        .args(["browser", "bridge-serve"])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0000_0008 | 0x0000_0200);
+    }
+    let mut child = command.spawn()?;
+    for _ in 0..25 {
+        if bridge::status(bridge::PORT).await.is_some() {
+            return Ok(());
+        }
+        if child.try_wait()?.is_some() {
+            return Err(sudohand_browser::Error::Connection(
+                "extension bridge could not start; port 9522 may be occupied".into(),
+            ));
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    Err(sudohand_browser::Error::Connection(
+        "extension bridge startup timed out".into(),
+    ))
+}
+
+fn transport(explicit: Option<&str>) -> String {
+    explicit
+        .map(str::to_owned)
+        .or_else(|| std::env::var("AI_DEV_BROWSER_TRANSPORT").ok())
+        .unwrap_or_else(|| "cdp".into())
+}
+
+async fn connected(conn: &Conn) -> sudohand_browser::Result<BrowserClient> {
+    match transport(conn.transport.as_deref()).as_str() {
+        "extension" => {
+            ensure_bridge().await?;
+            BrowserClient::connect_extension(sudohand_browser::bridge::PORT).await
+        }
+        "cdp" => {
+            let port = sudohand_browser::connection::resolve_port(conn.port).await;
+            BrowserClient::connect("127.0.0.1", port).await
+        }
+        other => Err(sudohand_browser::Error::Invalid(format!(
+            "Unknown browser transport: {other}"
+        ))),
+    }
+}
+
 async fn browser_and_tab(conn: &Conn) -> sudohand_browser::Result<(BrowserClient, Tab)> {
-    let mut browser = connect_browser(None, conn.port).await?;
+    let mut browser = connected(conn).await?;
     let tab = get_active_tab(&mut browser, conn.tab_url.as_deref()).await?;
     Ok((browser, tab))
 }
@@ -926,6 +1056,29 @@ fn parse_overrides(raw: Option<&str>) -> sudohand_browser::Result<Vec<(String, O
 
 async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
     match tool {
+        Cmd::BridgeServe { port } => {
+            sudohand_browser::bridge::serve(port).await?;
+            Ok(json!({"stopped": true}))
+        }
+        Cmd::BrowserDisconnect => {
+            sudohand_browser::bridge::disconnect(sudohand_browser::bridge::PORT).await
+        }
+        Cmd::BrowserConnect { transport, port } => {
+            let selected = self::transport(transport.as_deref());
+            if selected == "extension" {
+                ensure_bridge().await?;
+                for _ in 0..20 {
+                    if sudohand_browser::bridge::status(sudohand_browser::bridge::PORT)
+                        .await
+                        .is_some_and(|status| status["extension_connected"] == true)
+                    {
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                }
+            }
+            sudohand_browser::browser::browser_connect(Some(&selected), port).await
+        }
         Cmd::BrowserStart {
             port,
             headless,
@@ -937,6 +1090,12 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             extra_args,
             override_default_args,
             silent_stderr,
+            no_stealth,
+            timezone,
+            geo,
+            locale,
+            match_proxy,
+            no_match_proxy,
         } => {
             let opts = StartOptions {
                 port,
@@ -952,11 +1111,33 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 extra_args,
                 override_default_args: parse_overrides(override_default_args.as_deref())?,
                 silent_stderr,
+                stealth: Some(!no_stealth),
+                timezone,
+                geo,
+                locale,
+                match_proxy: if no_match_proxy {
+                    Some(false)
+                } else {
+                    match_proxy
+                },
             };
             sudohand_browser::tools::browser_start(&opts).await
         }
         Cmd::BrowserStop { port, stop_all } => {
             sudohand_browser::tools::browser_stop(port, stop_all).await
+        }
+        Cmd::BrowserCleanup {
+            scope,
+            profile,
+            dry_run,
+        } => {
+            use sudohand_browser::cleanup::CleanupScope;
+            let scope = match scope.as_str() {
+                "temp" => CleanupScope::Temp,
+                "profile" => CleanupScope::Profile,
+                _ => CleanupScope::Workspace,
+            };
+            sudohand_browser::cleanup::browser_cleanup(scope, profile.as_deref(), dry_run).await
         }
         Cmd::BrowserList { all_workspaces } => {
             sudohand_browser::tools::browser_list(all_workspaces).await
@@ -1270,11 +1451,11 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             sudohand_browser::tools::select_text(&tab, &text, to_text.as_deref()).await
         }
         Cmd::TabNew { conn, url } => {
-            let mut browser = connect_browser(None, conn.port).await?;
+            let mut browser = connected(&conn).await?;
             sudohand_browser::tools::tab_new(&mut browser, url.as_deref()).await
         }
         Cmd::TabClose { conn, tab_id } => {
-            let mut browser = connect_browser(None, conn.port).await?;
+            let mut browser = connected(&conn).await?;
             sudohand_browser::tools::tab_close(&mut browser, tab_id).await
         }
         Cmd::CdpSend {
@@ -1374,6 +1555,32 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
         }
         Cmd::LoginInteractive { url, cookies_path } => {
             sudohand_browser::tools::login_interactive(&url, cookies_path.as_deref()).await
+        }
+        Cmd::CookiesExtractLive { conn, domain } => {
+            let (_b, tab) = browser_and_tab(&conn).await?;
+            sudohand_browser::tools::cookies_extract_live(&tab, &domain).await
+        }
+        Cmd::CookiesExtractOffline {
+            domain,
+            browser,
+            user_data_dir,
+        } => {
+            let cookies = sudohand_browser::tools::cookies_extract_offline(
+                &domain,
+                &browser,
+                user_data_dir.as_deref(),
+            )?;
+            Ok(Value::Array(
+                cookies
+                    .iter()
+                    .map(|c| {
+                        json!({
+                            "name": c.name, "value": c.value, "domain": c.domain, "path": c.path,
+                            "secure": c.secure, "httpOnly": c.http_only, "expires": c.expires,
+                        })
+                    })
+                    .collect(),
+            ))
         }
         Cmd::CookiesExtract {
             domain,
@@ -1542,11 +1749,11 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             .await
         }
         Cmd::TabList { conn } => {
-            let mut browser = connect_browser(None, conn.port).await?;
+            let mut browser = connected(&conn).await?;
             sudohand_browser::tools::tab_list(&mut browser).await
         }
         Cmd::TabSwitch { conn, tab_id } => {
-            let mut browser = connect_browser(None, conn.port).await?;
+            let mut browser = connected(&conn).await?;
             sudohand_browser::tools::tab_switch(&mut browser, tab_id).await
         }
         Cmd::JsEvaluate {

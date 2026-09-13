@@ -49,12 +49,40 @@ value types, `MacBackend`, `FakeBackend`) and wired up as
 `suh desktop status|apps|screenshot|ax-tree|activate|click|type|paste-file|key`;
 (+ `locate|workflows|flow` via the `agent` feature);
 `sudohand-core` carries the shared `Error`, JSON-CLI contract, base64 and
-permission probing. `sudohand-browser` is ported from `ai-dev-browser` — all 56 tools as
-`suh browser <tool>` with adb's names/flags/JSON, plus
+permission probing. `sudohand-browser` exposes browser operations as
+`suh browser <tool>`, with compatibility work against `ai-dev-browser` tracked
+in [the parity checklist](docs/browser-parity.md), plus
 `workflows|flow` via the `flow` feature (built-ins `form-signup`,
 `page-extract`). `sudohand-fs` (`suh fs read|write|ls|stat|mkdir|rm|mv|cp|exists`)
 and `sudohand-shell` (`suh shell run`) are thin over `std::fs` /
 `std::process::Command`, each with a fake backend. See [DESIGN.md](DESIGN.md).
+
+## Browser connection modes
+
+Use `suh browser browser_start --headless` for a disposable CDP browser, then
+pass its `--port` to browser commands. `browser_connect --port PORT` checks an
+existing connection. Startup supports `--timezone`, `--geo`, `--locale`, and
+proxy location matching; overrides persist across separate CLI calls.
+
+To control a running Chrome profile through an extension, run:
+
+```sh
+suh browser browser_connect --transport extension
+```
+
+This starts the local Rust bridge and extracts the bundled extension. Follow the
+returned `setup_instructions` to load it into the intended Chrome profile once.
+Subsequent commands accept `--transport extension` (or set
+`AI_DEV_BROWSER_TRANSPORT=extension`). The extension uses dedicated automation
+tabs, follows popups they open, and reports the signed-in profile account when
+available. `browser_disconnect` stops the bridge without closing Chrome.
+
+`browser_list` classifies managed, orphaned, and external Chrome processes.
+Preview orphan cleanup with `browser_cleanup --scope profile --profile NAME
+--dry-run`; remove `--dry-run` to apply it. `browser_stop --stop-all` only stops
+registered browser instances. `cookies_extract_live` and
+`cookies_extract_offline` return complete cookie values; `cookies_list` retains
+its value previews.
 
 ## Extensions (`suh <name> …`)
 

@@ -51,6 +51,16 @@ pub struct StartOptions {
     pub override_default_args: Vec<(String, Option<String>)>,
     /// Route Chrome's stderr to null.
     pub silent_stderr: bool,
+    /// Omit automation markers; None defaults to true.
+    pub stealth: Option<bool>,
+    /// Timezone override persisted across CLI sessions.
+    pub timezone: Option<String>,
+    /// Geolocation as latitude,longitude.
+    pub geo: Option<String>,
+    /// Explicit locale override.
+    pub locale: Option<String>,
+    /// Derive timezone and geolocation through the browser proxy.
+    pub match_proxy: Option<bool>,
 }
 
 async fn find_chrome_using_profile(profile_dir: &Path) -> Option<FoundChrome> {
@@ -158,6 +168,7 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
     let headless = opts.headless.unwrap_or_else(env_headless);
     let mut launch = LaunchOptions::new(port);
     launch.headless = headless;
+    launch.stealth = opts.stealth.unwrap_or(true);
     launch.user_data_dir = user_data_dir;
     launch.extra_args.clone_from(&opts.extra_args);
     launch
@@ -202,6 +213,15 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
             "pid": pid,
         }));
     }
+    // Registry metadata is best effort: a read-only home must not kill a launch.
+    let _ = crate::registry::register(
+        port,
+        pid,
+        &launch.workspace,
+        &launched.user_data_dir,
+        &crate::chrome::build_args(&launch, &launched.user_data_dir),
+    )
+    .await;
     // Detach: the Child handle must not reap/kill Chrome when we exit.
     drop(launched.child.stderr.take());
     let mut out = serde_json::Map::new();
@@ -218,6 +238,7 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
     if let Some(w) = env_port_warning {
         out.insert("warning".into(), json!(w));
     }
+    crate::identity::configure(port, opts, &mut out).await;
     Ok(Value::Object(out))
 }
 
@@ -247,7 +268,7 @@ async fn graceful_stop(port: u16, pid: u32, timeout: f64) -> Value {
     json!({"port": port, "pid": pid, "method": "force"})
 }
 
-/// Stop one Chrome (by port) or every debugging Chrome (`stop_all`).
+/// Stop one Chrome (by port) or all GUID-validated registered Chromes (`stop_all`).
 /// `Browser.close` first (flushes the profile), force-kill as fallback.
 pub async fn browser_stop(port: Option<u16>, stop_all: bool) -> Result<Value> {
     if port.is_none() && !stop_all {
@@ -257,7 +278,18 @@ pub async fn browser_stop(port: Option<u16>, stop_all: bool) -> Result<Value> {
     if stop_all {
         for c in find_debug_chromes(DEFAULT_PORT_RANGE).await {
             if let Some(pid) = c.pid {
-                stopped.push(graceful_stop(c.port, pid, 5.0).await);
+                let Ok(websocket) = crate::cdp::http::ws_debugger_url(
+                    DEFAULT_DEBUG_HOST,
+                    c.port,
+                    Duration::from_secs(2),
+                )
+                .await
+                else {
+                    continue;
+                };
+                if crate::registry::lookup(c.port, &websocket).is_some() {
+                    stopped.push(graceful_stop(c.port, pid, 5.0).await);
+                }
             }
         }
     } else if let Some(p) = port {
@@ -270,26 +302,57 @@ pub async fn browser_stop(port: Option<u16>, stop_all: bool) -> Result<Value> {
 
 /// List debugging Chromes — this workspace's by default, or all.
 pub async fn browser_list(all_workspaces: bool) -> Result<Value> {
-    let browsers: Vec<Value> = if all_workspaces {
-        find_debug_chromes(DEFAULT_PORT_RANGE)
-            .await
-            .into_iter()
-            .map(|c| {
-                let mut m = serde_json::Map::new();
-                m.insert("port".into(), json!(c.port));
-                m.insert("pid".into(), json!(c.pid));
-                if let Some(w) = c.workspace {
-                    m.insert("workspace".into(), json!(w));
-                }
-                Value::Object(m)
-            })
-            .collect()
-    } else {
-        find_workspace_chromes(&config::current_workspace(), DEFAULT_PORT_RANGE)
-            .await
-            .into_iter()
-            .map(|c| json!({"port": c.port, "pid": c.pid}))
-            .collect()
-    };
-    Ok(json!({"browsers": browsers, "count": browsers.len()}))
+    crate::cleanup::list_chromes(all_workspaces).await
+}
+
+/// Inspect an existing browser connection; no new Chrome is launched.
+pub async fn browser_connect(transport: Option<&str>, port: Option<u16>) -> Result<Value> {
+    let transport = transport
+        .map(str::to_owned)
+        .or_else(|| std::env::var("AI_DEV_BROWSER_TRANSPORT").ok())
+        .unwrap_or_else(|| "cdp".into());
+    if transport == "extension" {
+        let status = crate::bridge::status(crate::bridge::PORT).await;
+        if status
+            .as_ref()
+            .is_some_and(|state| state["extension_connected"] == true)
+        {
+            let browser = BrowserClient::connect_extension(crate::bridge::PORT).await?;
+            let tabs: Vec<_> = browser
+                .page_targets()
+                .into_iter()
+                .map(|target| &target.url)
+                .collect();
+            return Ok(json!({"transport": "extension", "connected": true,
+                "account": status.as_ref().map(|state| &state["account"]),
+                "tab_count": tabs.len(), "tabs": tabs, "bridge_port": crate::bridge::PORT}));
+        }
+        let directory = crate::extension::extension_dir()?;
+        return Ok(json!({"transport": "extension", "connected": false,
+            "bridge_running": status.is_some(), "retryable": true,
+            "extension_dir": directory,
+            "setup_instructions": format!("Open chrome://extensions in the profile you want to control. Enable Developer mode, click Load unpacked, and select {}. Keep Chrome and the extension running, then retry browser_connect --transport extension.", directory.display())}));
+    }
+    if transport != "cdp" {
+        return Err(crate::Error::Invalid(format!(
+            "Unknown browser transport: {transport}"
+        )));
+    }
+    let port = crate::connection::resolve_port(port).await;
+    match BrowserClient::connect(DEFAULT_DEBUG_HOST, port).await {
+        Ok(browser) => {
+            let tabs: Vec<_> = browser
+                .page_targets()
+                .into_iter()
+                .map(|target| &target.url)
+                .collect();
+            Ok(
+                json!({"transport": "cdp", "connected": true, "port": browser.port,
+                "tab_count": tabs.len(), "tabs": tabs}),
+            )
+        }
+        Err(error) => Ok(
+            json!({"transport": "cdp", "connected": false, "retryable": false, "error": error.to_string()}),
+        ),
+    }
 }
