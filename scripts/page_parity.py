@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Compare page/navigation and file output contracts on a local HTTP fixture."""
 import argparse
+from parity_process import run_capture
 import http.server
 import json
 import os
 from pathlib import Path
 import socket
-import subprocess
 import sys
 import tempfile
 import threading
@@ -45,8 +45,7 @@ def main():
                        PYTHONPATH=str(args.reference.resolve()), PYTHONIOENCODING='utf-8',
                        AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false')
             def invoke(command):
-                run = subprocess.run(command, env=env, capture_output=True, text=True,
-                                     encoding='utf-8', timeout=45)
+                run = run_capture(command, env=env, timeout=45)
                 assert run.returncode == 0, (command[:4], run.stderr)
                 return json.loads(run.stdout)
             def rust(name, *flags):

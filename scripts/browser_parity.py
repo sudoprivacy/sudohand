@@ -5,6 +5,7 @@ Only synthetic local fixtures are used. No personal cookies or profiles are read
 This suite is one parity gate, not evidence for features it does not exercise.
 """
 import argparse
+from parity_process import run_capture
 from contextlib import closing
 import base64
 import faulthandler
@@ -44,7 +45,7 @@ def main():
                     key, _, value = flag.partition('=')
                     overrides[key] = value
                 command = [*command, '--override-default-args', json.dumps(overrides)]
-            completed = subprocess.run(command, env=env, capture_output=True, text=True, encoding='utf-8', timeout=45)
+            completed = run_capture(command, env=env, timeout=45)
             if completed.returncode:
                 raise AssertionError(f'{command[0:4]} exited {completed.returncode}: {completed.stderr}')
             return json.loads(completed.stdout)

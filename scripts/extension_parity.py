@@ -3,6 +3,7 @@
 Never loads an extension into, attaches to, or closes a personal browser.
 """
 import argparse
+from parity_process import run_capture
 import asyncio
 import json
 import os
@@ -37,11 +38,11 @@ async def main():
         root = Path(temporary)
         env = dict(os.environ, PYTHONIOENCODING='utf-8', AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=str(args.reference.resolve()))
         def cli(name, *flags):
-            result = subprocess.run([suh, 'browser', name, *map(str, flags)], env=env, text=True, encoding='utf-8', capture_output=True, timeout=40)
+            result = run_capture([suh, 'browser', name, *map(str, flags)], env=env, timeout=40)
             assert result.returncode == 0, (name, result.stderr)
             return json.loads(result.stdout)
         def reference(name, *flags):
-            result = subprocess.run([sys.executable, '-m', f'ai_dev_browser.tools.{name}', *map(str, flags)], env=env, text=True, encoding='utf-8', capture_output=True, timeout=40)
+            result = run_capture([sys.executable, '-m', f'ai_dev_browser.tools.{name}', *map(str, flags)], env=env, timeout=40)
             assert result.returncode == 0, (name, result.stderr)
             return json.loads(result.stdout)
         async def command(ws, method, params=None):

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Compare verified typing and page effects on isolated, deterministic fields."""
 import argparse
+from parity_process import run_capture
 import json
 import os
 from pathlib import Path
 import socket
-import subprocess
 import sys
 import tempfile
 
@@ -20,8 +20,7 @@ def main():
                    PYTHONPATH=str(args.reference.resolve()), PYTHONIOENCODING='utf-8',
                    AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false')
         def invoke(command):
-            run = subprocess.run(command, env=env, capture_output=True, text=True,
-                                 encoding='utf-8', timeout=45)
+            run = run_capture(command, env=env, timeout=45)
             assert run.returncode == 0, (command[:4], run.stderr)
             return json.loads(run.stdout)
         def rust(name, *flags):

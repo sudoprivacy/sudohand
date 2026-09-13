@@ -297,3 +297,23 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   cookie support. Run 34786880027 confirms macOS extension now passes hosted CI;
   its page failure is the already-corrected zero-timeout fixture. Windows had
   Page.navigate/printToPDF timeouts in that older run, requiring further diagnosis.
+
+- Windows diagnostic run 34786748286 proves the browser-start stall was a pipe
+  drain: after subprocess timeout, Python remained in communicate() joining both
+  stdout/stderr reader threads. Rust's Windows spawn inherits inheritable handles
+  even when other stdio handles are selected. The CLI now clears inheritance on
+  the incoming standard handles before any worker threads start, using one
+  narrowly scoped SetHandleInformation FFI call. Intentional child stdio still
+  works through Rust's per-spawn duplicates. Browser crate remains unsafe-free.
+  Reference: https://doc.rust-lang.org/std/os/windows/process/trait.CommandExt.html#tymethod.inherit_handles
+- Added a real CLI pipe-EOF test that requires Chrome to remain alive after the
+  startup command's stdout/stderr finish. Local test passes; the Windows-specific
+  module compiles for x86_64-pc-windows-gnu. Actual Windows runtime is pending.
+- Test subprocess capture now uses temporary files so descendant handles cannot
+  defeat its deadline. Two tests cover parent exit and timeout with an explicitly
+  inherited descendant stream; both pass. The browser differential suite passes
+  with this capture path. All existing assertions remain, and the separate real
+  pipe test prevents the capture change from hiding CLI inheritance regressions.
+- Cancelled five superseded CI runs to release runners; retained the latest two.
+  Their logs also show an intermittent macOS discovery-band port collision,
+  which remains to investigate. Strict workspace Clippy passes after stdio changes.

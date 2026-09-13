@@ -3,11 +3,11 @@
 --native requires a visible desktop (CI uses Xvfb), and moves its real cursor.
 """
 import argparse
+from parity_process import run_capture
 import json
 import os
 from pathlib import Path
 import socket
-import subprocess
 import sys
 import tempfile
 
@@ -27,7 +27,7 @@ def main():
             env['AI_DEV_BROWSER_VIEWPORT'] = 'native'
             env['AI_DEV_BROWSER_HEADLESS'] = '0'
         def invoke(command):
-            run = subprocess.run(command, env=env, capture_output=True, text=True, encoding='utf-8', timeout=45)
+            run = run_capture(command, env=env, timeout=45)
             assert run.returncode == 0, (command[:4], run.stderr)
             return json.loads(run.stdout)
         def rust(name, *flags):

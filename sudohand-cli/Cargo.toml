@@ -28,3 +28,6 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 [dev-dependencies]
 serde_json = { workspace = true }
 tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation"] }

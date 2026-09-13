@@ -53,6 +53,8 @@ jobs:
               output.write(f'PARITY_CHROME={executable}\n')
       - name: Install reference test dependencies
         run: python -m pip install websockets websocket-client Pillow deprecated psutil cryptography rapidfuzz
+      - name: Test bounded process capture
+        run: python scripts/test_parity_process.py
       - name: Install Linux native-input prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb
@@ -68,6 +70,15 @@ jobs:
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
           python scripts/cli_parity.py --suh "$executable" --reference .parity-reference --check-defaults sudohand-cli/tests/fixtures/browser-cli-defaults.json
+      - name: CLI output closes before Chrome exits
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        env:
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
+        run: |
+          executable=target/debug/suh
+          if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
+          python scripts/stdio_parity.py --suh "$executable"
       - name: Real browser and SDK regression
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
