@@ -31,8 +31,8 @@ sha1 = "0.10"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync", "io-util", "process", "fs"] }
 tokio-tungstenite = "0.29"
 sysinfo = { version = "0.37", default-features = false, features = ["system"] }
-
-[dev-dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
 tempfile = "3"
 
 [target.'cfg(target_os = "windows")'.dependencies]

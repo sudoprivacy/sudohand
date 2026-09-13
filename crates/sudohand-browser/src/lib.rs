@@ -61,6 +61,7 @@ pub mod js;
 pub mod login;
 pub mod mouse;
 pub mod page;
+pub mod pool;
 pub mod port;
 pub mod refs;
 mod registry;

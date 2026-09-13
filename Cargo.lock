@@ -2429,6 +2429,7 @@ dependencies = [
  "cbc",
  "chromiumoxide_cdp",
  "chromiumoxide_types",
+ "chrono",
  "enigo",
  "futures-util",
  "hmac",
@@ -2446,6 +2447,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-tungstenite",
+ "uuid",
  "x11rb",
 ]
 

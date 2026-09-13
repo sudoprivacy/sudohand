@@ -155,3 +155,13 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   Chrome previously passed). Added isolated worker diagnostics; cause remains open.
 - Workspace strict Clippy passed after verified filling. Hosted cross-platform checks,
   extension gaps, Windows offline runtime and SDK pool/profile/job/persistence remain.
+
+- SDK foundations added: Job/JobResult/JobStatus, version-one PoolState, atomic
+  replacement with file sync, recovery of pending/interrupted jobs, structured
+  failure identity and retry budgets, and shared/per-worker/temp cookie paths.
+  Four tests passed, including exact JSON roundtrip of a fixture produced by the
+  pinned Python API, malformed-file handling, overwrite and profile isolation.
+  This is not yet BrowserPool scheduling: dynamic workers, execution, queue policy,
+  shared progress, wait/selection/cancellation and client lifecycle remain to implement.
+- CfT extension diagnostics show its service worker exists but its WebSocket remains
+  CONNECTING; a no-proxy-server trial did not resolve it. Root cause remains open.
