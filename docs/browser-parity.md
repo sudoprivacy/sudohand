@@ -329,3 +329,21 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   reporting zero. A regression checks wait_for, wait and wait_current_task:
   timing out leaves the job running and it completes once, without re-execution.
   Eleven scheduler tests, the strict upload integration test and Clippy pass.
+
+- Extended URL and cookie filter matching with lookarounds and numbered/named
+  backreferences. Cookie filters now search Python-style dictionary text (quotes,
+  spaces and booleans), while files remain JSON. Empty patterns mean all cookies.
+  Actual CLI differential checks compare every saved cookie field for seven
+  filters; URL checks require successful matches for four advanced patterns.
+  Both full local differential suites pass, along with strict workspace Clippy.
+- Expanded page discovery comparisons pass for all seven option combinations,
+  including iframe inclusion, coordinates, DOM scanning/limit and text filters.
+  Text waiting exposed a real bug: DOM.describeNode can omit parentId, leaving
+  a #text ref instead of its element. Resolve that parent from the DOM snapshot.
+  The real Chrome regression now checks the returned heading ref resolves to h1;
+  CSS/text waits, hidden/missing deadlines, recovery hints and text selection all
+  pass against the reference in scripts/page_parity.py.
+- Run 34787792557 confirms the actual Windows CLI pipe-EOF regression passes,
+  as do its real browser/SDK tests and extension transport. Its cookie and page
+  differential stages still fail and require log diagnosis. Linux and macOS
+  complete jobs pass on that revision. Final-head cross-platform CI remains open.

@@ -250,9 +250,10 @@ pub async fn page_wait_url(
             (Some(e), _) => url == e,
             (None, Some(p)) => {
                 url.contains(p)
-                    || regex_lite::Regex::new(p)
+                    || fancy_regex::Regex::new(p)
                         .map_err(|error| Error::Invalid(error.to_string()))?
                         .is_match(&url)
+                        .map_err(|error| Error::Invalid(format!("pattern: {error}")))?
             }
             (None, None) => false,
         };

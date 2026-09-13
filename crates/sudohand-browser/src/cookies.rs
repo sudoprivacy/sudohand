@@ -3,6 +3,7 @@
 //! array of CDP `Network.Cookie` objects Python writes (`cookies.dat`), so
 //! files are interchangeable between the two implementations.
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use chromiumoxide_cdp::cdp::browser_protocol::network::{Cookie, CookieParam};
@@ -91,24 +92,33 @@ pub async fn cookies_extract_live(tab: &Tab, domain: &str) -> Result<Value> {
 }
 
 /// Save cookies as JSON; `pattern` is a regex searched in each cookie's
-/// JSON (Python `re.search`). `{path, pattern, saved}`.
+/// Python-style dictionary representation (`re.search`). `{path, pattern, saved}`.
 pub async fn cookies_save(tab: &Tab, path: Option<&Path>, pattern: Option<&str>) -> Result<Value> {
+    let pattern = pattern.filter(|value| !value.is_empty());
     let path = expand(path);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
     let cookies = get_all(tab).await?;
-    let matcher = match pattern {
+    let matcher = match pattern.filter(|_| !cookies.is_empty()) {
         Some(p) => {
-            Some(regex_lite::Regex::new(p).map_err(|e| Error::Invalid(format!("pattern: {e}")))?)
+            Some(fancy_regex::Regex::new(p).map_err(|e| Error::Invalid(format!("pattern: {e}")))?)
         }
         None => None,
     };
-    let kept: Vec<Value> = cookies
-        .iter()
-        .filter_map(|c| serde_json::to_value(c).ok())
-        .filter(|v| matcher.as_ref().is_none_or(|m| m.is_match(&v.to_string())))
-        .collect();
+    let mut kept = Vec::new();
+    for cookie in &cookies {
+        let value = serde_json::to_value(cookie)?;
+        let include_cookie = match &matcher {
+            Some(matcher) => matcher
+                .is_match(&cookie_pattern_text(&value))
+                .map_err(|error| Error::Invalid(format!("pattern: {error}")))?,
+            None => true,
+        };
+        if include_cookie {
+            kept.push(value);
+        }
+    }
     if !cookies.is_empty() {
         std::fs::write(&path, serde_json::to_string_pretty(&kept)?)?;
     }
@@ -117,6 +127,63 @@ pub async fn cookies_save(tab: &Tab, path: Option<&Path>, pattern: Option<&str>)
         "pattern": pattern.unwrap_or("all"),
         "saved": true,
     }))
+}
+
+// CookieJar searches str(cookie.to_json()), not JSON text: callers can match
+// field boundaries, quoted strings and Python booleans. Keep file output JSON.
+fn cookie_pattern_text(value: &Value) -> String {
+    match value {
+        Value::Null => "None".into(),
+        Value::Bool(true) => "True".into(),
+        Value::Bool(false) => "False".into(),
+        Value::Number(number) => number.to_string(),
+        Value::String(text) => {
+            let quote = if text.contains('\'') && !text.contains('"') {
+                '"'
+            } else {
+                '\''
+            };
+            let mut result = String::from(quote);
+            for character in text.chars() {
+                match character {
+                    '\\' => result.push_str("\\\\"),
+                    '\n' => result.push_str("\\n"),
+                    '\r' => result.push_str("\\r"),
+                    '\t' => result.push_str("\\t"),
+                    c if c == quote => {
+                        result.push('\\');
+                        result.push(c);
+                    }
+                    c if c.is_control() => {
+                        let _ = write!(result, "\\x{:02x}", c as u32);
+                    }
+                    c => result.push(c),
+                }
+            }
+            result.push(quote);
+            result
+        }
+        Value::Array(values) => format!(
+            "[{}]",
+            values
+                .iter()
+                .map(cookie_pattern_text)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Value::Object(fields) => format!(
+            "{{{}}}",
+            fields
+                .iter()
+                .map(|(key, value)| format!(
+                    "{}: {}",
+                    cookie_pattern_text(&Value::String(key.clone())),
+                    cookie_pattern_text(value)
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    }
 }
 
 /// Load cookies from JSON or a legacy pickle file into the browser. `{path, loaded}` or
@@ -232,6 +299,12 @@ fn decode_cookie_file(raw: &[u8]) -> Result<Vec<Value>> {
 #[cfg(test)]
 mod legacy_tests {
     use super::*;
+
+    #[test]
+    fn cookie_filter_text_preserves_python_quotes_and_field_types() {
+        let value = json!({"name":"it's", "value":"say \"it's\"\\\n", "httpOnly":true, "secure":false, "partitionKey":null});
+        assert_eq!(cookie_pattern_text(&value), "{'name': \"it's\", 'value': 'say \"it\\'s\"\\\\\\n', 'httpOnly': True, 'secure': False, 'partitionKey': None}");
+    }
 
     #[test]
     fn python_cookie_instances_match_json_across_pickle_protocols() {

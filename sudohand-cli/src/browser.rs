@@ -1889,6 +1889,7 @@ async fn run_flow(cmd: Cmd) -> sudohand_core::Result<Value> {
         Cmd::Locator(LocatorCommands::FindByHtmlId { .. }) => Some("No matching id in the page or its same-origin frames. Inspect page_discover, then use a current id, find_by_text, or find_by_xpath."),
         Cmd::Locator(LocatorCommands::FindByXpath { .. }) => Some("No XPath match in the page or its same-origin frames. Try a broader XPath, inspect page_discover, or use find_by_text / find_by_html_id."),
         Cmd::Locator(LocatorCommands::FindByText { .. }) => Some("No accessible name matches this text. Try a shorter label, inspect page_discover, or use find_by_html_id / find_by_xpath. For cross-origin frames, use js_evaluate --frame."),
+        Cmd::Navigation(NavigationCommands::PageWaitElement { .. }) => Some("The element did not become visible before the deadline. Check its opening action, inspect page_discover, or try a broader --selector. Text searches use the top frame; inspect other frames with js_evaluate --frame."),
         _ => None,
     };
     let mut result = run_async(cmd).await.map_err(sudohand_core::Error::from)?;

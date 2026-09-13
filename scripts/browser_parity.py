@@ -138,6 +138,18 @@ def main():
             old = rust('cookies_list', *flags, '--domain', 'example.test')
             assert old['cookies'][0]['value'] == 'x' * 50 + '...'
             print('PASS live: full values, HttpOnly, expiry, domain filters, schema; legacy preview preserved')
+            # Filters search Python's dict representation, including its quotes
+            # and booleans, not the compact JSON used by the Rust serializer.
+            for index, pattern in enumerate(('', r"'name': 'long'", r"'httpOnly': True", r"(?<=name': ')persistent", r'(x)\1{79}', r"(?P<part>other).*?(?P=part)", r'not-a-cookie')):
+                path = root / f'filtered-{index}.json'
+                results, contents = [], []
+                for implementation in (python, rust):
+                    results.append(implementation('cookies_save', *flags, '--path', path, '--pattern', pattern))
+                    contents.append(json.loads(path.read_text(encoding='utf-8')))
+                    path.unlink()
+                assert results[0] == results[1] and contents[0] == contents[1], (pattern, results, contents)
+                assert len(contents[0]) == (3 if not pattern else 0 if pattern == 'not-a-cookie' else 1), (pattern, contents)
+            print('PASS cookie filters: empty, dictionary fields, booleans, lookbehind and backreferences')
             fixtures = Path(__file__).resolve().parents[1] / 'crates' / 'sudohand-browser' / 'tests' / 'fixtures'
             sys.path.insert(0, reference)
             from ai_dev_browser.cdp.network import Cookie

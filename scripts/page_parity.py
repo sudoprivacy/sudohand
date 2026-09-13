@@ -76,7 +76,7 @@ def main():
                             hint = result.pop('hint')
                             assert isinstance(hint, str) and 'page_discover' in hint, (name, result, hint)
                     assert results[0] == results[1], (name, flags, results)
-                    print(f'PASS {name} {flags}: {list(results[0])}', flush=True)
+                    print(f'PASS {name} {flags}: {len(results[0])} result fields/items', flush=True)
                     return results[0]
                 # The reference returns its pre-navigation Target snapshot.
                 # Verify that known bug explicitly; suh must report the live URL.
@@ -103,6 +103,8 @@ def main():
                 equivalent('page_wait_url', '--timeout', '0', omit=('elapsed',))
                 equivalent('page_wait_url', '--exact', url, omit=('elapsed',))
                 equivalent('page_wait_url', '--pattern', '/fixt.*', omit=('elapsed',))
+                for pattern in (r'(?<=/)fixture$', r'fixture(?=$)', r'(?P<octet>0)\.(?P=octet)', r'(0)\.\1'):
+                    assert equivalent('page_wait_url', '--pattern', pattern, '--timeout', '1', omit=('elapsed',))['matched']
                 equivalent('page_wait_url', '--exact', '', '--pattern', '/fixture', omit=('elapsed',))
                 # A negative deadline is deterministic; Python wall-clock resolution
                 # can make a zero deadline either match once or expire first.
@@ -118,6 +120,21 @@ def main():
                     equivalent('find_by_xpath', '--xpath', xpath)
                 for text in ('Fixture', 'Name', 'Hidden', 'absent', 'Child action'):
                     equivalent('find_by_text', '--text', text)
+                for discovery_flags in ([], ['--no-interactable-only'], ['--no-include-coordinates'], ['--no-include-iframes'], ['--no-dom-scan'], ['--dom-limit', '1'], ['--text', 'CHILD']):
+                    equivalent('page_discover', *discovery_flags)
+                for wait_flags in (['--selector', '#field'], ['--text', 'Fixture'], ['--selector', '#missing', '--timeout', '.1'], ['--selector', '#hidden', '--timeout', '.1']):
+                    outcomes = []
+                    for implementation in (python, rust):
+                        result = implementation('page_wait_element', *connection, *wait_flags)
+                        assert result.pop('elapsed') >= 0, result
+                        if not result['found']:
+                            assert isinstance(result.pop('hint'), str), result
+                        outcomes.append(result)
+                    assert outcomes[0] == outcomes[1], (wait_flags, outcomes)
+                    assert outcomes[0]['found'] == ('--timeout' not in wait_flags), outcomes
+                    print(f'PASS page_wait_element {wait_flags}: visible controls and hidden/missing deadlines', flush=True)
+                result = equivalent('select_text', '--text', 'Deterministic', '--to-text', 'content')
+                assert result['selected'] and rust('js_evaluate', *connection, '--expression', 'getSelection().toString()')['result'] == 'Deterministic content', result
                 elements = rust('page_discover', *connection, '--no-interactable-only')
                 def named_ref(name):
                     matches = [element['ref'] for element in elements if element.get('name') == name]

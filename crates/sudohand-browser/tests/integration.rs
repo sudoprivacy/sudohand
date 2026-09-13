@@ -1206,6 +1206,17 @@ async fn page_wait_element_info_reload_url() {
         .await
         .unwrap();
     assert_eq!(r["found"], true);
+    tab.evaluate("document.querySelector('h1').textContent = 'Visible heading marker'")
+        .await
+        .unwrap();
+    let heading = page_wait_element(&tab, Some("Visible heading marker"), None, 5.0)
+        .await
+        .unwrap();
+    assert_eq!(heading["role"], "h1", "must return the element, not #text");
+    let html = html_by_ref(&tab, heading["ref"].as_str().unwrap())
+        .await
+        .unwrap();
+    assert!(html["html"].as_str().unwrap().starts_with("<h1"), "{html}");
     // timeout path
     let r = page_wait_element(&tab, None, Some("#does-not-exist"), 0.5)
         .await
