@@ -58,7 +58,11 @@ def main():
             url = f'http://127.0.0.1:{server.server_port}/fixture'
             try:
                 def equivalent(name, *flags, omit=()):
-                    results = [implementation(name, *connection, *flags) for implementation in (python, rust)]
+                    results = []
+                    for implementation in (python, rust):
+                        if name == 'js_evaluate':
+                            rust('cdp_send', *connection, '--method', 'Runtime.discardConsoleEntries')
+                        results.append(implementation(name, *connection, *flags))
                     for result in results:
                         for key in omit:
                             assert isinstance(result[key], (int, float)) and result[key] >= 0, result
@@ -79,7 +83,12 @@ def main():
                 for flags in ([], ['--outer']):
                     result = equivalent('page_html', *flags)
                     assert result['length'] == len(result['html']) and '🙂' in result['html'], result
-                for expression in ('({nested:[1,true,null,"中文🙂"]})', 'null', 'undefined', 'document.title'):
+                for expression in (
+                    '({nested:[1,true,null,"中文🙂"]})', 'null', 'undefined', 'document.title',
+                    'console.log("中文", 12, true, null, undefined, NaN, Infinity); 42',
+                    'console.warn({hello:"world"}); console.error([1,2]); "done"',
+                    'new Promise(resolve => setTimeout(() => { console.info("awaited"); resolve(7); }, 30))',
+                ):
                     equivalent('js_evaluate', '--expression', expression)
                 equivalent('page_wait_ready', '--idle-time', '0')
                 equivalent('page_wait_ready', '--timeout', '0', '--idle-time', '0')

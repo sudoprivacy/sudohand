@@ -56,7 +56,7 @@ jobs:
       - name: Install Linux native-input prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb
-      - name: Build CLI and exercise real browser regression
+      - name: Build CLI and check command declarations
         id: build
         shell: bash
         env:
@@ -64,6 +64,15 @@ jobs:
         run: |
           cargo build -p sudohand-cli
           cargo test -p sudohand-cli --test browser_dispatch
+          executable=target/debug/suh
+          if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
+          python scripts/cli_parity.py --suh "$executable" --reference .parity-reference
+      - name: Real browser and SDK regression
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        env:
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
+        run: |
           cargo test -p sudohand-browser -- --test-threads=4
       - name: Differential cookies, identity, proxy, cleanup
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}

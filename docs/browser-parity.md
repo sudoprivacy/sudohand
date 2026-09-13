@@ -246,3 +246,14 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   close implementation: dropping its Chrome guard signals the process without
   awaiting socket release. The client now waits up to five seconds for its own
   port to close before returning; the final no-listener assertion is retained.
+
+- Automated declaration audit scripts/cli_parity.py generates the reference's
+  actual argparse parsers: all 59 public commands and 382 long-flag declarations
+  are present in suh. This does not assert default-value or output equivalence.
+- Page differential suite additionally passes console primitive/special-value
+  serialization, warning/error levels and object/array descriptions. A Promise
+  expression's observed result/console envelope also matches the reference;
+  this is not a promise that raw js_evaluate awaits JavaScript promises.
+- CI now separates successful CLI compilation/declaration checks from browser
+  and SDK regression. Independent differential stages still run when a browser
+  regression fails, preserving failure visibility without relaxing any gate.
