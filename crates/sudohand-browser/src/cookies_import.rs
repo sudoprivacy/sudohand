@@ -6,8 +6,8 @@
 //! Decryption is pure Rust (`aes`, `cbc`, `pbkdf2`); the only platform call
 //! is fetching the key (macOS `security`, Linux `secret-tool`). v20 (Chrome
 //! 127+ App-Bound Encryption) is unsupported and skipped, matching the
-//! reference. Windows is unsupported in this build — its DPAPI key unwrap
-//! needs an FFI call the crate's `#![forbid(unsafe_code)]` disallows.
+//! reference. Windows uses user-scope DPAPI through PowerShell and AES-GCM;
+//! this crate does not require unsafe FFI.
 
 use std::path::{Path, PathBuf};
 
@@ -171,14 +171,26 @@ fn platform_key(browser: &str, _db: &Path) -> Result<Vec<u8>> {
 }
 
 #[cfg(target_os = "windows")]
-fn platform_key(_browser: &str, _db: &Path) -> Result<Vec<u8>> {
-    // The DPAPI key unwrap (CryptUnprotectData) needs an FFI call, which the
-    // crate's `#![forbid(unsafe_code)]` disallows. macOS and Linux key
-    // material comes from safe subprocess calls; Windows would need a
-    // `windows`/`winapi` FFI, so it is unsupported in this build.
-    Err(Error::Invalid(
-        "cookies_import is not supported on Windows in this build (DPAPI needs an FFI call, and the crate forbids unsafe code); run it on macOS or Linux, or use browser_start --profile to reuse a logged-in profile".to_string(),
-    ))
+fn platform_key(_browser: &str, db: &Path) -> Result<Vec<u8>> {
+    use base64::Engine;
+    let state = db
+        .ancestors()
+        .map(|path| path.join("Local State"))
+        .find(|path| path.is_file())
+        .ok_or_else(|| {
+            Error::Invalid("Could not find Chromium Local State for cookie key".into())
+        })?;
+    let state: Value = serde_json::from_str(&std::fs::read_to_string(state)?)?;
+    let encoded = state["os_crypt"]["encrypted_key"]
+        .as_str()
+        .ok_or_else(|| Error::Invalid("Local State has no encrypted cookie key".into()))?;
+    let encrypted = base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|_| Error::Invalid("Local State cookie key is not base64".into()))?;
+    let payload = encrypted
+        .strip_prefix(b"DPAPI")
+        .ok_or_else(|| Error::Invalid("Unsupported Chromium cookie key format".into()))?;
+    crate::dpapi::unprotect(payload)
 }
 
 /// Decrypt one `encrypted_value` blob (returns `None` on any failure, e.g.
@@ -206,8 +218,36 @@ fn decrypt_value(encrypted: &[u8], key: &[u8]) -> Option<String> {
     }
     #[cfg(target_os = "windows")]
     {
-        let _ = (prefix, key);
-        None
+        if prefix == b"v20" {
+            return None;
+        }
+        if prefix == b"v10" || prefix == b"v11" {
+            use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit, Nonce};
+            if encrypted.len() < 3 + 12 + 16 {
+                return None;
+            }
+            let cipher = Aes256Gcm::new_from_slice(key).ok()?;
+            let plain = cipher
+                .decrypt(Nonce::from_slice(&encrypted[3..15]), &encrypted[15..])
+                .ok()?;
+            Some(String::from_utf8_lossy(&strip_sha256_prefix(plain)).into_owned())
+        } else {
+            crate::dpapi::unprotect(encrypted)
+                .ok()
+                .map(|plain| String::from_utf8_lossy(&plain).into_owned())
+        }
+    }
+}
+
+fn needs_platform_key(encrypted: &[u8]) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        encrypted.starts_with(b"v10") || encrypted.starts_with(b"v11")
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = encrypted;
+        true
     }
 }
 
@@ -239,6 +279,16 @@ fn cookie_column_indexes(db: &crate::sqlite::Database) -> Result<CookieCols> {
         is_httponly: find("is_httponly"),
         expires_utc: find("expires_utc"),
     })
+}
+
+/// Extract full offline cookies using the reference command name.
+/// Kept alongside `cookies_extract` for existing Rust callers.
+pub fn cookies_extract_offline(
+    domain: &str,
+    browser: &str,
+    user_data_dir: Option<&str>,
+) -> Result<Vec<ExtractedCookie>> {
+    cookies_extract(domain, browser, user_data_dir)
 }
 
 /// Read + decrypt cookies for `domain` from `browser`'s local DB.
@@ -301,8 +351,11 @@ pub fn cookies_extract(
 
         let value = if !plaintext.is_empty() {
             Some(plaintext)
+        } else if encrypted.starts_with(b"v20") {
+            v20_skipped += 1;
+            None
         } else if !encrypted.is_empty() {
-            if key.is_none() {
+            if key.is_none() && needs_platform_key(&encrypted) {
                 match platform_key(browser, &db_path) {
                     Ok(k) => key = Some(k),
                     Err(e) => {

@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Sudohand Browser Bridge",
+  "version": "0.1.0",
+  "minimum_chrome_version": "116",
+  "description": "Opt-in browser control for suh through a local bridge. Drives dedicated automation tabs.",
+  "permissions": ["debugger", "tabs", "cookies", "storage", "alarms", "identity", "identity.email", "webNavigation"],
+  "host_permissions": ["<all_urls>"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_title": "Sudohand browser control"}
+}

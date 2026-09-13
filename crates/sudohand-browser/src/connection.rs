@@ -99,6 +99,25 @@ impl BrowserClient {
         Ok(client)
     }
 
+    /// Connect through a running local extension bridge.
+    pub async fn connect_extension(port: u16) -> Result<Self> {
+        let conn = Connection::connect(&format!("ws://127.0.0.1:{port}/devtools/browser")).await?;
+        let status = conn
+            .send_raw("_bridge.status", serde_json::json!({}))
+            .await?;
+        if status["extension_connected"] != true {
+            return Err(Error::Connection("extension not connected; run browser_connect --transport extension for setup instructions".into()));
+        }
+        let mut client = Self {
+            host: "127.0.0.1".into(),
+            port,
+            conn: Arc::new(conn),
+            targets: Vec::new(),
+        };
+        client.update_targets().await?;
+        Ok(client)
+    }
+
     /// The browser-level connection.
     #[must_use]
     pub fn connection(&self) -> &Arc<Connection> {
@@ -136,11 +155,17 @@ impl BrowserClient {
         // Best effort, like Python's _ensure_connected.
         let _ = conn.send(page::EnableParams::default()).await;
         let _ = conn.send(dom::EnableParams::default()).await;
-        Ok(Tab {
+        let tab = Tab {
             target: target.clone(),
             conn,
             browser: Arc::clone(&self.conn),
-        })
+        };
+        if matches!(self.host.as_str(), "127.0.0.1" | "localhost" | "::1") {
+            if let Some(record) = crate::registry::lookup(self.port, self.conn.url()) {
+                crate::identity::apply(&tab, &record["identity"]).await;
+            }
+        }
+        Ok(tab)
     }
 
     /// Open a new tab at `url` and attach to it.
@@ -178,9 +203,20 @@ impl BrowserClient {
 
 /// Connect with port auto-resolution (explicit → env → workspace scan → default).
 pub async fn connect_browser(host: Option<&str>, port: Option<u16>) -> Result<BrowserClient> {
-    let host = host.unwrap_or(DEFAULT_DEBUG_HOST);
-    let port = resolve_port(port).await;
-    BrowserClient::connect(host, port).await
+    match std::env::var("AI_DEV_BROWSER_TRANSPORT")
+        .as_deref()
+        .unwrap_or("cdp")
+    {
+        "extension" => BrowserClient::connect_extension(crate::bridge::PORT).await,
+        "cdp" => {
+            let host = host.unwrap_or(DEFAULT_DEBUG_HOST);
+            let port = resolve_port(port).await;
+            BrowserClient::connect(host, port).await
+        }
+        other => Err(Error::Invalid(format!(
+            "Unknown browser transport: {other}"
+        ))),
+    }
 }
 
 /// One page target with its own CDP session.

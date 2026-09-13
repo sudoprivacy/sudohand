@@ -16,6 +16,11 @@ use crate::Result;
 async fn set_download_dir(tab: &Tab, dir: &Path, events: bool) -> Result<PathBuf> {
     std::fs::create_dir_all(dir)?;
     let abs = std::fs::canonicalize(dir)?;
+    // Windows canonicalize returns an extended-length path. Chrome's download
+    // directory interface expects normal drive/UNC syntax, as Python resolve
+    // supplies; passing the verbatim prefix can silently discard the download.
+    #[cfg(windows)]
+    let abs = PathBuf::from(windows_download_path(&abs.to_string_lossy()));
     tab.send(SetDownloadBehaviorParams {
         behavior: SetDownloadBehaviorBehavior::Allow,
         browser_context_id: None,
@@ -24,6 +29,20 @@ async fn set_download_dir(tab: &Tab, dir: &Path, events: bool) -> Result<PathBuf
     })
     .await?;
     Ok(abs)
+}
+
+#[cfg(any(windows, test))]
+fn windows_download_path(path: &str) -> String {
+    if let Some(unc) = path.strip_prefix(r"\\?\UNC\") {
+        return format!(r"\\{unc}");
+    }
+    if let Some(drive) = path.strip_prefix(r"\\?\") {
+        let bytes = drive.as_bytes();
+        if bytes.len() >= 3 && bytes[0].is_ascii_alphabetic() && bytes[1..3] == *b":\\" {
+            return drive.into();
+        }
+    }
+    path.into()
 }
 
 /// Fetch `url` in the page and save it via an anchor click into `path`
@@ -168,4 +187,27 @@ pub async fn download_link(
         "filename": filename,
         "bytes": bytes,
     }))
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::windows_download_path;
+
+    #[test]
+    fn chrome_receives_normal_windows_drive_and_unc_paths() {
+        for (input, expected) in [
+            (r"\\?\C:\Users\fixture\下载", r"C:\Users\fixture\下载"),
+            (
+                r"\\?\UNC\server\share\downloads",
+                r"\\server\share\downloads",
+            ),
+            (r"C:\downloads", r"C:\downloads"),
+            (
+                r"\\?\Volume{fixture}\downloads",
+                r"\\?\Volume{fixture}\downloads",
+            ),
+        ] {
+            assert_eq!(windows_download_path(input), expected);
+        }
+    }
 }
