@@ -279,6 +279,22 @@ struct Control {
     task: JoinHandle<Result<()>>,
 }
 
+// Awaiting a JoinHandle by value detaches it if the caller cancels the wait.
+// Return unfinished handles to the pool so a later shutdown still joins them.
+struct ClosingWorkers<'a> {
+    owner: &'a Mutex<BTreeMap<u64, Control>>,
+    pending: BTreeMap<u64, Control>,
+}
+
+impl Drop for ClosingWorkers<'_> {
+    fn drop(&mut self) {
+        self.owner
+            .lock()
+            .expect("worker controls")
+            .append(&mut self.pending);
+    }
+}
+
 pub struct BrowserPool {
     inner: Arc<Inner>,
     factory: ClientFactory,
@@ -434,15 +450,21 @@ impl BrowserPool {
         {
             worker.status = WorkerStatus::Stopping;
         }
-        let _ = control
-            .stop
-            .send(if wait { Stop::Graceful } else { Stop::Cancel });
+        control.stop.send_modify(|stop| {
+            if *stop != Stop::Cancel {
+                *stop = if wait { Stop::Graceful } else { Stop::Cancel };
+            }
+        });
         self.inner.changed();
-        let result = control
-            .task
+        let mut closing = ClosingWorkers {
+            owner: &self.controls,
+            pending: BTreeMap::from([(id, control)]),
+        };
+        let result = (&mut closing.pending.get_mut(&id).expect("closing worker").task)
             .await
             .map_err(|error| Error::Invalid(format!("worker task: {error}")))
             .and_then(std::convert::identity);
+        closing.pending.remove(&id);
         self.inner
             .state
             .lock()
@@ -686,22 +708,30 @@ impl BrowserPool {
     pub async fn shutdown(&self, graceful: bool) -> Result<()> {
         let _lifecycle = self.lifecycle.lock().await;
         self.inner.state.lock().expect("pool state").running = false;
-        let controls = std::mem::take(&mut *self.controls.lock().expect("worker controls"));
-        for control in controls.values() {
-            let _ = control.stop.send(if graceful {
-                Stop::Graceful
-            } else {
-                Stop::Cancel
+        let mut closing = ClosingWorkers {
+            owner: &self.controls,
+            pending: std::mem::take(&mut *self.controls.lock().expect("worker controls")),
+        };
+        for control in closing.pending.values() {
+            control.stop.send_modify(|stop| {
+                if *stop != Stop::Cancel {
+                    *stop = if graceful {
+                        Stop::Graceful
+                    } else {
+                        Stop::Cancel
+                    };
+                }
             });
         }
         self.inner.changed();
         let mut error = None;
-        for (_, control) in controls {
-            match control.task.await {
+        while let Some(id) = closing.pending.keys().next().copied() {
+            match (&mut closing.pending.get_mut(&id).expect("closing worker").task).await {
                 Ok(Ok(())) => {}
                 Ok(Err(e)) => error = Some(e),
                 Err(e) => error = Some(Error::Invalid(e.to_string())),
             }
+            closing.pending.remove(&id);
         }
         self.inner.state.lock().expect("pool state").workers.clear();
         self.inner.checkpoint()?;

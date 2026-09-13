@@ -570,3 +570,68 @@ async fn wait_timeout_reports_budget_without_cancelling_the_job() {
     assert_eq!(events.calls.lock().unwrap().len(), 1);
     pool.shutdown(true).await.unwrap();
 }
+
+#[tokio::test]
+async fn interrupted_close_keeps_workers_joinable_for_later_shutdown() {
+    struct SlowClose {
+        gate: Arc<Semaphore>,
+        closed: Arc<Mutex<usize>>,
+    }
+    impl PoolClient for SlowClose {
+        fn execute<'a>(
+            &'a mut self,
+            _job: &'a Job,
+            _context: JobContext,
+        ) -> PoolFuture<'a, std::result::Result<ExecutionResult, JobFailure>> {
+            Box::pin(async { Ok(json!(null).into()) })
+        }
+
+        fn close(&mut self, _close_browser: bool) -> PoolFuture<'_, Result<()>> {
+            Box::pin(async move {
+                self.gate.acquire().await.unwrap().forget();
+                *self.closed.lock().unwrap() += 1;
+                Ok(())
+            })
+        }
+    }
+
+    for remove_first in [false, true] {
+        let gate = Arc::new(Semaphore::new(0));
+        let closed = Arc::new(Mutex::new(0));
+        let factory: ClientFactory = {
+            let gate = gate.clone();
+            let closed = closed.clone();
+            Arc::new(move |_| {
+                let client = SlowClose {
+                    gate: gate.clone(),
+                    closed: closed.clone(),
+                };
+                Box::pin(async move { Ok(Box::new(client) as Box<dyn PoolClient>) })
+            })
+        };
+        let pool = BrowserPool::start(factory, options(2)).await.unwrap();
+        let id = *pool.workers().keys().next().unwrap();
+        let short = Duration::from_millis(20);
+        let initial = async {
+            if remove_first {
+                pool.remove_worker(id, true).await
+            } else {
+                pool.shutdown(true).await
+            }
+        };
+        assert!(tokio::time::timeout(short, initial).await.is_err());
+        // Cancelling a join must not detach the worker and make the next
+        // shutdown falsely report success before browser cleanup finishes.
+        assert!(tokio::time::timeout(short, pool.shutdown(false))
+            .await
+            .is_err());
+        assert_eq!(*closed.lock().unwrap(), 0);
+        gate.add_permits(2);
+        tokio::time::timeout(TIMEOUT, pool.shutdown(false))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(*closed.lock().unwrap(), 2);
+        assert_eq!(pool.worker_count(), 0);
+    }
+}

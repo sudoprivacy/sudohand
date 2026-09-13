@@ -347,3 +347,10 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   as do its real browser/SDK tests and extension transport. Its cookie and page
   differential stages still fail and require log diagnosis. Linux and macOS
   complete jobs pass on that revision. Final-head cross-platform CI remains open.
+
+- Pool shutdown/removal now retain unfinished join handles when their caller
+  cancels the wait. A deterministic blocked-close test checks both paths and a
+  second interrupted shutdown: it must not report success until both clients
+  finish closing. All 12 scheduler tests and strict workspace Clippy pass.
+  The SDK ownership/submission/progress/persistence contract is documented in
+  [browser-pool.md](browser-pool.md), with the real Chrome factory example.
