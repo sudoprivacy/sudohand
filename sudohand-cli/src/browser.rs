@@ -105,7 +105,7 @@ pub enum Cmd {
         #[arg(long)]
         locale: Option<String>,
         /// Derive location through Chrome; defaults on when a proxy is configured
-        #[arg(long, num_args = 0..=1, default_missing_value = "true", conflicts_with = "no_match_proxy")]
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_parser = clap::builder::BoolishValueParser::new(), conflicts_with = "no_match_proxy")]
         match_proxy: Option<bool>,
         /// Disable proxy location lookup
         #[arg(long)]
@@ -347,6 +347,9 @@ pub enum Cmd {
         /// Bare press/release at the box centre instead of the human-like actuator
         #[arg(long = "no-human-like", action = clap::ArgAction::SetFalse)]
         human_like: bool,
+        /// Allow system mouse input as the last fallback (or AI_DEV_BROWSER_OS_CLICK)
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_parser = clap::builder::BoolishValueParser::new())]
+        os_click: Option<bool>,
     },
     /// Locate by accessible name / visible text and click
     #[command(name = "click_by_text", alias = "click-by-text")]
@@ -362,6 +365,9 @@ pub enum Cmd {
         /// Bare press/release at the box centre instead of the human-like actuator
         #[arg(long = "no-human-like", action = clap::ArgAction::SetFalse)]
         human_like: bool,
+        /// Allow system mouse input as the last fallback (or AI_DEV_BROWSER_OS_CLICK)
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_parser = clap::builder::BoolishValueParser::new())]
+        os_click: Option<bool>,
     },
     /// Type into the element a ref names
     #[command(name = "type_by_ref", alias = "type-by-ref")]
@@ -561,8 +567,11 @@ pub enum Cmd {
         #[arg(long, default_value_t = 10.0)]
         timeout: f64,
         /// Human timing between keystrokes
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_parser = clap::builder::BoolishValueParser::new(), conflicts_with = "no_human_like")]
+        human_like: Option<bool>,
+        /// Disable human timing between keystrokes
         #[arg(long)]
-        human_like: bool,
+        no_human_like: bool,
         /// Press Enter after typing
         #[arg(long)]
         enter: bool,
@@ -1429,6 +1438,7 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             clear,
             timeout,
             human_like,
+            no_human_like,
             enter,
             keystrokes,
         } => {
@@ -1436,7 +1446,11 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             let opts = TypeByTextOptions {
                 clear,
                 timeout,
-                human_like: human_like.then_some(true),
+                human_like: if no_human_like {
+                    Some(false)
+                } else {
+                    human_like
+                },
                 enter,
                 keystrokes,
             };
@@ -1635,18 +1649,26 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             conn,
             r#ref,
             human_like,
+            os_click,
         } => {
             let (_b, tab) = browser_and_tab(&conn).await?;
-            sudohand_browser::tools::click_by_ref(&tab, &r#ref, human_like).await
+            sudohand_browser::actions::click_by_ref_with_os_click(
+                &tab, &r#ref, human_like, os_click,
+            )
+            .await
         }
         Cmd::ClickByText {
             conn,
             text,
             timeout,
             human_like,
+            os_click,
         } => {
             let (_b, tab) = browser_and_tab(&conn).await?;
-            sudohand_browser::tools::click_by_text(&tab, &text, timeout, human_like).await
+            sudohand_browser::actions::click_by_text_with_os_click(
+                &tab, &text, timeout, human_like, os_click,
+            )
+            .await
         }
         Cmd::DragByRef {
             conn,

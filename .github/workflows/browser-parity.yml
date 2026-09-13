@@ -10,6 +10,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  PYTHONUTF8: "1"
   ADB_TEST_CHROME_ARGS: --no-sandbox
 
 jobs:
@@ -37,6 +38,9 @@ jobs:
           install-dependencies: true
       - name: Install reference test dependencies
         run: python -m pip install websockets websocket-client Pillow deprecated psutil cryptography rapidfuzz
+      - name: Install Linux native-input prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
       - name: Build CLI and exercise real browser regression
         shell: bash
         env:
@@ -60,3 +64,29 @@ jobs:
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
           python -u scripts/extension_parity.py --suh "$executable" --chrome "$AI_DEV_BROWSER_CHROME" --reference .parity-reference
+
+      - name: Click fallback and typing contracts
+        shell: bash
+        env:
+          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          executable=target/debug/suh
+          if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
+          python -u scripts/click_parity.py --suh "$executable" --reference .parity-reference
+      - name: Real native mouse under Xvfb
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          python -m pip install pyautogui
+          xvfb-run -a -s '-screen 0 1920x1080x24' python -u scripts/click_parity.py --suh target/debug/suh --reference .parity-reference --native
+
+      - name: Real native mouse on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          python -m pip install pyautogui
+          python -u scripts/click_parity.py --suh target/debug/suh.exe --reference .parity-reference --native

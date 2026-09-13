@@ -27,7 +27,10 @@
   });
   document.addEventListener('mouseup', e => { if (dragging) { state.up++; } dragging = false; state.lastButton = e.button; });
   const pad = document.getElementById('pad');
-  pad.addEventListener('click', e => state.padClicks.push([e.clientX, e.clientY, e.button, e.isTrusted]));
+  pad.addEventListener('click', e => {
+    state.padClicks.push([e.clientX, e.clientY, e.button, e.isTrusted]);
+    document.title = `Pad clicks: ${state.padClicks.length}`;
+  });
   pad.addEventListener('dblclick', () => state.dbl++);
   pad.addEventListener('contextmenu', e => { e.preventDefault(); state.ctx++; });
 </script>

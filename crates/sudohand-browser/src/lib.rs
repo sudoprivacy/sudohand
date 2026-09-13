@@ -63,6 +63,7 @@ pub mod page;
 pub mod port;
 pub mod refs;
 mod registry;
+pub mod robust_click;
 pub mod snapshot;
 pub mod sqlite;
 pub mod storage;

@@ -77,6 +77,12 @@ Subsequent commands accept `--transport extension` (or set
 tabs, follows popups they open, and reports the signed-in profile account when
 available. `browser_disconnect` stops the bridge without closing Chrome.
 
+Reference/text clicks report `verified` and `method` in addition to `clicked`.
+They check for an observable page change before trying another browser click
+method. `--os-click true` (or `AI_DEV_BROWSER_OS_CLICK=true`) enables a final
+native mouse fallback; it requires a visible window and OS input permissions,
+and moves the desktop cursor. `--os-click false` overrides an environment opt-in.
+
 `browser_list` classifies managed, orphaned, and external Chrome processes.
 Preview orphan cleanup with `browser_cleanup --scope profile --profile NAME
 --dry-run`; remove `--dry-run` to apply it. `browser_stop --stop-all` only stops

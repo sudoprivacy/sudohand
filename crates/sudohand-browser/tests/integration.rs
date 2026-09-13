@@ -43,6 +43,15 @@ async fn browser_lifecycle_start_list_stop() {
     // live there (every other test uses an ephemeral port outside the band).
     let chrome = common::start_chrome_in_band().await;
     assert!(sudohand_browser::port::is_port_in_use(chrome.port));
+    let initial = sudohand_browser::connection::BrowserClient::connect("127.0.0.1", chrome.port)
+        .await
+        .unwrap();
+    assert_eq!(
+        initial.page_targets().len(),
+        1,
+        "startup must publish its initial tab before returning"
+    );
+    drop(initial);
 
     let listed = browser_list(false).await.unwrap();
     let ports: Vec<u64> = listed["browsers"]

@@ -97,3 +97,28 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   `--test-threads=4`. A preceding unrestricted run had one Chrome launch timeout
   before its test reached tab operations (25 other browser tests passed); the
   exact startup cause is unproven. CI bounds browser-test concurrency to four.
+
+- CLI declaration audit: all 59 reference command names are present. Remaining
+  declared flag gaps were `click_by_ref/text --os-click` and
+  `type_by_text --no-human-like`; these are now implemented. Declaration coverage
+  does not yet prove all defaults and output contracts.
+- Click differential passed for trusted, synthetic, JS-click, unchanged-page,
+  by-ref and explicit OS opt-out cases; typing with no-human-like matched actual
+  input contents. The 26 Chrome regression tests passed with the verified-click
+  implementation. The coordinate fixture now exposes its counter through the title
+  so successful clicks have observable feedback rather than triggering fallback.
+- Native mouse dispatch implemented with Enigo (macOS/Windows) and x11rb/XTEST (Linux); Windows target
+  compilation passed. Real native input comparison is pending Linux Xvfb CI.
+- First Linux hosted run passed 48 unit, bridge, 26 real-browser and cookie/identity/
+  proxy tests, then found that sysinfo included Chrome threads as cleanup candidates.
+  Disabled task enumeration and sorted process IDs to match main-process inventory.
+
+- Windows hosted run passed 25 real-browser tests but observed an extra blank
+  tab in tabs_list_and_switch. Startup previously allowed the first page list to
+  be empty; strengthened readiness to require its initial page (except explicit
+  --no-startup-window). Kept exact tab-count assertions. All 26 tests then passed
+  locally with the new readiness gate.
+- Native input uses system APIs on macOS/Windows and pure-Rust X11/XTEST on Linux;
+  Linux and Windows cross-target checks passed. CI now includes actual native
+  mouse comparisons on Xvfb and Windows. JSON subprocess decoding is explicit
+  UTF-8 so Unicode fixtures do not depend on Windows' locale code page.

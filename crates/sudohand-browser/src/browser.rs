@@ -188,7 +188,11 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
         // socket: right after bind, a Chrome competing with other launches
         // can take seconds before /json/version responds, and a caller that
         // connects on our return must not race that.
-        if is_port_in_use(port) && devtools_ready(port).await {
+        let expect_page = !opts
+            .extra_args
+            .iter()
+            .any(|arg| arg == "--no-startup-window");
+        if is_port_in_use(port) && devtools_ready(port, expect_page).await {
             listening = true;
             break;
         }
@@ -208,7 +212,7 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
         let _ = kill_process_tree(pid);
         return Ok(json!({
             "error": format!(
-                "Chrome started (PID {pid}) but port {port} not listening after {timeout}s — process killed to release profile lockfile. Retry with startup_timeout=<larger> if your environment is slow."
+                "Chrome started (PID {pid}) but DevTools/initial page on port {port} was not ready after {timeout}s — process killed to release profile lockfile. Retry with startup_timeout=<larger> if your environment is slow."
             ),
             "pid": pid,
         }));
@@ -242,10 +246,30 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
     Ok(Value::Object(out))
 }
 
-async fn devtools_ready(port: u16) -> bool {
-    crate::cdp::http::ws_debugger_url(DEFAULT_DEBUG_HOST, port, Duration::from_secs(2))
+async fn devtools_ready(port: u16, expect_page: bool) -> bool {
+    if crate::cdp::http::ws_debugger_url(DEFAULT_DEBUG_HOST, port, Duration::from_secs(2))
         .await
-        .is_ok()
+        .is_err()
+    {
+        return false;
+    }
+    if !expect_page {
+        return true;
+    }
+    // Chrome may expose DevTools before publishing its startup tab. Returning
+    // then makes get_active_tab create an extra blank tab, especially on Windows.
+    crate::cdp::http::get_json(
+        DEFAULT_DEBUG_HOST,
+        port,
+        "/json/list",
+        Duration::from_secs(2),
+    )
+    .await
+    .is_ok_and(|targets| {
+        targets
+            .as_array()
+            .is_some_and(|items| items.iter().any(|target| target["type"] == "page"))
+    })
 }
 
 async fn graceful_stop(port: u16, pid: u32, timeout: f64) -> Value {

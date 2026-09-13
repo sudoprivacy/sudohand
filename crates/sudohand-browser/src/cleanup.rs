@@ -37,10 +37,13 @@ struct Chrome {
 
 fn processes() -> Vec<Chrome> {
     let system = System::new_with_specifics(
-        RefreshKind::nothing()
-            .with_processes(ProcessRefreshKind::nothing().with_cmd(UpdateKind::Always)),
+        RefreshKind::nothing().with_processes(
+            ProcessRefreshKind::nothing()
+                .without_tasks()
+                .with_cmd(UpdateKind::Always),
+        ),
     );
-    system
+    let mut chromes: Vec<Chrome> = system
         .processes()
         .values()
         .filter_map(|process| {
@@ -68,7 +71,9 @@ fn processes() -> Vec<Chrome> {
                 profile: value("--profile-directory").unwrap_or_else(|| "Default".into()),
             })
         })
-        .collect()
+        .collect();
+    chromes.sort_by_key(|chrome| chrome.pid);
+    chromes
 }
 
 fn normalized(path: &Path) -> PathBuf {

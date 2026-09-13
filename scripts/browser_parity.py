@@ -30,7 +30,7 @@ def main():
     reference = str(args.reference.resolve())
     with tempfile.TemporaryDirectory(prefix='suh-parity-') as temporary:
         root = Path(temporary)
-        env = dict(os.environ, HOME=str(root), USERPROFILE=str(root), PYTHONPATH=reference)
+        env = dict(os.environ, PYTHONIOENCODING='utf-8', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=reference)
         def invoke(command):
             if any(str(item).endswith('browser_start') for item in command) and env.get('ADB_TEST_CHROME_ARGS'):
                 overrides = {}
@@ -38,7 +38,7 @@ def main():
                     key, _, value = flag.partition('=')
                     overrides[key] = value
                 command = [*command, '--override-default-args', json.dumps(overrides)]
-            completed = subprocess.run(command, env=env, capture_output=True, text=True, timeout=45)
+            completed = subprocess.run(command, env=env, capture_output=True, text=True, encoding='utf-8', timeout=45)
             if completed.returncode:
                 raise AssertionError(f'{command[0:4]} exited {completed.returncode}: {completed.stderr}')
             return json.loads(completed.stdout)
@@ -66,7 +66,7 @@ def main():
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
             def protect(data):
                 program = "$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Security; $bytes=[Convert]::FromBase64String([Console]::In.ReadToEnd()); [Console]::Out.Write([Convert]::ToBase64String([Security.Cryptography.ProtectedData]::Protect($bytes,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)))"
-                result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', program], input=base64.b64encode(data).decode(), capture_output=True, text=True, check=True, timeout=20)
+                result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', program], input=base64.b64encode(data).decode(), capture_output=True, text=True, encoding='utf-8', check=True, timeout=20)
                 return base64.b64decode(result.stdout)
             key = bytes(range(32))
             state = {'os_crypt': {'encrypted_key': base64.b64encode(b'DPAPI' + protect(key)).decode()}}

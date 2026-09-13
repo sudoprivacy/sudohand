@@ -35,13 +35,13 @@ async def main():
     children = []
     with tempfile.TemporaryDirectory(prefix='suh-extension-test-') as temporary:
         root = Path(temporary)
-        env = dict(os.environ, HOME=str(root), USERPROFILE=str(root), PYTHONPATH=str(args.reference.resolve()))
+        env = dict(os.environ, PYTHONIOENCODING='utf-8', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=str(args.reference.resolve()))
         def cli(name, *flags):
-            result = subprocess.run([suh, 'browser', name, *map(str, flags)], env=env, text=True, capture_output=True, timeout=40)
+            result = subprocess.run([suh, 'browser', name, *map(str, flags)], env=env, text=True, encoding='utf-8', capture_output=True, timeout=40)
             assert result.returncode == 0, (name, result.stderr)
             return json.loads(result.stdout)
         def reference(name, *flags):
-            result = subprocess.run([sys.executable, '-m', f'ai_dev_browser.tools.{name}', *map(str, flags)], env=env, text=True, capture_output=True, timeout=40)
+            result = subprocess.run([sys.executable, '-m', f'ai_dev_browser.tools.{name}', *map(str, flags)], env=env, text=True, encoding='utf-8', capture_output=True, timeout=40)
             assert result.returncode == 0, (name, result.stderr)
             return json.loads(result.stdout)
         async def command(ws, method, params=None):
