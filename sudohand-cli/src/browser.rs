@@ -1885,7 +1885,19 @@ fn run_async(
 /// Entry from [`run`]: dispatch to the tool body, mapping its browser error
 /// onto the shared envelope.
 async fn run_flow(cmd: Cmd) -> sudohand_core::Result<Value> {
-    run_async(cmd).await.map_err(sudohand_core::Error::from)
+    let locator_hint = match &cmd {
+        Cmd::Locator(LocatorCommands::FindByHtmlId { .. }) => Some("No matching id in the page or its same-origin frames. Inspect page_discover, then use a current id, find_by_text, or find_by_xpath."),
+        Cmd::Locator(LocatorCommands::FindByXpath { .. }) => Some("No XPath match in the page or its same-origin frames. Try a broader XPath, inspect page_discover, or use find_by_text / find_by_html_id."),
+        Cmd::Locator(LocatorCommands::FindByText { .. }) => Some("No accessible name matches this text. Try a shorter label, inspect page_discover, or use find_by_html_id / find_by_xpath. For cross-origin frames, use js_evaluate --frame."),
+        _ => None,
+    };
+    let mut result = run_async(cmd).await.map_err(sudohand_core::Error::from)?;
+    if result["found"] == false {
+        if let (Some(hint), Some(fields)) = (locator_hint, result.as_object_mut()) {
+            fields.entry("hint").or_insert_with(|| json!(hint));
+        }
+    }
+    Ok(result)
 }
 
 /// Entry point for `suh browser <tool>`: a current-thread runtime, the

@@ -20,10 +20,15 @@ def main():
     parser.add_argument('--suh', type=Path, required=True)
     parser.add_argument('--reference', type=Path, required=True)
     args = parser.parse_args()
-    html = '<!doctype html><html><head><meta charset="utf-8"><title>Parity 页面</title></head><body><h1>Fixture 🙂</h1><input id="field" value="hello"><p>Deterministic content</p></body></html>'
+    html = '<!doctype html><html><head><meta charset="utf-8"><title>Parity 页面</title></head><body><h1>Fixture 🙂</h1><input id="field" aria-label="Name" value="hello"><button id="hidden" style="display:none">Hidden</button><iframe src="/frame" title="child"></iframe><p>Deterministic content</p></body></html>'
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            body = b'fixture download \x00\xff' if self.path == '/fixture.bin' else html.encode()
+            if self.path == '/fixture.bin':
+                body = b'fixture download \x00\xff'
+            elif self.path == '/frame':
+                body = b'<html><body><input id="child-field" aria-label="Child"><button id="child-button">Child action</button></body></html>'
+            else:
+                body = html.encode()
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))
@@ -67,6 +72,10 @@ def main():
                         for key in omit:
                             assert isinstance(result[key], (int, float)) and result[key] >= 0, result
                             result.pop(key)
+                    if name.startswith('find_by_') and results[0].get('found') is False:
+                        for result in results:
+                            hint = result.pop('hint')
+                            assert isinstance(hint, str) and 'page_discover' in hint, (name, result, hint)
                     assert results[0] == results[1], (name, flags, results)
                     print(f'PASS {name} {flags}: {list(results[0])}', flush=True)
                     return results[0]
@@ -104,6 +113,12 @@ def main():
                 equivalent('page_wait_ready', '--idle-time', '0')
                 equivalent('page_reload', '--no-ignore-cache')
                 equivalent('page_wait_ready', '--idle-time', '0')
+                for html_id in ('field', 'hidden', 'missing', 'child-field', 'child-button'):
+                    equivalent('find_by_html_id', '--html-id', html_id)
+                for xpath in ('//*[@id="field"]', '//*[@id="hidden"]', '//*[@id="missing"]', '//*[@id="child-button"]'):
+                    equivalent('find_by_xpath', '--xpath', xpath)
+                for text in ('Fixture', 'Name', 'Hidden', 'absent', 'Child action'):
+                    equivalent('find_by_text', '--text', text)
                 for label, flags in [
                     ('viewport', []), ('full-page', ['--full-page']),
                     ('raw-pixels', ['--no-css-scale']),

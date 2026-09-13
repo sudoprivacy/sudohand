@@ -269,3 +269,12 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   cdp default and does not consult that environment variable. Explicit arguments
   still win. Nullable and environment-driven defaults need behavioral checks,
   rather than treating absent parser values as equal effective configuration.
+
+- Locator differential coverage now includes visible/hidden/missing HTML ids,
+  XPath misses, same-origin iframe ids/XPaths, accessible names, text fallback,
+  hidden text and iframe button geometry. These actual CLI results match.
+- The reference CLI adds recovery hints on locator misses. suh now supplies
+  independently worded hints for find_by_html_id, find_by_xpath and find_by_text,
+  with actionable alternatives and cross-origin frame guidance. Tests validate
+  that both implementations supply guidance and compare the remaining fields
+  exactly; prose wording is intentionally not a byte-for-byte contract.
