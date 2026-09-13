@@ -38,8 +38,15 @@ def main():
             reservation.bind(('127.0.0.1', 0))
             port = reservation.getsockname()[1]
         connection = ['--port', str(port)]
-        started = rust('browser_start', *connection, *([] if args.native else ['--headless']), '--silent-stderr', '--override-default-args', json.dumps({'--no-sandbox': ''}))
-        assert started.get('pid') and not started.get('reused'), started
+        chrome_log = Path(temporary) / 'chrome.log'
+        overrides = {'--no-sandbox': '', '--enable-logging': '', '--log-file': str(chrome_log)}
+        started = rust('browser_start', *connection, *([] if args.native else ['--headless']), '--silent-stderr', '--override-default-args', json.dumps(overrides))
+        print(f'CLICK START native={args.native}: {started}', flush=True)
+        if 'error' in started or not started.get('pid'):
+            if chrome_log.exists():
+                print(chrome_log.read_text(encoding='utf-8', errors='replace')[-20000:], flush=True)
+            raise AssertionError(started)
+        assert not started.get('reused'), started
         try:
             def evaluate(expression):
                 return rust('js_evaluate', *connection, '--expression', expression)['result']

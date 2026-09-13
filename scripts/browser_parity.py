@@ -106,7 +106,7 @@ def main():
                 raise AssertionError('No free browser port in the discovery band')
         flags = ['--port', str(port)]
         started = rust('browser_start', *flags, '--headless', '--silent-stderr', '--timezone', 'Asia/Tokyo', '--geo', '35.68,139.69', '--locale', 'ja-JP')
-        assert started.get('pid') and not started.get('reused'), started
+        assert 'error' not in started and started.get('pid') and not started.get('reused'), started
         try:
             instance_path = root / '.ai-dev-browser' / 'instances' / f'{port}.json'
             instance = json.loads(instance_path.read_text())
@@ -211,7 +211,8 @@ def main():
                 proxy_flag = f'--extra-args=--proxy-server=http://127.0.0.1:{proxy.server_port}'
                 before = len(requests)
                 start = implementation('browser_start', *connection, '--headless', 'new', proxy_flag)
-                assert start.get('pid') and not start.get('reused'), start
+                print(f'PROXY START {implementation.__name__}: {start}', flush=True)
+                assert 'error' not in start and start.get('pid') and not start.get('reused'), start
                 try:
                     assert 'http://geo.parity.test/location' in requests[before:], requests
                     effective = {key: start[key] for key in ['identity_consistent', 'timezone', 'geolocation', 'egress_ip']}
@@ -268,7 +269,7 @@ def main():
             assert rust('browser_cleanup', '--scope', 'profile', '--profile', 'parity-orphan')['count'] == 0
             print('PASS cleanup: managed orphan inventory; differential dry-run; scoped kill; external preserved; idempotent')
             managed = rust('browser_start', '--headless', '--silent-stderr')
-            assert managed.get('pid') and not managed.get('reused'), managed
+            assert 'error' not in managed and managed.get('pid') and not managed.get('reused'), managed
             stopped = rust('browser_stop', '--stop-all')
             assert stopped['count'] == 1 and stopped['browsers'][0]['port'] == managed['port'], stopped
             assert external.poll() is None, 'blanket stop killed an unregistered debug Chrome'

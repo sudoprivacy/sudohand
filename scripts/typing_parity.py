@@ -33,7 +33,7 @@ def main():
         connection = ['--port', str(port)]
         started = rust('browser_start', *connection, '--headless', '--silent-stderr',
                        '--override-default-args', json.dumps({'--no-sandbox': ''}))
-        assert started.get('pid') and not started.get('reused'), started
+        assert 'error' not in started and started.get('pid') and not started.get('reused'), started
         try:
             def evaluate(expression):
                 return rust('js_evaluate', *connection, '--expression', expression)['result']

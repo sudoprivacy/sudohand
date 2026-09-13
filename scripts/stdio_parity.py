@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory(prefix='suh-stdio-test-') as root:
         stdout, stderr = output[0]
         assert child.returncode == 0, stderr.decode('utf-8', errors='replace')
         result = json.loads(stdout)
-        assert result.get('pid') and not result.get('reused'), result
+        assert 'error' not in result and result.get('pid') and not result.get('reused'), result
         with urllib.request.urlopen(f'http://127.0.0.1:{port}/json/version', timeout=3) as response:
             assert json.load(response)['webSocketDebuggerUrl']
         print('PASS CLI stdout/stderr reach EOF while its independent Chrome is still alive')

@@ -58,7 +58,7 @@ def main():
             connection = ['--port', str(port)]
             started = rust('browser_start', *connection, '--headless', '--silent-stderr',
                            '--override-default-args', json.dumps({'--no-sandbox': ''}))
-            assert started.get('pid') and not started.get('reused'), started
+            assert 'error' not in started and started.get('pid') and not started.get('reused'), started
             url = f'http://127.0.0.1:{server.server_port}/fixture'
             try:
                 def equivalent(name, *flags, omit=()):
@@ -209,10 +209,12 @@ def main():
                 outcomes = []
                 for implementation in (python, rust):
                     result = implementation('download', *connection, '--url', url.rsplit('/', 1)[0] + '/fixture.bin', '--path', folder)
+                    print(f'DOWNLOAD {implementation.__name__}: {result}', flush=True)
                     file = folder / 'fixture.bin'
                     deadline = time.monotonic() + 5
                     while not file.exists() and time.monotonic() < deadline:
                         time.sleep(.05)
+                    assert file.exists(), (implementation.__name__, result, list(folder.iterdir()), rust('js_evaluate', *connection, '--expression', '({url:location.href,links:Array.from(document.querySelectorAll("a"), a=>({href:a.href,download:a.download}))})'))
                     assert file.read_bytes() == b'fixture download \x00\xff', result
                     outcomes.append(result)
                     file.unlink()
