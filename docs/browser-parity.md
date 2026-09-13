@@ -25,8 +25,8 @@ website. Command declarations alone do not establish working behavior.
 | Rust SDK pool | Job/result/state schemas compared to reference-generated fixtures; 12 scheduler tests for retries, scaling, held jobs, shared progress, selection, cancellation, recovery and interrupted shutdown. Real two-Chrome test covers concurrent execution, per-worker cookies, restoration and cleanup. See [the pool guide](browser-pool.md). |
 | CLI lifecycle | Flattened parser groups and boxed command futures avoid Windows/Tokio stack overflow. A real pipe-EOF regression requires Chrome to remain alive after the launching CLI exits; passed on Windows. |
 
-The main Rust browser integration suite has 26 real Chrome tests. The complete
-workspace, formatting and strict workspace Clippy passed locally at `0ec1b96`;
+The main Rust browser integration suite has 27 real Chrome tests. The complete
+workspace, formatting and strict workspace Clippy passed locally at `69cf4d5`;
 the browser crate also passed Windows cross-compilation. A local synthetic login
 smoke test exercised both implementations through visible launch, persistent
 cookie creation, browser close and headless export. This does not test a real
@@ -52,7 +52,11 @@ a noisy Chrome wrapper failed before the fix and started successfully after it.
 Startup now drains stderr continuously, retains only a 16 KiB diagnostic tail,
 and includes it on timeout. A real subprocess writes 1 MiB through the pipe in
 a regression test. This is not proof of the original Windows timeout's cause;
-the new revision still requires cross-platform validation. Neither superseded
+the new revision still requires cross-platform validation. A second reproduced
+startup defect is also fixed: `--no-startup-window` supplied through Chrome
+argument overrides now skips the initial-page requirement, just like the same
+flag in raw extra arguments. Its real-browser regression verifies an empty
+initial tab list and subsequent on-demand tab creation. Neither superseded
 cancellations nor earlier-head passes count as final-candidate acceptance.
 
 The running Python scheduler differential covers eight scenarios: both queue

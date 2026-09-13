@@ -178,6 +178,10 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
     launch.window_size = config::resolve_viewport()?;
     let mut launched = launch_chrome(&launch)?;
     let pid = launched.child.id();
+    let launch_args = crate::chrome::build_args(&launch, &launched.user_data_dir);
+    let expect_page = !launch_args
+        .iter()
+        .any(|arg| arg.split('=').next() == Some("--no-startup-window"));
 
     let timeout = opts.startup_timeout.unwrap_or(30.0);
     let start = std::time::Instant::now();
@@ -187,10 +191,6 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
         // socket: right after bind, a Chrome competing with other launches
         // can take seconds before /json/version responds, and a caller that
         // connects on our return must not race that.
-        let expect_page = !opts
-            .extra_args
-            .iter()
-            .any(|arg| arg == "--no-startup-window");
         if is_port_in_use(port) && devtools_ready(port, expect_page).await {
             listening = true;
             break;
@@ -231,7 +231,7 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
         pid,
         &launch.workspace,
         &launched.user_data_dir,
-        &crate::chrome::build_args(&launch, &launched.user_data_dir),
+        &launch_args,
     )
     .await;
     // Detach: the Child handle must not reap/kill Chrome when we exit.

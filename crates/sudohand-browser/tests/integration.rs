@@ -1402,3 +1402,46 @@ async fn tab_new_and_close() {
     }
     assert_eq!(after, before);
 }
+
+#[tokio::test]
+async fn startup_without_a_window_honors_overridden_chrome_args() {
+    if skip_browser_tests() {
+        return;
+    }
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let result = browser_start(&sudohand_browser::browser::StartOptions {
+        port: Some(port),
+        headless: Some(sudohand_browser::chrome::Headless::New),
+        startup_timeout: Some(10.0),
+        override_default_args: vec![("--no-startup-window".into(), Some(String::new()))],
+        extra_args: std::env::var("ADB_TEST_CHROME_ARGS")
+            .unwrap_or_default()
+            .split_whitespace()
+            .map(str::to_string)
+            .collect(),
+        ..Default::default()
+    })
+    .await
+    .unwrap();
+    assert!(result.get("error").is_none(), "{result}");
+    let chrome = common::Chrome {
+        port,
+        pid: result["pid"].as_u64().unwrap() as u32,
+    };
+    let mut browser = sudohand_browser::connection::BrowserClient::connect("127.0.0.1", port)
+        .await
+        .unwrap();
+    assert!(
+        browser.page_targets().is_empty(),
+        "explicit no-startup-window must not create a tab"
+    );
+    let tab = sudohand_browser::connection::get_active_tab(&mut browser, None)
+        .await
+        .unwrap();
+    assert_eq!(tab.evaluate("1 + 1").await.unwrap(), serde_json::json!(2));
+    drop(chrome);
+}
