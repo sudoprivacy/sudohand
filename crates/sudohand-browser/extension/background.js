@@ -46,7 +46,9 @@ async function targets() {
   for (const id of [...owned]) {
     try {
       const tab = await chrome.tabs.get(id);
-      result.push({targetId: String(id), type: 'page', title: tab.title || '', url: tab.url || '', attached: attached.has(id), canAccessOpener: false});
+      // Chrome can expose the requested URL before the first navigation commits.
+      const url = tab.url || tab.pendingUrl || '';
+      result.push({targetId: String(id), type: 'page', title: tab.title || '', url, attached: attached.has(id), canAccessOpener: false});
     } catch { await forget(id); }
   }
   if (!result.length) {

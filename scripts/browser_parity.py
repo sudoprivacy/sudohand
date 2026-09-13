@@ -7,6 +7,7 @@ This suite is one parity gate, not evidence for features it does not exercise.
 import argparse
 from contextlib import closing
 import base64
+import faulthandler
 import hashlib
 import http.server
 import json
@@ -23,6 +24,8 @@ import time
 
 
 def main():
+    # Preserve a useful location if a platform API or fixture shutdown stalls.
+    faulthandler.dump_traceback_later(120, repeat=True)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--suh', type=Path, required=True)
     parser.add_argument('--reference', type=Path, required=True)
@@ -33,6 +36,7 @@ def main():
         root = Path(temporary)
         env = dict(os.environ, PYTHONIOENCODING='utf-8', AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=reference)
         def invoke(command):
+            print(f'RUN {command[0:4]}', flush=True)
             if any(str(item).endswith('browser_start') for item in command) and env.get('ADB_TEST_CHROME_ARGS'):
                 overrides = {}
                 for flag in shlex.split(env['ADB_TEST_CHROME_ARGS']):

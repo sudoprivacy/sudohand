@@ -505,3 +505,36 @@ async fn invocation_overrides_are_scoped_even_on_failure_and_cancellation() {
         ]
     );
 }
+
+#[tokio::test]
+async fn status_counts_held_running_and_business_failure_once() {
+    let (events, factory) = fixture();
+    let pool = BrowserPool::start(factory, options(1)).await.unwrap();
+    let held = pool
+        .run("business_false", vec![], Map::new(), None, true)
+        .unwrap();
+    let active = pool.run("gate", vec![], Map::new(), None, false).unwrap();
+    tokio::time::timeout(TIMEOUT, events.started.notified())
+        .await
+        .unwrap();
+    let status = pool.get_status();
+    assert_eq!(status["running"], true);
+    assert_eq!(status["pending_jobs"], 2);
+    assert_eq!(status["queue_size"], 0);
+    assert_eq!(status["priority_queue_size"], 0);
+    let workers = status["workers"].as_object().unwrap();
+    assert_eq!(workers.len(), 1);
+    assert_eq!(workers.values().next().unwrap()["status"], "busy");
+    events.gate.add_permits(1);
+    pool.wait(Some(&[held, active]), None, Some(TIMEOUT))
+        .await
+        .unwrap();
+    let status = pool.get_status();
+    assert_eq!(status["pending_jobs"], 0);
+    assert_eq!(status["completed_jobs"], 2);
+    assert_eq!(status["success_count"], 1);
+    assert_eq!(status["fail_count"], 1);
+    pool.shutdown(true).await.unwrap();
+    assert_eq!(pool.get_status()["running"], false);
+    assert_eq!(pool.get_status()["workers"], json!({}));
+}

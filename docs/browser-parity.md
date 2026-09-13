@@ -204,3 +204,18 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   PoolClient::replace_ui_delay, and restored after success, panic or cancellation.
   Nine scheduler tests and five snapshot/profile tests pass. Workspace strict
   Clippy passes with the scheduler. Full SDK differential audit is still pending.
+
+- macOS CfT extension reproduction is resolved locally: the WebSocket net log
+  stalled before a TCP connection. Using the regular launcher's existing
+  --use-mock-keychain flag in the disposable extension fixture allows handshake;
+  no system keychain or personal browser configuration is changed. Two complete
+  CfT 153 extension runs then passed (connection, Python/Rust output, click,
+  screenshot, owned-tab reuse, popup routing and disconnect preserving Chrome).
+- A separate first-tab race surfaced after that fix: Chrome can return an empty
+  url while pendingUrl already contains about:blank. Extension target discovery
+  now uses pendingUrl as fallback, matching the reference. The real fixture now
+  asserts the initial tab URL rather than accepting equality of empty values.
+- Pool status coverage now checks held plus active jobs counted once, busy worker
+  state, completed business failures and shutdown. Ten scheduler tests pass.
+  Windows differential stage is still running; added command progress and timed
+  Python stack dumps to locate stalls in the next hosted run.

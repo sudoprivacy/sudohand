@@ -57,7 +57,9 @@ async def main():
         try:
             bridge = subprocess.Popen([suh, 'browser', 'bridge-serve', '--port', str(bridge_port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             children.append(bridge)
-            chrome = subprocess.Popen([args.chrome, '--headless=new', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--enable-unsafe-extension-debugging', f'--remote-debugging-port={chrome_port}', f'--user-data-dir={root / "chrome"}', 'about:blank'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Match the regular launcher: a disposable macOS test browser must
+            # not wait for interactive access to the user's system keychain.
+            chrome = subprocess.Popen([args.chrome, '--headless=new', '--use-mock-keychain', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--enable-unsafe-extension-debugging', f'--remote-debugging-port={chrome_port}', f'--user-data-dir={root / "chrome"}', 'about:blank'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             children.append(chrome)
             version = None
             for _ in range(100):
@@ -98,6 +100,7 @@ async def main():
                                     print('Extension worker diagnostics:', response, flush=True)
                                     break
                 assert connected['connected'], connected
+                assert connected['tabs'] == ['about:blank'], connected
                 print('PASS actual Chrome extension loaded; bridge handshake; CLI connection')
                 flags = ['--transport', 'extension']
                 reference_connected = reference('browser_connect', *flags)
