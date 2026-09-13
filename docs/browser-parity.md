@@ -178,3 +178,17 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   Windows CI remains the runtime gate. Local CfT extension handshake also remained
   pending after test-only browser network permission grants, ruling out that simple
   permission workaround. No user profile permissions were changed.
+
+- Windows run 34785206445 failed before any cookie crypto: even plaintext offline
+  extraction and browser_start/browser_connect overflowed the CLI main stack.
+  Native debug assembly identified two independent large frames: ~946 KiB for
+  the async command match and ~1.89 MiB for Clap's single browser enum parser.
+  A local suh serve regression also reproduced stack overflow on its Tokio worker.
+- Split the parser into flattened command groups and boxed each command's own
+  future. CLI names/flags stay flat. The actual CLI error-envelope regression,
+  both serve tests, all 59 reference --help calls, and a 1 MiB stack CLI probe pass.
+  Whole-workspace tests and strict Clippy pass after the refactor; the CLI stack
+  regression is now included in CI before real-browser differential tests.
+- The post-dispatch cookie/identity/proxy/cleanup differential suite passed locally.
+  macOS third CI passed browser, cookies and input suites but failed the CfT
+  extension handshake, matching the local reproducer. That issue remains open.

@@ -63,6 +63,7 @@ jobs:
           AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
         run: |
           cargo build -p sudohand-cli
+          cargo test -p sudohand-cli --test browser_dispatch
           cargo test -p sudohand-browser -- --test-threads=4
       - name: Differential cookies, identity, proxy, cleanup
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
