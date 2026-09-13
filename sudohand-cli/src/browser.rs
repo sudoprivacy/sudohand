@@ -1724,7 +1724,7 @@ fn run_async(
             if ready {
                 Ok(json!({"ready": true}))
             } else {
-                Ok(json!({"error": "Operation failed", "ready": false}))
+                Ok(json!({"error": "Operation failed"}))
             }
         }),
         Cmd::PageOutput(PageOutputCommands::PageHtml { conn, outer }) => Box::pin(async move {

@@ -74,6 +74,15 @@ jobs:
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
           python -u scripts/browser_parity.py --suh "$executable" --reference .parity-reference
+      - name: Page and navigation contracts
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        env:
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
+        run: |
+          executable=target/debug/suh
+          if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
+          python -u scripts/page_parity.py --suh "$executable" --reference .parity-reference
       - name: Real extension transport
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash

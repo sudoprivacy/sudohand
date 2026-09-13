@@ -236,33 +236,28 @@ pub async fn page_wait_url(
     exact: Option<&str>,
     timeout: f64,
 ) -> Result<Value> {
-    if pattern.is_none() && exact.is_none() {
-        return Ok(json!({"error": "Must specify pattern or exact"}));
-    }
-    let re = match pattern {
-        Some(p) => regex_lite::Regex::new(p).ok(),
-        None => None,
-    };
+    let pattern = pattern.filter(|value| !value.is_empty());
+    let exact = exact.filter(|value| !value.is_empty());
     let start = tokio::time::Instant::now();
     loop {
         let elapsed = start.elapsed().as_secs_f64();
         let url = tab.current_url().await;
+        let rounded = (elapsed * 100.0).round() / 100.0;
+        if elapsed > timeout {
+            return Ok(json!({"matched": false, "url": url, "elapsed": rounded}));
+        }
         let matched = match (exact, pattern) {
             (Some(e), _) => url == e,
-            (None, Some(p)) => url.contains(p) || re.as_ref().is_some_and(|r| r.is_match(&url)),
+            (None, Some(p)) => {
+                url.contains(p)
+                    || regex_lite::Regex::new(p)
+                        .map_err(|error| Error::Invalid(error.to_string()))?
+                        .is_match(&url)
+            }
             (None, None) => false,
         };
-        let rounded = (elapsed * 100.0).round() / 100.0;
         if matched {
             return Ok(json!({"matched": true, "url": url, "elapsed": rounded}));
-        }
-        if elapsed > timeout {
-            return Ok(json!({
-                "matched": false,
-                "url": url,
-                "elapsed": rounded,
-                "message": format!("Timeout after {timeout}s"),
-            }));
         }
         tokio::time::sleep(Duration::from_millis(300)).await;
     }

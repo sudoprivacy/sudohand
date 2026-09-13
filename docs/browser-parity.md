@@ -219,3 +219,16 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   state, completed business failures and shutdown. Ten scheduler tests pass.
   Windows differential stage is still running; added command progress and timed
   Python stack dumps to locate stalls in the next hosted run.
+
+- Added real Python/Rust page/navigation differential fixtures, including Unicode
+  HTML character counts, inner/outer HTML, JS values and observation envelopes,
+  readiness success/timeout, URL exact/regex/empty selectors, timeout precedence,
+  and cached/uncached reload. Fixed the readiness failure CLI envelope and URL
+  waiting to follow the public reference function, rather than its separate
+  internal helper (which adds validation and a descriptive timeout message).
+- Intentional navigation correction: the pinned Python page_goto returns the
+  pre-navigation target URL even after the page loads. The fixture asserts that
+  behavior and verifies both implementations' actual location.href; suh keeps
+  returning the live URL. Reproducing that stale result would mislead callers.
+- Page contract suite is now included in the three-platform workflow. Strict
+  workspace Clippy passes after these changes; full parity audit remains open.
