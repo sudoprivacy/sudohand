@@ -13,10 +13,10 @@ use chromiumoxide_cdp::cdp::browser_protocol::dom::{
     BackendNodeId, DescribeNodeParams, FocusParams, ResolveNodeParams, ScrollIntoViewIfNeededParams,
 };
 use chromiumoxide_cdp::cdp::browser_protocol::input::{
-    DispatchKeyEventParams, DispatchKeyEventType, InsertTextParams,
+    DispatchKeyEventParams, DispatchKeyEventType,
 };
 use chromiumoxide_cdp::cdp::browser_protocol::page::GetFrameTreeParams;
-use chromiumoxide_cdp::cdp::js_protocol::runtime::{CallArgument, CallFunctionOnParams};
+use chromiumoxide_cdp::cdp::js_protocol::runtime::CallFunctionOnParams;
 use serde_json::{json, Map, Value};
 
 use crate::cdp::MOUSE_EVENT_TIMEOUT;
@@ -483,7 +483,7 @@ async fn focus_node(tab: &Tab, r#ref: &str) -> Result<i64> {
 /// Options for [`type_by_ref`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TypeOptions {
-    /// Clear existing content first (select + real Backspace).
+    /// Compatibility option: verified filling always replaces the field.
     pub clear: bool,
     /// Press Enter after typing.
     pub enter: bool,
@@ -493,54 +493,16 @@ pub struct TypeOptions {
     pub human_like: bool,
 }
 
-/// Type into the element a `ref` names. Returns `{typed, ref, text}`
+/// Fill the element a `ref` names. Returns `{typed, verified, method, methods_tried, ref, text}`
 /// (+ `entered` when `enter`).
 pub async fn type_by_ref(tab: &Tab, r#ref: &str, text: &str, opts: TypeOptions) -> Result<Value> {
-    let node_id = match focus_node(tab, r#ref).await {
-        Ok(n) => n,
+    let element = match element_by_ref(tab, r#ref).await {
+        Ok(element) => element,
         Err(e) => {
-            return Ok(json!({"typed": false, "error": e.to_string()}));
+            return Ok(json!({"typed": false, "verified": false, "error": e.to_string()}));
         }
     };
-    if opts.clear {
-        let select = async {
-            let rp = ResolveNodeParams {
-                backend_node_id: Some(BackendNodeId::new(node_id)),
-                ..Default::default()
-            };
-            let obj = tab.send(rp).await?.object;
-            let Some(oid) = obj.object_id else {
-                return Ok::<(), Error>(());
-            };
-            let mut call = CallFunctionOnParams::builder()
-                .function_declaration(
-                    "(el) => { if (el.focus) el.focus(); if (typeof el.select === 'function') { el.select(); } else { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } }",
-                )
-                .object_id(oid.clone())
-                .return_by_value(true)
-                .user_gesture(true)
-                .build()
-                .map_err(Error::Invalid)?;
-            call.arguments = Some(vec![CallArgument::builder().object_id(oid).build()]);
-            tab.send(call).await?;
-            Ok(())
-        };
-        let _ = select.await;
-        let (k, c, v, _) = key_spec("backspace").expect("known key");
-        dispatch_key(tab, k, c, v, 0, None).await?;
-    }
-    if opts.keystrokes {
-        for ch in text.chars() {
-            let s = ch.to_string();
-            dispatch_key(tab, &s, "", 0, 0, Some(&s)).await?;
-        }
-    } else if opts.human_like {
-        human::type_text(tab, text, Some(true)).await?;
-    } else {
-        tab.send(InsertTextParams::new(text)).await?;
-    }
-    let mut out = Map::new();
-    out.insert("typed".into(), json!(true));
+    let mut out = crate::fill::fill(tab, &element, text, opts.keystrokes, opts.human_like).await;
     out.insert("ref".into(), json!(r#ref));
     out.insert("text".into(), json!(text));
     if opts.enter {

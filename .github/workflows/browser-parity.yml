@@ -36,57 +36,85 @@ jobs:
         with:
           chrome-version: stable
           install-dependencies: true
+      - name: Preserve Chrome application bundle on macOS
+        shell: python
+        env:
+          INSTALLED_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          import os, pathlib, shutil
+          executable = pathlib.Path(os.environ['INSTALLED_CHROME'])
+          if os.environ['RUNNER_OS'] == 'macOS':
+              # setup-chrome relocates Contents into a directory without .app.
+              # Chrome's renderer helpers fail in that layout; preserve a bundle.
+              bundle = pathlib.Path(os.environ['RUNNER_TEMP']) / 'Parity Chrome.app'
+              shutil.copytree(executable.parents[2], bundle, symlinks=True)
+              executable = bundle / 'Contents' / 'MacOS' / executable.name
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write(f'PARITY_CHROME={executable}\n')
       - name: Install reference test dependencies
         run: python -m pip install websockets websocket-client Pillow deprecated psutil cryptography rapidfuzz
       - name: Install Linux native-input prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb
       - name: Build CLI and exercise real browser regression
+        id: build
         shell: bash
         env:
-          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
         run: |
           cargo build -p sudohand-cli
           cargo test -p sudohand-browser -- --test-threads=4
       - name: Differential cookies, identity, proxy, cleanup
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         env:
-          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
         run: |
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
           python -u scripts/browser_parity.py --suh "$executable" --reference .parity-reference
       - name: Real extension transport
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         env:
-          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
         run: |
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
           python -u scripts/extension_parity.py --suh "$executable" --chrome "$AI_DEV_BROWSER_CHROME" --reference .parity-reference
 
       - name: Click fallback and typing contracts
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         env:
-          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
         run: |
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
           python -u scripts/click_parity.py --suh "$executable" --reference .parity-reference
-      - name: Real native mouse under Xvfb
-        if: runner.os == 'Linux'
+      - name: Verified typing contracts
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         env:
-          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
+        run: |
+          executable=target/debug/suh
+          if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
+          python -u scripts/typing_parity.py --suh "$executable" --reference .parity-reference
+      - name: Real native mouse under Xvfb
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && runner.os == 'Linux' }}
+        shell: bash
+        env:
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
         run: |
           python -m pip install pyautogui
           xvfb-run -a -s '-screen 0 1920x1080x24' python -u scripts/click_parity.py --suh target/debug/suh --reference .parity-reference --native
 
       - name: Real native mouse on Windows
-        if: runner.os == 'Windows'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && runner.os == 'Windows' }}
         shell: bash
         env:
-          AI_DEV_BROWSER_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
         run: |
           python -m pip install pyautogui
           python -u scripts/click_parity.py --suh target/debug/suh.exe --reference .parity-reference --native

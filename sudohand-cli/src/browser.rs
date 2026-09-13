@@ -1449,7 +1449,9 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 human_like: if no_human_like {
                     Some(false)
                 } else {
-                    human_like
+                    // The reference CLI's bool/None argument defaults to true;
+                    // its SDK still defaults to the humanization config.
+                    Some(human_like.unwrap_or(true))
                 },
                 enter,
                 keystrokes,

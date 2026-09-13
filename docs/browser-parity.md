@@ -122,3 +122,36 @@ uses a local proxy fixture, and scopes real orphan cleanup to its own named prof
   Linux and Windows cross-target checks passed. CI now includes actual native
   mouse comparisons on Xvfb and Windows. JSON subprocess decoding is explicit
   UTF-8 so Unicode fixtures do not depend on Windows' locale code page.
+
+- Local macOS visible-window native input passed against Python's pyautogui
+  path: the fixture ignores the first trusted click and all synthetic clicks,
+  then accepts the actual native fallback. Both implementations reported method=os
+  and exactly two trusted clicks. The fixture closes its browser and restores the cursor.
+- Full source audit additionally found verified input filling in the reference
+  (typed/verified/method/methods_tried with value readback and fallback). Existing
+  Rust typing still needs this behavioral parity; accepting no-human-like alone
+  is insufficient. BrowserPool/Job/Worker/persistence also remain to implement.
+- Old macOS hosted run (Chrome for Testing 153.0.8010.36) failed page attachment
+  in 24 tests with WebSocket listener stopped. Local installed Chrome passes;
+  exact CfT build downloaded for reproduction. Cause is not yet established.
+
+- Shared verified filling implemented for both input locators. Differential suite
+  `scripts/typing_parity.py` passed all 12 scenarios through both Python/Rust CLIs:
+  default timing, Unicode replacement, empty replacement, preferred keys/human,
+  key-code-gated fallback, native setter fallback, total rejection, partial input,
+  contenteditable, readonly setter, and Enter. Results and actual page values match.
+  The reference CLI defaults type_by_text humanization to true even though its SDK
+  uses the false-by-default config; the Rust CLI now preserves that distinction.
+- CfT 153 macOS attachment failure reproduced locally by removing the outer
+  application directory's .app suffix: WebSocket listener stopped after 90 seconds.
+  The same executable in the intact .app passed all 26 real Chrome regression tests.
+  CI now copies setup-chrome's relocated directory into a proper .app bundle.
+- Second hosted Linux run passed cookie/identity/proxy/cleanup, then failed extension
+  connect-result equality; diagnostics now print both results. Windows passed its
+  real browser regression but its offline-cookie CLI overflowed the main stack;
+  the synthetic suite now isolates the plaintext baseline and closes SQLite handles.
+  Independent differential stages continue after sibling failures to reveal coverage.
+- Actual CfT macOS extension handshake still fails locally (ordinary installed
+  Chrome previously passed). Added isolated worker diagnostics; cause remains open.
+- Workspace strict Clippy passed after verified filling. Hosted cross-platform checks,
+  extension gaps, Windows offline runtime and SDK pool/profile/job/persistence remain.

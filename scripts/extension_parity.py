@@ -35,7 +35,7 @@ async def main():
     children = []
     with tempfile.TemporaryDirectory(prefix='suh-extension-test-') as temporary:
         root = Path(temporary)
-        env = dict(os.environ, PYTHONIOENCODING='utf-8', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=str(args.reference.resolve()))
+        env = dict(os.environ, PYTHONIOENCODING='utf-8', AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=str(args.reference.resolve()))
         def cli(name, *flags):
             result = subprocess.run([suh, 'browser', name, *map(str, flags)], env=env, text=True, encoding='utf-8', capture_output=True, timeout=40)
             assert result.returncode == 0, (name, result.stderr)
@@ -84,10 +84,24 @@ async def main():
                     if connected['connected']:
                         break
                     await asyncio.sleep(.5)
+                if not connected['connected']:
+                    targets = await command(cdp, 'Target.getTargets')
+                    print('Extension connection diagnostics:', targets, flush=True)
+                    for target in targets['targetInfos']:
+                        if target['type'] == 'service_worker' and target['url'].startswith('chrome-extension:'):
+                            attached = await command(cdp, 'Target.attachToTarget', {'targetId': target['targetId'], 'flatten': True})
+                            command.sequence += 1
+                            await cdp.send(json.dumps({'id': command.sequence, 'sessionId': attached['sessionId'], 'method': 'Runtime.evaluate', 'params': {'expression': '({socketState: socket?.readyState, connecting, extensionId: chrome.runtime.id})', 'returnByValue': True}}))
+                            while True:
+                                response = json.loads(await asyncio.wait_for(cdp.recv(), 10))
+                                if response.get('id') == command.sequence:
+                                    print('Extension worker diagnostics:', response, flush=True)
+                                    break
                 assert connected['connected'], connected
                 print('PASS actual Chrome extension loaded; bridge handshake; CLI connection')
                 flags = ['--transport', 'extension']
-                assert reference('browser_connect', *flags) == connected
+                reference_connected = reference('browser_connect', *flags)
+                assert reference_connected == connected, (reference_connected, connected)
 
                 result = cli('js_evaluate', *flags, '--expression', '({value: 42, url: location.href})')
                 assert result['result']['value'] == 42, result

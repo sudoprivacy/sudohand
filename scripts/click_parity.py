@@ -19,9 +19,13 @@ def main():
     parser.add_argument('--native', action='store_true')
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='suh-click-parity-') as temporary:
-        env = dict(os.environ, PYTHONIOENCODING='utf-8', HOME=temporary, USERPROFILE=temporary, PYTHONPATH=str(args.reference.resolve()))
+        env = dict(os.environ, PYTHONIOENCODING='utf-8', AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false', HOME=temporary, USERPROFILE=temporary, PYTHONPATH=str(args.reference.resolve()))
+        original_cursor = None
         if args.native:
+            import pyautogui
+            original_cursor = pyautogui.position()
             env['AI_DEV_BROWSER_VIEWPORT'] = 'native'
+            env['AI_DEV_BROWSER_HEADLESS'] = '0'
         def invoke(command):
             run = subprocess.run(command, env=env, capture_output=True, text=True, encoding='utf-8', timeout=45)
             assert run.returncode == 0, (command[:4], run.stderr)
@@ -80,7 +84,11 @@ def main():
                 assert evaluate('document.querySelector("input").value') == 'fixture'
             print('PASS by-ref click, explicit OS opt-out, no-human-like typing', flush=True)
         finally:
-            assert rust('browser_stop', *connection).get('stopped')
+            try:
+                assert rust('browser_stop', *connection).get('stopped')
+            finally:
+                if original_cursor is not None:
+                    pyautogui.moveTo(*original_cursor)
 
 
 if __name__ == '__main__':

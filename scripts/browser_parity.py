@@ -5,6 +5,7 @@ Only synthetic local fixtures are used. No personal cookies or profiles are read
 This suite is one parity gate, not evidence for features it does not exercise.
 """
 import argparse
+from contextlib import closing
 import base64
 import hashlib
 import http.server
@@ -30,7 +31,7 @@ def main():
     reference = str(args.reference.resolve())
     with tempfile.TemporaryDirectory(prefix='suh-parity-') as temporary:
         root = Path(temporary)
-        env = dict(os.environ, PYTHONIOENCODING='utf-8', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=reference)
+        env = dict(os.environ, PYTHONIOENCODING='utf-8', AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=reference)
         def invoke(command):
             if any(str(item).endswith('browser_start') for item in command) and env.get('ADB_TEST_CHROME_ARGS'):
                 overrides = {}
@@ -55,13 +56,15 @@ def main():
         # Plaintext rows require no OS key store. Use only our own SQLite DB.
         profile = root / 'cookie-source' / 'Default' / 'Network'
         profile.mkdir(parents=True)
-        with sqlite3.connect(profile / 'Cookies') as db:
+        with closing(sqlite3.connect(profile / 'Cookies')) as db, db:
             db.execute('CREATE TABLE cookies (host_key TEXT, name TEXT, value TEXT, encrypted_value BLOB, path TEXT, is_secure INTEGER, is_httponly INTEGER, expires_utc INTEGER)')
             db.executemany('INSERT INTO cookies VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
                 ('.example.test', 'long', 'x' * 80, b'', '/', 1, 1, 0),
                 ('.example.test', 'unicode', '浏览器', b'', '/path', 0, 0, 13348540800000000),
                 ('.other.test', 'other', 'other', b'', '/', 0, 0, 0),
             ])
+        equivalent('cookies_extract_offline', ['--domain', 'example.test', '--user-data-dir', profile.parent.parent])
+        print('PASS plaintext offline cookie fixture', flush=True)
         if sys.platform == 'win32':
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
             def protect(data):
@@ -74,7 +77,7 @@ def main():
             nonce = bytes(range(12))
             plain = hashlib.sha256(b'.example.test').digest() + b'windows-fixture-' + b'x' * 80
             encrypted = b'v10' + nonce + AESGCM(key).encrypt(nonce, plain, None)
-            with sqlite3.connect(profile / 'Cookies') as db:
+            with closing(sqlite3.connect(profile / 'Cookies')) as db, db:
                 db.executemany('INSERT INTO cookies VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
                     ('.example.test', 'gcm', '', encrypted, '/', 1, 1, 0),
                     ('.example.test', 'legacy', '', protect('legacy 浏览器'.encode()), '/', 0, 0, 0),
