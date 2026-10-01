@@ -35,6 +35,9 @@ pub enum Error {
     /// Bad argument (invalid ref, unknown key, bad env value, …).
     #[error("{0}")]
     Invalid(String),
+    /// An action's target is absent. A search returning found=false is not an error.
+    #[error("{0}")]
+    TargetNotFound(String),
     /// Anything I/O.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
@@ -64,6 +67,10 @@ impl From<Error> for sudohand_core::Error {
         match &e {
             Error::Invalid(m) => C::InvalidInput(m.clone()),
             Error::Chrome(m) => C::NotFound(m.clone()),
+            Error::TargetNotFound(m) => C::NotFound(m.clone())
+                .with_hint(crate::steering::LOCATOR_FAILURE),
+            Error::JsEvaluation(_) => C::Evaluation(e.to_string())
+                .with_hint(crate::steering::EVALUATION_FAILURE),
             Error::Io(io) => match io.kind() {
                 std::io::ErrorKind::NotFound => C::NotFound(e.to_string()),
                 std::io::ErrorKind::PermissionDenied => C::PermissionDenied(e.to_string()),
@@ -72,9 +79,10 @@ impl From<Error> for sudohand_core::Error {
             Error::Json(_) => C::Internal(e.to_string()),
             Error::Connection(_)
             | Error::Protocol { .. }
-            | Error::Timeout { .. }
-            | Error::JsEvaluation(_)
             | Error::Image(_) => C::Io(e.to_string()),
+            Error::Timeout { .. } => C::Io(e.to_string()).with_hint(
+                "The operation may already have changed the page. Inspect its state before deciding whether to retry; this call was not replayed."
+            ),
         }
     }
 }

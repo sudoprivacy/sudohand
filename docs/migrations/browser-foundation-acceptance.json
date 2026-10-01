@@ -1,0 +1,580 @@
+{
+  "schema": 1,
+  "tested_at": "2026-10-02",
+  "platform": "Windows",
+  "chrome": "154.0.8037.92",
+  "model_client": "Claude Code 2.1.286, safe mode, built-in tools disabled",
+  "model_auth": "real API key through the existing configured provider; no credentials included",
+  "execution": "live PTY; installed Chrome; local HTTP fixture; independent CLI processes; disposable profiles",
+  "binary_sha256": "68ee9694d58f7fc24907b24efbf28b7a29bdf91033abce73a9e50d41d283222e",
+  "source_ancestry": {
+    "main": "18c012dcc2396a46c7f8a9ad60fcfcebe3e28c9e",
+    "parity": "045202ed16e58527743d00006ddececf79471a93"
+  },
+  "skill_commit": "8e597fc872ee0653790960cd96e67f59b5c38a8f",
+  "foundation": {
+    "status": "passed",
+    "calls": 31,
+    "checks": [
+      "occupied-port launch fails with nonzero status and preserves the existing browser",
+      "stale locator -> discovery -> returned ref -> trusted reservation exactly once",
+      "JavaScript throw is nonretryable, with recovery hint and no repeated side effect",
+      "linear drag moves slider 220px with buttons=1, then releases",
+      "human drag moves slider 220px with buttons=1, then releases",
+      "mobile dimensions survive independent processes, reload, partial update and a new tab",
+      "saved draft is visible after reload"
+    ],
+    "mechanical": {
+      "schema": 1,
+      "mechanical_checks": "passed",
+      "browser_tools_listed": 63,
+      "shared_help_tools": [
+        "click_by_html_id",
+        "click_by_xpath",
+        "js_evaluate",
+        "mouse_drag",
+        "page_discover",
+        "window_set"
+      ],
+      "live_model_behavior": "not tested by this check"
+    }
+  },
+  "model": {
+    "schema": 1,
+    "status": "passed",
+    "client": "claude",
+    "binary_sha256": "68ee9694d58f7fc24907b24efbf28b7a29bdf91033abce73a9e50d41d283222e",
+    "scenarios": [
+      {
+        "name": "known HTML id",
+        "task": "Click the reservation button. Its HTML id is reserve-now.",
+        "turns": [
+          {
+            "reply": {
+              "tool": "click_by_html_id",
+              "args": [
+                "--html-id",
+                "reserve-now"
+              ]
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 6185,
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 1308,
+              "output_tokens": 32,
+              "output_tokens_details": {
+                "thinking_tokens": 0
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 0
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 6185,
+                  "output_tokens": 32,
+                  "cache_read_input_tokens": 1308,
+                  "cache_creation_input_tokens": 0,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.032379000000000005,
+            "observed": {
+              "exit": 0,
+              "result": {
+                "clicked": true,
+                "html_id": "reserve-now",
+                "url_before": "http://127.0.0.1:50160/steering.html",
+                "url_after": "http://127.0.0.1:50160/steering.html#receipt",
+                "title_after": "Browser migration acceptance",
+                "navigated": true
+              }
+            }
+          },
+          {
+            "reply": {
+              "done": true,
+              "summary": "Clicked the reservation button (html id 'reserve-now'); the click succeeded (clicked=true) and navigated the page from /steering.html to /steering.html#receipt, confirming the reservation action completed."
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 7348,
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "output_tokens": 145,
+              "output_tokens_details": {
+                "thinking_tokens": 63
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 0
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 7348,
+                  "output_tokens": 145,
+                  "cache_read_input_tokens": 0,
+                  "cache_creation_input_tokens": 0,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.040365000000000005
+          }
+        ],
+        "calls": 1,
+        "status": "passed"
+      },
+      {
+        "name": "recover stale locator",
+        "task": "Reserve one seat. A previous attempt used an outdated id and failed; recover from the result below.",
+        "turns": [
+          {
+            "reply": {
+              "tool": "page_discover",
+              "args": [
+                "--text",
+                "Reserve"
+              ]
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 7409,
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "output_tokens": 78,
+              "output_tokens_details": {
+                "thinking_tokens": 52
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 0
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 7409,
+                  "output_tokens": 78,
+                  "cache_read_input_tokens": 0,
+                  "cache_creation_input_tokens": 0,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.038995,
+            "observed": {
+              "exit": 0,
+              "result": [
+                {
+                  "ref": "4#42",
+                  "role": "button",
+                  "name": "Reserve seat",
+                  "x": 123,
+                  "y": 205,
+                  "box": {
+                    "left": 69,
+                    "top": 194,
+                    "right": 177,
+                    "bottom": 217
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "reply": {
+              "tool": "click_by_ref",
+              "args": [
+                "--ref",
+                "4#42"
+              ]
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 6516,
+              "cache_creation_input_tokens": 1306,
+              "cache_read_input_tokens": 0,
+              "output_tokens": 85,
+              "output_tokens_details": {
+                "thinking_tokens": 57
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 1306
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 6516,
+                  "output_tokens": 85,
+                  "cache_read_input_tokens": 0,
+                  "cache_creation_input_tokens": 1306,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 1306,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.0428675,
+            "observed": {
+              "exit": 0,
+              "result": {
+                "clicked": true,
+                "verified": true,
+                "method": "trusted",
+                "node_id": 42,
+                "target": "button",
+                "ref": "4#42",
+                "url_before": "http://127.0.0.1:50160/steering.html",
+                "url_after": "http://127.0.0.1:50160/steering.html#receipt",
+                "title_after": "Browser migration acceptance",
+                "navigated": true
+              }
+            }
+          },
+          {
+            "reply": {
+              "done": true,
+              "summary": "Seat reserved successfully. After the stale id (retired-reservation-id) failed, page_discover located the current 'Reserve seat' button (ref 4#42) and click_by_ref clicked it (clicked=true, verified=true, trusted), navigating from steering.html to steering.html#receipt — confirming the reservation."
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 7678,
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "output_tokens": 308,
+              "output_tokens_details": {
+                "thinking_tokens": 188
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 0
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 7678,
+                  "output_tokens": 308,
+                  "cache_read_input_tokens": 0,
+                  "cache_creation_input_tokens": 0,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.04609
+          }
+        ],
+        "calls": 2,
+        "status": "passed"
+      },
+      {
+        "name": "responsive layout",
+        "task": "Set this browser render viewport to 390 by 844 pixels for a mobile layout check.",
+        "turns": [
+          {
+            "reply": {
+              "tool": "window_set",
+              "args": [
+                "--width",
+                "390",
+                "--height",
+                "844"
+              ]
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 7180,
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "output_tokens": 67,
+              "output_tokens_details": {
+                "thinking_tokens": 40
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 0
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 7180,
+                  "output_tokens": 67,
+                  "cache_read_input_tokens": 0,
+                  "cache_creation_input_tokens": 0,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.037575000000000004,
+            "observed": {
+              "exit": 0,
+              "result": {
+                "width": 390,
+                "height": 844,
+                "viewport_persisted": true
+              }
+            }
+          },
+          {
+            "reply": {
+              "done": true,
+              "summary": "Viewport successfully set to 390x844 pixels (window_set returned width=390, height=844, viewport_persisted=true) for the mobile layout check."
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 7284,
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "output_tokens": 124,
+              "output_tokens_details": {
+                "thinking_tokens": 60
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 0
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 7284,
+                  "output_tokens": 124,
+                  "cache_read_input_tokens": 0,
+                  "cache_creation_input_tokens": 0,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.03952
+          }
+        ],
+        "calls": 1,
+        "status": "passed"
+      },
+      {
+        "name": "trusted coordinate drag",
+        "task": "Drag the slider from CSS coordinates (69, 428.375) to (289, 428.375).",
+        "turns": [
+          {
+            "reply": {
+              "tool": "mouse_drag",
+              "args": [
+                "--from-x",
+                "69",
+                "--from-y",
+                "428.375",
+                "--to-x",
+                "289",
+                "--to-y",
+                "428.375"
+              ]
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 6195,
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 1306,
+              "output_tokens": 128,
+              "output_tokens_details": {
+                "thinking_tokens": 76
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 0
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 6195,
+                  "output_tokens": 128,
+                  "cache_read_input_tokens": 1306,
+                  "cache_creation_input_tokens": 0,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.034828,
+            "observed": {
+              "exit": 0,
+              "result": {
+                "dragged": true
+              }
+            }
+          },
+          {
+            "reply": {
+              "done": true,
+              "summary": "Slider dragged from CSS (69, 428.375) to (289, 428.375) via mouse_drag; result returned dragged=true with exit 0, confirming the drag input sequence completed successfully."
+            },
+            "model": [
+              "claude-opus-4-8"
+            ],
+            "usage": {
+              "input_tokens": 7299,
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "output_tokens": 141,
+              "output_tokens_details": {
+                "thinking_tokens": 62
+              },
+              "server_tool_use": {
+                "web_search_requests": 0,
+                "web_fetch_requests": 0
+              },
+              "service_tier": "standard",
+              "cache_creation": {
+                "ephemeral_1h_input_tokens": 0,
+                "ephemeral_5m_input_tokens": 0
+              },
+              "inference_geo": "not_available",
+              "iterations": [
+                {
+                  "input_tokens": 7299,
+                  "output_tokens": 141,
+                  "cache_read_input_tokens": 0,
+                  "cache_creation_input_tokens": 0,
+                  "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                  },
+                  "type": "message"
+                }
+              ],
+              "speed": "standard",
+              "fallback_credit": null
+            },
+            "cost": 0.04002
+          }
+        ],
+        "calls": 1,
+        "status": "passed"
+      }
+    ],
+    "model_requests": 9
+  },
+  "screenshots_inspected": [
+    "desktop-drag.png",
+    "mobile.png",
+    "model-mobile.png",
+    "model-drag.png"
+  ],
+  "additional_checks": [
+    "cargo clippy --all-targets -- -D warnings",
+    "workspace library tests: 61 passed; one ignored subprocess fixture was exercised by its parent regression test",
+    "CLI unit/dispatch/serve: 12 passed",
+    "real Chrome SDK integration: 27 passed, zero ignored",
+    "pinned skill verified from original local symlink and a freshly fetched checkout"
+  ],
+  "observed_during_audit": [
+    "Names/descriptions alone let the model guess --id for click_by_html_id. describe --with-args now derives parameter rows from Clap; the final run used --html-id on its first call.",
+    "The general coding client brought its own tool routing into an initial probe. The committed benchmark uses Claude Code safe mode with no built-in tools, and the fixture runner executes selected browser calls.",
+    "Installed Windows Chrome rejected remote debugging when the test fabricated USERPROFILE. The fixture preserves the OS account environment and isolates by disposable profile and explicit port.",
+    "All model actions completed in an earlier run, but Chrome helper cleanup exceeded the original timeout. That run was not accepted. The final run includes bounded helper cleanup and exited successfully."
+  ],
+  "scope_limit": "Four model scenarios and seven browser journeys; not a statistical improvement claim, full CLI audit, sudowork UI acceptance, migration completion or release approval."
+}

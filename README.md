@@ -12,7 +12,7 @@ Each actuator is a **library plus a thin CLI** and contains **no
 policy, sessions, auditing, confirmation prompts, or transport** — an
 integrator links the crates and wraps them
 with those concerns. Success prints JSON to stdout; failure prints
-`{"error":{...}}` to stderr and exits 1.
+`{"error":{...}}` to stderr with a semantic nonzero exit code.
 
 ## Layout
 
@@ -30,6 +30,7 @@ sudohand/
 ## CLI
 
 ```
+suh describe --domain browser --with-args  # tool selection, flags and defaults
 suh browser ...     # was `adb`
 suh desktop ...     # was `adc`
 suh fs ...
@@ -42,6 +43,12 @@ One binary with domain subcommands — self-describing, and no clash
 with Android's `adb`.
 
 ## Status
+
+Changes to agent-facing tools require the recurring
+[CLI steering audit](docs/cli-steering-audit.md), using the
+[pinned engineering skill](references/README.md#cli-steering-engineering).
+CI covers executable contracts and real browser behavior; live model tests
+check tool choice and recovery.
 
 The browser replacement is being tracked in the
 [ai-dev-browser migration plan](docs/migrations/ai-dev-browser-to-sudohand.md),

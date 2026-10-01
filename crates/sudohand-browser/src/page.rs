@@ -386,8 +386,9 @@ pub async fn js_evaluate(tab: &Tab, expression: &str) -> Result<Value> {
     js_evaluate_in(tab, expression, None).await
 }
 
-/// [`js_evaluate`] with an optional cross-origin iframe (`frame`: URL
-/// substring or target id) whose own CDP session runs the expression.
+#[doc = include_str!("../help/js_evaluate.md")]
+#[doc = "\n\nFailure:\n"]
+#[doc = include_str!("../help/failures/evaluation.md")]
 pub async fn js_evaluate_in(tab: &Tab, expression: &str, frame: Option<&str>) -> Result<Value> {
     let session = match frame {
         Some(f) => Some(tab.frame_session(f).await?),

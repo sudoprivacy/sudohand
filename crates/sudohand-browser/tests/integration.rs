@@ -1104,10 +1104,13 @@ async fn locators_find_and_click_html_id_xpath_text() {
         "went"
     );
     // not found
-    let r = click_by_xpath(&tab, "//button[@id='missing']")
+    let error = click_by_xpath(&tab, "//button[@id='missing']")
         .await
-        .unwrap();
-    assert_eq!(r["clicked"], false);
+        .unwrap_err();
+    let error = sudohand_core::Error::from(error);
+    assert_eq!(error.code(), "not_found");
+    assert_eq!(error.exit_code(), 4);
+    assert!(error.hint().unwrap().contains("page_discover"));
 }
 
 #[tokio::test]

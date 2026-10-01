@@ -13,7 +13,7 @@ def capture_process_tree(pid):
         return []
 
 
-def finish_process_tree(processes, *, terminate=False):
+def finish_process_tree(processes, *, terminate=False, timeout=5):
     """Wait for fixture descendants before removing Windows-locked profiles."""
     import psutil
 
@@ -27,10 +27,10 @@ def finish_process_tree(processes, *, terminate=False):
     if terminate:
         for process in processes:
             signal(process, 'terminate')
-    _, alive = psutil.wait_procs(processes, timeout=5)
+    _, alive = psutil.wait_procs(processes, timeout=timeout)
     for process in alive:
         signal(process, 'kill')
-    _, alive = psutil.wait_procs(alive, timeout=5)
+    _, alive = psutil.wait_procs(alive, timeout=timeout)
     # A reparented Unix zombie has exited and released its file handles.
     remaining = []
     for process in alive:
@@ -48,7 +48,7 @@ def run_capture(command, *, env=None, timeout=45):
     # let us wait on the actual command and retain its diagnostics independently.
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
         try:
-            completed = subprocess.run(command, env=env, stdout=stdout, stderr=stderr, timeout=timeout)
+            completed = subprocess.run(command, env=env, stdout=stdout, stderr=stderr, timeout=timeout, check=False)
         except subprocess.TimeoutExpired as error:
             stdout.seek(0)
             stderr.seek(0)

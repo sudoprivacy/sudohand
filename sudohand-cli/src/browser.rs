@@ -187,7 +187,7 @@ pub enum NavigationCommands {
         wait: bool,
     },
     /// Discover interactable elements (accessibility tree + DOM scan) with refs
-    #[command(name = "page_discover", alias = "page-discover")]
+    #[command(name = "page_discover", alias = "page-discover", about = sudohand_browser::steering::PAGE_DISCOVER)]
     PageDiscover {
         #[command(flatten)]
         conn: Conn,
@@ -560,7 +560,7 @@ pub enum LocatorCommands {
         xpath: String,
     },
     /// Trusted click on the element with an html id
-    #[command(name = "click_by_html_id", alias = "click-by-html-id")]
+    #[command(name = "click_by_html_id", alias = "click-by-html-id", about = sudohand_browser::steering::CLICK_BY_HTML_ID)]
     ClickByHtmlId {
         #[command(flatten)]
         conn: Conn,
@@ -569,7 +569,7 @@ pub enum LocatorCommands {
         html_id: String,
     },
     /// Trusted click on the first XPath match
-    #[command(name = "click_by_xpath", alias = "click-by-xpath")]
+    #[command(name = "click_by_xpath", alias = "click-by-xpath", about = sudohand_browser::steering::CLICK_BY_XPATH)]
     ClickByXpath {
         #[command(flatten)]
         conn: Conn,
@@ -714,7 +714,7 @@ pub enum MouseCommands {
         r#move: bool,
     },
     /// Drag from one coordinate to another
-    #[command(name = "mouse_drag", alias = "mouse-drag")]
+    #[command(name = "mouse_drag", alias = "mouse-drag", about = sudohand_browser::steering::MOUSE_DRAG)]
     MouseDrag {
         #[command(flatten)]
         conn: Conn,
@@ -783,7 +783,7 @@ pub enum TabCommands {
 #[derive(Subcommand, Debug)]
 pub enum RuntimeCommands {
     /// Evaluate JavaScript in the page (raw escape hatch)
-    #[command(name = "js_evaluate", alias = "js-evaluate")]
+    #[command(name = "js_evaluate", alias = "js-evaluate", about = sudohand_browser::steering::JS_EVALUATE)]
     JsEvaluate {
         #[command(flatten)]
         conn: Conn,
@@ -825,7 +825,7 @@ pub enum RuntimeCommands {
         wait_timeout: f64,
     },
     /// Set the render viewport, OS window state, or focus
-    #[command(name = "window_set", alias = "window-set")]
+    #[command(name = "window_set", alias = "window-set", about = sudohand_browser::steering::WINDOW_SET)]
     WindowSet {
         #[command(flatten)]
         conn: Conn,

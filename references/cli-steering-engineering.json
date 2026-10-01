@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/sudoprivacy/cli-steering-engineering.git",
+  "commit": "8e597fc872ee0653790960cd96e67f59b5c38a8f",
+  "skill": "SKILL.md",
+  "optional_checkout": "references/cli-steering-engineering",
+  "recorded_at": "2026-10-01",
+  "access": "private; use existing Git credentials or a local checkout",
+  "purpose": "Recurring tool-selection, return-contract and recovery audit. Reference only; excluded from product distribution."
+}

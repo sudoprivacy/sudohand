@@ -122,10 +122,10 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
         Some(p) => {
             if is_port_in_use(p) {
                 let pid = pid_on_port_async(p).await;
-                return Ok(json!({"error": format!(
+                return Err(crate::Error::Invalid(format!(
                     "Port {p} is already in use (PID: {}). Use a different port or stop the existing process.",
                     pid.map_or("None".to_string(), |x| x.to_string())
-                )}));
+                )));
             }
             p
         }
@@ -203,7 +203,9 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
             if stderr.trim().is_empty() {
                 stderr = "Chrome exited silently. Possible causes:\n  - Another Chrome is using this profile\n  - Profile directory is corrupted\n  - Insufficient permissions".to_string();
             }
-            return Ok(json!({"error": format!("Chrome process exited unexpectedly: {stderr}")}));
+            return Err(crate::Error::Connection(format!(
+                "Chrome process exited unexpectedly: {stderr}"
+            )));
         }
         tokio::time::sleep(Duration::from_millis(200)).await;
     }
@@ -218,12 +220,9 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
         } else {
             format!("\nRecent Chrome stderr:\n{stderr}")
         };
-        return Ok(json!({
-            "error": format!(
+        return Err(crate::Error::Connection(format!(
                 "Chrome started (PID {pid}) but DevTools/initial page on port {port} was not ready after {timeout}s — process killed to release profile lockfile. Retry with startup_timeout=<larger> if your environment is slow.{diagnostic}"
-            ),
-            "pid": pid,
-        }));
+        )));
     }
     // Registry metadata is best effort: a read-only home must not kill a launch.
     let _ = crate::registry::register(

@@ -58,6 +58,7 @@ pub struct BrowserClient {
     pub port: u16,
     conn: Arc<Connection>,
     targets: Vec<TargetInfo>,
+    is_extension: bool,
 }
 
 impl BrowserClient {
@@ -94,6 +95,7 @@ impl BrowserClient {
             port,
             conn: Arc::new(conn),
             targets: Vec::new(),
+            is_extension: false,
         };
         client.update_targets().await?;
         Ok(client)
@@ -113,6 +115,7 @@ impl BrowserClient {
             port,
             conn: Arc::new(conn),
             targets: Vec::new(),
+            is_extension: true,
         };
         client.update_targets().await?;
         Ok(client)
@@ -159,6 +162,9 @@ impl BrowserClient {
             target: target.clone(),
             conn,
             browser: Arc::clone(&self.conn),
+            local_port: matches!(self.host.as_str(), "127.0.0.1" | "localhost" | "::1")
+                .then_some(self.port),
+            is_extension: self.is_extension,
         };
         if matches!(self.host.as_str(), "127.0.0.1" | "localhost" | "::1") {
             if let Some(record) = crate::registry::lookup(self.port, self.conn.url()) {
@@ -226,9 +232,34 @@ pub struct Tab {
     pub target: TargetInfo,
     conn: Arc<Connection>,
     browser: Arc<Connection>,
+    local_port: Option<u16>,
+    is_extension: bool,
 }
 
 impl Tab {
+    pub(crate) fn recorded_viewport(&self) -> Option<(u32, u32)> {
+        let record = crate::registry::lookup(self.local_port?, self.browser.url())?;
+        let values = record["viewport"].as_array()?;
+        if values.len() != 2 {
+            return None;
+        }
+        let w = u32::try_from(values[0].as_u64()?).ok()?;
+        let h = u32::try_from(values[1].as_u64()?).ok()?;
+        (w > 0 && h > 0 && i32::try_from(w).is_ok() && i32::try_from(h).is_ok()).then_some((w, h))
+    }
+
+    pub(crate) fn persist_viewport(&self, width: u32, height: u32) -> Result<bool> {
+        let Some(port) = self.local_port else {
+            return Ok(false);
+        };
+        let Some(mut record) = crate::registry::lookup(port, self.browser.url()) else {
+            return Ok(false);
+        };
+        record["viewport"] = serde_json::json!([width, height]);
+        crate::registry::write(port, &record)?;
+        Ok(true)
+    }
+
     /// The tab's connection.
     #[must_use]
     pub fn connection(&self) -> &Arc<Connection> {
@@ -626,29 +657,47 @@ impl Tab {
     /// Left-button drag from `from` to `to` along a straight line with
     /// `steps` intermediate moves (Python `Tab.mouse_drag`).
     pub async fn mouse_drag(&self, from: (f64, f64), to: (f64, f64), steps: usize) -> Result<()> {
+        self.mouse_move(from.0, from.1).await?;
         let press = input::DispatchMouseEventParams::builder()
             .r#type(input::DispatchMouseEventType::MousePressed)
             .x(from.0)
             .y(from.1)
             .button(input::MouseButton::Left)
+            .buttons(1)
             .click_count(1)
             .build()
             .map_err(Error::Invalid)?;
         self.send_timeout(press, MOUSE_EVENT_TIMEOUT).await?;
-        for i in 0..steps.max(1) {
-            let t = (i + 1) as f64 / steps.max(1) as f64;
-            self.mouse_move(from.0 + (to.0 - from.0) * t, from.1 + (to.1 - from.1) * t)
-                .await?;
+        let moved: Result<()> = async {
+            for i in 0..steps.max(1) {
+                let t = (i + 1) as f64 / steps.max(1) as f64;
+                let p = input::DispatchMouseEventParams::builder()
+                    .r#type(input::DispatchMouseEventType::MouseMoved)
+                    .x(from.0 + (to.0 - from.0) * t)
+                    .y(from.1 + (to.1 - from.1) * t)
+                    .button(input::MouseButton::Left)
+                    .buttons(1)
+                    .build()
+                    .map_err(Error::Invalid)?;
+                self.send_timeout(p, MOUSE_EVENT_TIMEOUT).await?;
+            }
+            Ok(())
         }
+        .await;
         let release = input::DispatchMouseEventParams::builder()
             .r#type(input::DispatchMouseEventType::MouseReleased)
             .x(to.0)
             .y(to.1)
             .button(input::MouseButton::Left)
+            .buttons(0)
             .click_count(1)
             .build()
             .map_err(Error::Invalid)?;
-        self.send_timeout(release, MOUSE_EVENT_TIMEOUT).await?;
+        // Release even when a move failed; never replay a partially applied drag.
+        let released = self.send_timeout(release, MOUSE_EVENT_TIMEOUT).await;
+        moved?;
+        released?;
+        crate::human::set_last_mouse_pos(self, to.0, to.1);
         Ok(())
     }
 
@@ -696,6 +745,15 @@ async fn prepare(tab: Tab) -> Result<Tab> {
         let _ = tab
             .send(page::HandleJavaScriptDialogParams::new(accept))
             .await;
+    }
+    // The extension controls the user's own viewport. Explicit window_set is
+    // allowed, but acquiring a tab must not resize it implicitly.
+    if tab.is_extension {
+        return Ok(tab);
+    }
+    if let Some((w, h)) = tab.recorded_viewport() {
+        tab.set_viewport(w, h).await?;
+        return Ok(tab);
     }
     let Some((w, h)) = config::resolve_viewport()? else {
         return Ok(tab);

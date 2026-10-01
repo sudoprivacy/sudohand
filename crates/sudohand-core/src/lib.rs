@@ -11,7 +11,8 @@
 //!
 //! The wire contract (inherited unchanged from adc / ai-desktop-control):
 //! success prints JSON to stdout; failure prints
-//! `{"error":{"kind":<category>,"message":<text>}}` to stderr and exits 1.
+//! `{"error":{"kind":<category>,"message":<text>,"retryable":false}}`
+//! to stderr with a semantic nonzero exit code and an optional recovery hint.
 
 pub mod b64;
 pub mod permissions;
@@ -21,8 +22,7 @@ use serde::Serialize;
 
 /// The small error type every actuator maps its failures onto. It carries
 /// a category and a human message; an integrator maps each category onto
-/// its own wire codes. Kept deliberately small — the OS backends only ever
-/// produce these five kinds.
+/// its own wire codes. Recovery hints retain the underlying category.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     /// A required OS permission is not granted (Accessibility, Screen
@@ -38,9 +38,26 @@ pub enum Error {
     /// An internal invariant failed: a CoreFoundation object could not be
     /// created, a worker thread panicked, …
     Internal(String),
+    /// Caller-provided code failed during evaluation.
+    Evaluation(String),
+    /// Recovery instructions supplied by the operation that failed.
+    WithHint { source: Box<Self>, hint: String },
 }
 
 impl Error {
+    pub fn with_hint(self, hint: impl Into<String>) -> Self {
+        Self::WithHint {
+            source: Box::new(self),
+            hint: hint.into(),
+        }
+    }
+
+    pub fn hint(&self) -> Option<&str> {
+        match self {
+            Self::WithHint { hint, .. } => Some(hint),
+            _ => None,
+        }
+    }
     pub fn perm(m: impl Into<String>) -> Self {
         Self::PermissionDenied(m.into())
     }
@@ -75,20 +92,24 @@ impl Error {
             Error::InvalidInput(_) => "invalid_input",
             Error::Io(_) => "io",
             Error::Internal(_) => "internal",
+            Error::Evaluation(_) => "evaluation",
+            Error::WithHint { source, .. } => source.code(),
         }
     }
 
     /// Process exit code by category, so a calling agent can branch on the
     /// failure without parsing stderr: 2=bad input (fix the args), 4=not
     /// found (target absent), 7=permission (grant access / sudo), 9=io /
-    /// transient (safe to retry), 1=internal (a bug — do not retry).
+    /// IO (outcome may be unknown), 1=internal/evaluation. An IO category
+    /// does not authorize replay of a possibly applied operation.
     pub fn exit_code(&self) -> u8 {
         match self {
             Error::InvalidInput(_) => 2,
             Error::NotFound(_) => 4,
             Error::PermissionDenied(_) => 7,
             Error::Io(_) => 9,
-            Error::Internal(_) => 1,
+            Error::Internal(_) | Error::Evaluation(_) => 1,
+            Error::WithHint { source, .. } => source.exit_code(),
         }
     }
 
@@ -99,15 +120,19 @@ impl Error {
             | Error::NotFound(m)
             | Error::InvalidInput(m)
             | Error::Io(m)
-            | Error::Internal(m) => m,
+            | Error::Internal(m)
+            | Error::Evaluation(m) => m,
+            Error::WithHint { source, .. } => source.message(),
         }
     }
 
     /// The `{"error":{"kind","message"}}` envelope printed to stderr on
     /// failure, as one line.
     pub fn envelope(&self) -> String {
-        serde_json::json!({ "error": ErrorEnvelope { kind: self.code(), message: self.message() } })
-            .to_string()
+        serde_json::json!({ "error": ErrorEnvelope {
+            kind: self.code(), message: self.message(), hint: self.hint(), retryable: false,
+        } })
+        .to_string()
     }
 }
 
@@ -126,11 +151,16 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct ErrorEnvelope<'a> {
     pub kind: &'a str,
     pub message: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<&'a str>,
+    /// False means callers must inspect/recover before replaying the same
+    /// request. Transport failures may have occurred after a side effect.
+    pub retryable: bool,
 }
 
 /// CLI contract shared by every sudohand actuator binary: success prints
 /// pretty JSON to stdout; failure prints `{"error":{"kind","message"}}`
-/// to stderr and exits 1.
+/// to stderr with a semantic nonzero exit code.
 pub fn print_result<T: Serialize>(r: Result<T>) -> std::process::ExitCode {
     use std::io::Write;
     match r {
@@ -165,7 +195,7 @@ mod tests {
         assert_eq!(e.to_string(), "window 7");
         assert_eq!(
             e.envelope(),
-            r#"{"error":{"kind":"not_found","message":"window 7"}}"#
+            r#"{"error":{"kind":"not_found","message":"window 7","retryable":false}}"#
         );
         assert_eq!(Error::perm("x").code(), "permission_denied");
         assert_eq!(Error::invalid("x").code(), "invalid_input");

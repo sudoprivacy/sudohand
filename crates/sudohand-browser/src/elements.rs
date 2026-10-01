@@ -758,8 +758,9 @@ pub async fn trusted_click(
     action.insert("clicked".into(), json!(false));
     action.insert(locator_key.to_string(), json!(locator_val));
     if hit.is_null() {
-        action.insert("error".into(), json!("not found"));
-        return Ok(Value::Object(failed(action, &url_before)));
+        return Err(crate::Error::TargetNotFound(format!(
+            "No element matching {locator_key}={locator_val:?}"
+        )));
     }
     let g = |k: &str| hit.get(k).and_then(Value::as_f64).unwrap_or(0.0);
     if g("w") == 0.0 || g("h") == 0.0 {
@@ -778,12 +779,16 @@ pub async fn trusted_click(
     Ok(Value::Object(with_nav_feedback(tab, action).await))
 }
 
-/// Trusted click on the element with html `id` (same-origin frames included).
+#[doc = include_str!("../help/click_by_html_id.md")]
+#[doc = "\n\nFailure:\n"]
+#[doc = include_str!("../help/failures/locator.md")]
 pub async fn click_by_html_id(tab: &Tab, html_id: &str) -> Result<Value> {
     trusted_click(tab, &html_id_finder_js(html_id), "html_id", html_id).await
 }
 
-/// Trusted click on the first XPath match (same-origin frames included).
+#[doc = include_str!("../help/click_by_xpath.md")]
+#[doc = "\n\nFailure:\n"]
+#[doc = include_str!("../help/failures/locator.md")]
 pub async fn click_by_xpath(tab: &Tab, xpath: &str) -> Result<Value> {
     trusted_click(tab, &xpath_finder_js(xpath), "xpath", xpath).await
 }

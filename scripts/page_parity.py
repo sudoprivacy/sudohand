@@ -247,7 +247,12 @@ def main():
                 # Disable per-command default viewport enforcement before
                 # observing the custom window size on another CLI connection.
                 env['AI_DEV_BROWSER_VIEWPORT'] = 'native'
-                equivalent('window_set', '--width', '900', '--height', '600')
+                expected_viewport = python('window_set', *connection, '--width', '900', '--height', '600')
+                actual_viewport = rust('window_set', *connection, '--width', '900', '--height', '600')
+                # Additive persistence feedback is new; the original dimensions
+                # still match. Cross-process persistence has its own live suite.
+                assert actual_viewport.pop('viewport_persisted') is True, actual_viewport
+                assert actual_viewport == expected_viewport, (actual_viewport, expected_viewport)
                 viewport = equivalent('js_evaluate', '--expression', '[innerWidth,innerHeight]')
                 assert viewport['result'] == [900,600], viewport
                 equivalent('dialog_respond')

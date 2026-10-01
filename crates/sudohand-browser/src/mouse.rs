@@ -116,7 +116,7 @@ pub async fn mouse_click(
     Ok(true)
 }
 
-/// Drag from `from` to `to` (screenshot space if `screenshot` is given).
+#[doc = include_str!("../help/mouse_drag.md")]
 ///
 /// `human_like: false` is the Python behaviour: a straight line in `steps`
 /// moves. `human_like: true` is a Rust extension for slider captchas and

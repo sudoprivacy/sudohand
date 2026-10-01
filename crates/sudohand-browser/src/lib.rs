@@ -69,6 +69,7 @@ mod registry;
 pub mod robust_click;
 pub mod snapshot;
 pub mod sqlite;
+pub mod steering;
 pub mod storage;
 pub mod tabs;
 pub mod text_match;
