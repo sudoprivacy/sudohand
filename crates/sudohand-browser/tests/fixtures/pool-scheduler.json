@@ -1,0 +1,596 @@
+[
+  {
+    "position": "front",
+    "budget": 0,
+    "calls": [
+      [
+        "retry",
+        1
+      ],
+      [
+        "ok",
+        1
+      ],
+      [
+        "business",
+        1
+      ],
+      [
+        "terminal",
+        1
+      ]
+    ],
+    "results": {
+      "retry": {
+        "success": false,
+        "data": null,
+        "error": "retry",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      },
+      "ok": {
+        "success": true,
+        "data": {
+          "label": "ok",
+          "attempt": 1
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "business": {
+        "success": false,
+        "data": {
+          "label": "business",
+          "success": false
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "terminal": {
+        "success": false,
+        "data": null,
+        "error": "terminal",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      }
+    },
+    "stats": {
+      "success": 2,
+      "fail": 2,
+      "total": 4
+    },
+    "closed": 1
+  },
+  {
+    "position": "front",
+    "budget": 1,
+    "calls": [
+      [
+        "retry",
+        1
+      ],
+      [
+        "ok",
+        1
+      ],
+      [
+        "business",
+        1
+      ],
+      [
+        "terminal",
+        1
+      ]
+    ],
+    "results": {
+      "retry": {
+        "success": false,
+        "data": null,
+        "error": "retry",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      },
+      "ok": {
+        "success": true,
+        "data": {
+          "label": "ok",
+          "attempt": 1
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "business": {
+        "success": false,
+        "data": {
+          "label": "business",
+          "success": false
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "terminal": {
+        "success": false,
+        "data": null,
+        "error": "terminal",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      }
+    },
+    "stats": {
+      "success": 2,
+      "fail": 2,
+      "total": 4
+    },
+    "closed": 1
+  },
+  {
+    "position": "front",
+    "budget": 2,
+    "calls": [
+      [
+        "retry",
+        1
+      ],
+      [
+        "retry",
+        2
+      ],
+      [
+        "ok",
+        1
+      ],
+      [
+        "business",
+        1
+      ],
+      [
+        "terminal",
+        1
+      ],
+      [
+        "terminal",
+        2
+      ]
+    ],
+    "results": {
+      "retry": {
+        "success": false,
+        "data": null,
+        "error": "retry",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      },
+      "ok": {
+        "success": true,
+        "data": {
+          "label": "ok",
+          "attempt": 1
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "business": {
+        "success": false,
+        "data": {
+          "label": "business",
+          "success": false
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "terminal": {
+        "success": false,
+        "data": null,
+        "error": "terminal",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      }
+    },
+    "stats": {
+      "success": 2,
+      "fail": 4,
+      "total": 6
+    },
+    "closed": 1
+  },
+  {
+    "position": "front",
+    "budget": -1,
+    "calls": [
+      [
+        "retry",
+        1
+      ],
+      [
+        "retry",
+        2
+      ],
+      [
+        "retry",
+        3
+      ],
+      [
+        "ok",
+        1
+      ],
+      [
+        "business",
+        1
+      ]
+    ],
+    "results": {
+      "retry": {
+        "success": true,
+        "data": {
+          "label": "retry",
+          "attempt": 3
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "ok": {
+        "success": true,
+        "data": {
+          "label": "ok",
+          "attempt": 1
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "business": {
+        "success": false,
+        "data": {
+          "label": "business",
+          "success": false
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      }
+    },
+    "stats": {
+      "success": 3,
+      "fail": 2,
+      "total": 5
+    },
+    "closed": 1
+  },
+  {
+    "position": "back",
+    "budget": 0,
+    "calls": [
+      [
+        "retry",
+        1
+      ],
+      [
+        "ok",
+        1
+      ],
+      [
+        "business",
+        1
+      ],
+      [
+        "terminal",
+        1
+      ]
+    ],
+    "results": {
+      "retry": {
+        "success": false,
+        "data": null,
+        "error": "retry",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      },
+      "ok": {
+        "success": true,
+        "data": {
+          "label": "ok",
+          "attempt": 1
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "business": {
+        "success": false,
+        "data": {
+          "label": "business",
+          "success": false
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "terminal": {
+        "success": false,
+        "data": null,
+        "error": "terminal",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      }
+    },
+    "stats": {
+      "success": 2,
+      "fail": 2,
+      "total": 4
+    },
+    "closed": 1
+  },
+  {
+    "position": "back",
+    "budget": 1,
+    "calls": [
+      [
+        "retry",
+        1
+      ],
+      [
+        "ok",
+        1
+      ],
+      [
+        "business",
+        1
+      ],
+      [
+        "terminal",
+        1
+      ]
+    ],
+    "results": {
+      "retry": {
+        "success": false,
+        "data": null,
+        "error": "retry",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      },
+      "ok": {
+        "success": true,
+        "data": {
+          "label": "ok",
+          "attempt": 1
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "business": {
+        "success": false,
+        "data": {
+          "label": "business",
+          "success": false
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "terminal": {
+        "success": false,
+        "data": null,
+        "error": "terminal",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      }
+    },
+    "stats": {
+      "success": 2,
+      "fail": 2,
+      "total": 4
+    },
+    "closed": 1
+  },
+  {
+    "position": "back",
+    "budget": 2,
+    "calls": [
+      [
+        "retry",
+        1
+      ],
+      [
+        "ok",
+        1
+      ],
+      [
+        "business",
+        1
+      ],
+      [
+        "terminal",
+        1
+      ],
+      [
+        "retry",
+        2
+      ],
+      [
+        "terminal",
+        2
+      ]
+    ],
+    "results": {
+      "retry": {
+        "success": false,
+        "data": null,
+        "error": "retry",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      },
+      "ok": {
+        "success": true,
+        "data": {
+          "label": "ok",
+          "attempt": 1
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "business": {
+        "success": false,
+        "data": {
+          "label": "business",
+          "success": false
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "terminal": {
+        "success": false,
+        "data": null,
+        "error": "terminal",
+        "error_type": "FixtureError",
+        "error_bases": [
+          "Exception",
+          "BaseException"
+        ],
+        "worker_id": 0
+      }
+    },
+    "stats": {
+      "success": 2,
+      "fail": 4,
+      "total": 6
+    },
+    "closed": 1
+  },
+  {
+    "position": "back",
+    "budget": -1,
+    "calls": [
+      [
+        "retry",
+        1
+      ],
+      [
+        "ok",
+        1
+      ],
+      [
+        "business",
+        1
+      ],
+      [
+        "retry",
+        2
+      ],
+      [
+        "retry",
+        3
+      ]
+    ],
+    "results": {
+      "retry": {
+        "success": true,
+        "data": {
+          "label": "retry",
+          "attempt": 3
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "ok": {
+        "success": true,
+        "data": {
+          "label": "ok",
+          "attempt": 1
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      },
+      "business": {
+        "success": false,
+        "data": {
+          "label": "business",
+          "success": false
+        },
+        "error": null,
+        "error_type": null,
+        "error_bases": [],
+        "worker_id": 0
+      }
+    },
+    "stats": {
+      "success": 3,
+      "fail": 2,
+      "total": 5
+    },
+    "closed": 1
+  }
+]

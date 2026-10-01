@@ -392,7 +392,7 @@ pub struct TextHit {
 pub async fn find_elements_by_text(tab: &Tab, text: &str) -> Result<Vec<TextHit>> {
     let text = text.trim();
     // A DOM.getDocument is what makes performSearch see the current tree.
-    let _ = tab
+    let document = tab
         .send(
             chromiumoxide_cdp::cdp::browser_protocol::dom::GetDocumentParams {
                 depth: Some(-1),
@@ -433,7 +433,12 @@ pub async fn find_elements_by_text(tab: &Tab, text: &str) -> Result<Vec<TextHit>
                     Ok(p) => p,
                     Err(_) => continue,
                 },
-                None => node,
+                // DOM.describeNode may omit parentId. The full document
+                // snapshot still identifies the owning element of text hits.
+                None => match text_node_parent(&document.root, nid) {
+                    Some(parent) => parent.clone(),
+                    None => continue,
+                },
             }
         } else {
             node
@@ -446,6 +451,27 @@ pub async fn find_elements_by_text(tab: &Tab, text: &str) -> Result<Vec<TextHit>
         });
     }
     Ok(hits)
+}
+
+fn text_node_parent(root: &Node, node_id: NodeId) -> Option<&Node> {
+    let mut pending = vec![root];
+    while let Some(node) = pending.pop() {
+        if let Some(children) = &node.children {
+            for child in children {
+                if child.node_id == node_id {
+                    return Some(node);
+                }
+                pending.push(child);
+            }
+        }
+        if let Some(roots) = &node.shadow_roots {
+            pending.extend(roots);
+        }
+        if let Some(document) = &node.content_document {
+            pending.push(document);
+        }
+    }
+    None
 }
 
 /// First element containing `text`; with `best_match` the one whose

@@ -107,7 +107,7 @@ fn describe() -> String {
         }
         let subs: Vec<_> = domain
             .get_subcommands()
-            .filter(|c| c.get_name() != "help")
+            .filter(|c| c.get_name() != "help" && !c.is_hide_set())
             .collect();
         if subs.is_empty() {
             let about = domain
@@ -147,7 +147,16 @@ fn one_line(s: &str) -> String {
     s.lines().next().unwrap_or("").replace('\t', " ")
 }
 
+#[cfg(windows)]
+mod windows_stdio;
+
 fn main() -> std::process::ExitCode {
+    #[cfg(windows)]
+    if let Err(error) = windows_stdio::clear_inheritance() {
+        return sudohand_core::print_result::<()>(Err(sudohand_core::Error::internal(format!(
+            "standard stream inheritance: {error}"
+        ))));
+    }
     let cli = Cli::parse();
     match cli.command {
         Domain::Browser { cmd } => sudohand_core::print_result(browser::run(cmd)),

@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use sudohand_browser::actions::TypeOptions;
 use sudohand_browser::browser::{Reuse, StartOptions};
 use sudohand_browser::chrome::Headless;
-use sudohand_browser::connection::{connect_browser, get_active_tab, BrowserClient, Tab};
+use sudohand_browser::connection::{get_active_tab, BrowserClient, Tab};
 use sudohand_browser::dialog::DialogOptions;
 use sudohand_browser::elements::{ScrollOptions, TypeByTextOptions};
 use sudohand_browser::image_cap::ImageCap;
@@ -23,6 +23,9 @@ use sudohand_browser::snapshot::DiscoverOptions;
 /// Connection-scope flags every tab-taking tool accepts.
 #[derive(Args, Debug, Clone)]
 pub struct Conn {
+    /// Browser transport (or AI_DEV_BROWSER_TRANSPORT)
+    #[arg(long, value_parser = ["cdp", "extension"])]
+    transport: Option<String>,
     /// Chrome debugging port (auto-detects: AI_DEV_BROWSER_PORT → workspace scan → 9350)
     #[arg(short, long)]
     port: Option<u16>,
@@ -37,8 +40,53 @@ pub enum ReuseArg {
     Any,
 }
 
+// Flatten small parser groups: deriving all browser commands in one enum used
+// almost 2 MiB of stack in debug builds, exceeding Windows and Tokio stacks.
 #[derive(Subcommand, Debug)]
 pub enum Cmd {
+    #[command(flatten)]
+    Browser(BrowserCommands),
+    #[command(flatten)]
+    Navigation(NavigationCommands),
+    #[command(flatten)]
+    PageOutput(PageOutputCommands),
+    #[command(flatten)]
+    Reference(ReferenceCommands),
+    #[command(flatten)]
+    Locator(LocatorCommands),
+    #[command(flatten)]
+    Mouse(MouseCommands),
+    #[command(flatten)]
+    Tab(TabCommands),
+    #[command(flatten)]
+    Runtime(RuntimeCommands),
+    #[command(flatten)]
+    Cookie(CookieCommands),
+    #[command(flatten)]
+    Download(DownloadCommands),
+    #[command(flatten)]
+    Vlm(VlmCommands),
+}
+
+#[derive(Subcommand, Debug)]
+pub enum BrowserCommands {
+    /// Check an existing browser connection without launching Chrome
+    #[command(name = "browser_connect", alias = "browser-connect")]
+    BrowserConnect {
+        #[arg(long, value_parser = ["cdp", "extension"])]
+        transport: Option<String>,
+        #[arg(long)]
+        port: Option<u16>,
+    },
+    /// Disconnect the extension bridge without closing the user's Chrome
+    #[command(name = "browser_disconnect", alias = "browser-disconnect")]
+    BrowserDisconnect,
+    /// Internal persistent extension bridge
+    #[command(name = "bridge-serve", hide = true)]
+    BridgeServe {
+        #[arg(long, default_value_t = sudohand_browser::bridge::PORT)]
+        port: u16,
+    },
     /// Start a browser instance — isolated (temp profile) unless --profile is given
     #[command(name = "browser_start", alias = "browser-start")]
     BrowserStart {
@@ -72,6 +120,24 @@ pub enum Cmd {
         /// Route Chrome's stderr to null
         #[arg(long)]
         silent_stderr: bool,
+        /// Restore legacy automation marker flags (stealth is on by default)
+        #[arg(long)]
+        no_stealth: bool,
+        /// Override the browser timezone (for example Asia/Tokyo)
+        #[arg(long)]
+        timezone: Option<String>,
+        /// Override geolocation as latitude,longitude
+        #[arg(long, allow_hyphen_values = true)]
+        geo: Option<String>,
+        /// Explicit locale override (language is never inferred from a proxy)
+        #[arg(long)]
+        locale: Option<String>,
+        /// Derive location through Chrome; defaults on when a proxy is configured
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_parser = clap::builder::BoolishValueParser::new(), conflicts_with = "no_match_proxy")]
+        match_proxy: Option<bool>,
+        /// Disable proxy location lookup
+        #[arg(long)]
+        no_match_proxy: bool,
     },
     /// Stop browser instance(s)
     #[command(name = "browser_stop", alias = "browser-stop")]
@@ -79,17 +145,32 @@ pub enum Cmd {
         /// Port of the browser to stop
         #[arg(long)]
         port: Option<u16>,
-        /// Stop every debugging Chrome
+        /// Stop every registered Chrome started by this tool
         #[arg(long)]
         stop_all: bool,
     },
-    /// List debugging Chrome instances
+    /// Clean up managed orphan browsers only; scope is required
+    #[command(name = "browser_cleanup", alias = "browser-cleanup")]
+    BrowserCleanup {
+        #[arg(long, value_parser = ["temp", "profile", "workspace"])]
+        scope: String,
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// List all Chrome instances with managed/external classification
     #[command(name = "browser_list", alias = "browser-list")]
     BrowserList {
         /// Show Chromes from all workspaces
         #[arg(long)]
         all_workspaces: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+#[allow(clippy::enum_variant_names)] // Keep names aligned with the existing CLI actions.
+pub enum NavigationCommands {
     /// Navigate to a URL
     #[command(name = "page_goto", alias = "page-goto")]
     PageGoto {
@@ -219,6 +300,11 @@ pub enum Cmd {
         #[arg(long)]
         to_element: Option<String>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+#[allow(clippy::enum_variant_names)] // Keep names aligned with the existing CLI actions.
+pub enum PageOutputCommands {
     /// Print the page to PDF (headless only)
     #[command(name = "page_pdf", alias = "page-pdf")]
     PagePdf {
@@ -288,6 +374,10 @@ pub enum Cmd {
         #[arg(long)]
         outer: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ReferenceCommands {
     /// Click an element by ref from page_discover
     #[command(name = "click_by_ref", alias = "click-by-ref")]
     ClickByRef {
@@ -299,6 +389,9 @@ pub enum Cmd {
         /// Bare press/release at the box centre instead of the human-like actuator
         #[arg(long = "no-human-like", action = clap::ArgAction::SetFalse)]
         human_like: bool,
+        /// Allow system mouse input as the last fallback (or AI_DEV_BROWSER_OS_CLICK)
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_parser = clap::builder::BoolishValueParser::new())]
+        os_click: Option<bool>,
     },
     /// Locate by accessible name / visible text and click
     #[command(name = "click_by_text", alias = "click-by-text")]
@@ -314,6 +407,9 @@ pub enum Cmd {
         /// Bare press/release at the box centre instead of the human-like actuator
         #[arg(long = "no-human-like", action = clap::ArgAction::SetFalse)]
         human_like: bool,
+        /// Allow system mouse input as the last fallback (or AI_DEV_BROWSER_OS_CLICK)
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_parser = clap::builder::BoolishValueParser::new())]
+        os_click: Option<bool>,
     },
     /// Type into the element a ref names
     #[command(name = "type_by_ref", alias = "type-by-ref")]
@@ -429,6 +525,10 @@ pub enum Cmd {
         #[arg(long, default_value_t = 0)]
         modifiers: i64,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum LocatorCommands {
     /// Locate by accessible name and report {found, ref, role, name, x, y}
     #[command(name = "find_by_text", alias = "find-by-text")]
     FindByText {
@@ -513,8 +613,11 @@ pub enum Cmd {
         #[arg(long, default_value_t = 10.0)]
         timeout: f64,
         /// Human timing between keystrokes
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_parser = clap::builder::BoolishValueParser::new(), conflicts_with = "no_human_like")]
+        human_like: Option<bool>,
+        /// Disable human timing between keystrokes
         #[arg(long)]
-        human_like: bool,
+        no_human_like: bool,
         /// Press Enter after typing
         #[arg(long)]
         enter: bool,
@@ -534,6 +637,10 @@ pub enum Cmd {
         #[arg(long)]
         to_text: Option<String>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum MouseCommands {
     /// Drag the element a ref names to destination coordinates
     #[command(name = "drag_by_ref", alias = "drag-by-ref")]
     DragByRef {
@@ -633,6 +740,11 @@ pub enum Cmd {
         #[arg(long)]
         human_like: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+#[allow(clippy::enum_variant_names)] // Keep names aligned with the existing CLI actions.
+pub enum TabCommands {
     /// List open tabs
     #[command(name = "tab_list", alias = "tab-list")]
     TabList {
@@ -666,6 +778,10 @@ pub enum Cmd {
         #[arg(long)]
         tab_id: Option<usize>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum RuntimeCommands {
     /// Evaluate JavaScript in the page (raw escape hatch)
     #[command(name = "js_evaluate", alias = "js-evaluate")]
     JsEvaluate {
@@ -750,6 +866,10 @@ pub enum Cmd {
         #[arg(long)]
         value: Option<String>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum CookieCommands {
     /// List browser cookies
     #[command(name = "cookies_list", alias = "cookies-list")]
     CookiesList {
@@ -805,6 +925,25 @@ pub enum Cmd {
         #[arg(long)]
         cookies_path: Option<PathBuf>,
     },
+    /// Extract full cookies from a running browser, including HttpOnly and session cookies
+    #[command(name = "cookies_extract_live", alias = "cookies-extract-live")]
+    CookiesExtractLive {
+        #[command(flatten)]
+        conn: Conn,
+        /// Domain substring; an empty string selects all cookies
+        #[arg(long)]
+        domain: String,
+    },
+    /// Extract full cookies from the source browser's on-disk database
+    #[command(name = "cookies_extract_offline", alias = "cookies-extract-offline")]
+    CookiesExtractOffline {
+        #[arg(long)]
+        domain: String,
+        #[arg(long, default_value = "chrome")]
+        browser: String,
+        #[arg(long)]
+        user_data_dir: Option<String>,
+    },
     /// Extract + decrypt cookies for a domain (no automation browser)
     #[command(name = "cookies_extract", alias = "cookies-extract")]
     CookiesExtract {
@@ -818,6 +957,10 @@ pub enum Cmd {
         #[arg(long)]
         user_data_dir: Option<String>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum DownloadCommands {
     /// Download a file by URL into a directory
     #[command(name = "download")]
     Download {
@@ -845,6 +988,10 @@ pub enum Cmd {
         #[arg(long, default_value_t = 30.0)]
         timeout: f64,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum VlmCommands {
     /// Ask the VLM where an element is on the page; returns a clickable CSS
     /// point (usable by `mouse_click --x --y`).
     #[command(name = "locate", alias = "vlm_locate")]
@@ -893,8 +1040,78 @@ async fn vlm_screenshot(tab: &Tab) -> sudohand_browser::Result<(Vec<u8>, u32, u3
     Ok((png, width, height, sf))
 }
 
+async fn ensure_bridge() -> sudohand_browser::Result<()> {
+    use sudohand_browser::bridge;
+    if bridge::status(bridge::PORT).await.is_some() {
+        return Ok(());
+    }
+    let mut command = std::process::Command::new(std::env::current_exe()?);
+    command
+        .args(["browser", "bridge-serve"])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0000_0008 | 0x0000_0200);
+    }
+    let mut child = command.spawn()?;
+    for _ in 0..25 {
+        if bridge::status(bridge::PORT).await.is_some() {
+            return Ok(());
+        }
+        if child.try_wait()?.is_some() {
+            return Err(sudohand_browser::Error::Connection(
+                "extension bridge could not start; port 9522 may be occupied".into(),
+            ));
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    Err(sudohand_browser::Error::Connection(
+        "extension bridge startup timed out".into(),
+    ))
+}
+
+fn transport(explicit: Option<&str>) -> String {
+    transport_with_env(
+        explicit,
+        std::env::var("AI_DEV_BROWSER_TRANSPORT").ok().as_deref(),
+    )
+}
+
+fn transport_with_env(explicit: Option<&str>, configured: Option<&str>) -> String {
+    explicit
+        .map(str::to_owned)
+        .or_else(|| configured.map(str::to_owned))
+        .unwrap_or_else(|| "cdp".into())
+}
+
+async fn connected(conn: &Conn) -> sudohand_browser::Result<BrowserClient> {
+    match transport(conn.transport.as_deref()).as_str() {
+        "extension" => {
+            ensure_bridge().await?;
+            BrowserClient::connect_extension(sudohand_browser::bridge::PORT).await
+        }
+        "cdp" => {
+            let port = sudohand_browser::connection::resolve_port(conn.port).await;
+            BrowserClient::connect("127.0.0.1", port).await
+        }
+        other => Err(sudohand_browser::Error::Invalid(format!(
+            "Unknown browser transport: {other}"
+        ))),
+    }
+}
+
 async fn browser_and_tab(conn: &Conn) -> sudohand_browser::Result<(BrowserClient, Tab)> {
-    let mut browser = connect_browser(None, conn.port).await?;
+    let mut browser = connected(conn).await?;
     let tab = get_active_tab(&mut browser, conn.tab_url.as_deref()).await?;
     Ok((browser, tab))
 }
@@ -924,9 +1141,37 @@ fn parse_overrides(raw: Option<&str>) -> sudohand_browser::Result<Vec<(String, O
         .collect())
 }
 
-async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
+// Keep each command in a separate future. One async match placed every arm's
+// polling temporaries in a ~946 KiB debug stack frame, overflowing Windows' main
+// thread before even offline commands could execute.
+fn run_async(
+    tool: Cmd,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = sudohand_browser::Result<Value>>>> {
     match tool {
-        Cmd::BrowserStart {
+        Cmd::Browser(BrowserCommands::BridgeServe { port }) => Box::pin(async move {
+            sudohand_browser::bridge::serve(port).await?;
+            Ok(json!({"stopped": true}))
+        }),
+        Cmd::Browser(BrowserCommands::BrowserDisconnect) => Box::pin(async move {
+            sudohand_browser::bridge::disconnect(sudohand_browser::bridge::PORT).await
+        }),
+        Cmd::Browser(BrowserCommands::BrowserConnect { transport, port }) => Box::pin(async move {
+            let selected = self::transport(transport.as_deref());
+            if selected == "extension" {
+                ensure_bridge().await?;
+                for _ in 0..20 {
+                    if sudohand_browser::bridge::status(sudohand_browser::bridge::PORT)
+                        .await
+                        .is_some_and(|status| status["extension_connected"] == true)
+                    {
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                }
+            }
+            sudohand_browser::browser::browser_connect(Some(&selected), port).await
+        }),
+        Cmd::Browser(BrowserCommands::BrowserStart {
             port,
             headless,
             url,
@@ -937,7 +1182,13 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             extra_args,
             override_default_args,
             silent_stderr,
-        } => {
+            no_stealth,
+            timezone,
+            geo,
+            locale,
+            match_proxy,
+            no_match_proxy,
+        }) => Box::pin(async move {
             let opts = StartOptions {
                 port,
                 headless: headless.as_deref().map(Headless::parse),
@@ -952,21 +1203,43 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 extra_args,
                 override_default_args: parse_overrides(override_default_args.as_deref())?,
                 silent_stderr,
+                stealth: Some(!no_stealth),
+                timezone,
+                geo,
+                locale,
+                match_proxy: if no_match_proxy {
+                    Some(false)
+                } else {
+                    match_proxy
+                },
             };
             sudohand_browser::tools::browser_start(&opts).await
+        }),
+        Cmd::Browser(BrowserCommands::BrowserStop { port, stop_all }) => {
+            Box::pin(async move { sudohand_browser::tools::browser_stop(port, stop_all).await })
         }
-        Cmd::BrowserStop { port, stop_all } => {
-            sudohand_browser::tools::browser_stop(port, stop_all).await
+        Cmd::Browser(BrowserCommands::BrowserCleanup {
+            scope,
+            profile,
+            dry_run,
+        }) => Box::pin(async move {
+            use sudohand_browser::cleanup::CleanupScope;
+            let scope = match scope.as_str() {
+                "temp" => CleanupScope::Temp,
+                "profile" => CleanupScope::Profile,
+                _ => CleanupScope::Workspace,
+            };
+            sudohand_browser::cleanup::browser_cleanup(scope, profile.as_deref(), dry_run).await
+        }),
+        Cmd::Browser(BrowserCommands::BrowserList { all_workspaces }) => {
+            Box::pin(async move { sudohand_browser::tools::browser_list(all_workspaces).await })
         }
-        Cmd::BrowserList { all_workspaces } => {
-            sudohand_browser::tools::browser_list(all_workspaces).await
-        }
-        Cmd::PageGoto {
+        Cmd::Navigation(NavigationCommands::PageGoto {
             conn,
             url,
             tab_new,
             wait,
-        } => {
+        }) => Box::pin(async move {
             let (mut browser, tab) = browser_and_tab(&conn).await?;
             let tab = if tab_new {
                 browser.new_tab("about:blank").await?
@@ -974,8 +1247,8 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 tab
             };
             sudohand_browser::tools::page_goto(&tab, &url, wait).await
-        }
-        Cmd::PageDiscover {
+        }),
+        Cmd::Navigation(NavigationCommands::PageDiscover {
             conn,
             text,
             interactable_only,
@@ -983,7 +1256,7 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             include_iframes,
             dom_scan,
             dom_limit,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let opts = DiscoverOptions {
                 text,
@@ -996,8 +1269,8 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             Ok(serde_json::to_value(
                 sudohand_browser::tools::page_discover(&tab, &opts).await?,
             )?)
-        }
-        Cmd::PageScreenshot {
+        }),
+        Cmd::Navigation(NavigationCommands::PageScreenshot {
             conn,
             path,
             full_page,
@@ -1005,7 +1278,7 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             max_long_edge,
             max_total_pixels,
             image_cap,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let opts = ScreenshotOptions {
                 path,
@@ -1016,8 +1289,8 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 image_cap: image_cap.as_deref().map(ImageCap::from_json).transpose()?,
             };
             sudohand_browser::tools::page_screenshot(&tab, &opts).await
-        }
-        Cmd::Locate { conn, find, model } => {
+        }),
+        Cmd::Vlm(VlmCommands::Locate { conn, find, model }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let (png, width, height, sf) = vlm_screenshot(&tab).await?;
             let mut vlm = sudohand_vlm::DashScopeVlm::from_env()
@@ -1042,12 +1315,12 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 "point": {"x": ix * sf, "y": iy * sf},
                 "ms": t0.elapsed().as_millis(),
             }))
-        }
-        Cmd::Ask {
+        }),
+        Cmd::Vlm(VlmCommands::Ask {
             conn,
             question,
             model,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let (png, _w, _h, _sf) = vlm_screenshot(&tab).await?;
             let mut vlm = sudohand_vlm::DashScopeVlm::from_env()
@@ -1068,21 +1341,23 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 "yes": sudohand_vlm::is_yes(&answer),
                 "model": ask_model, "ms": t0.elapsed().as_millis(),
             }))
-        }
-        Cmd::PageInfo { conn } => {
+        }),
+        Cmd::Navigation(NavigationCommands::PageInfo { conn }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::page_info(&tab).await
+        }),
+        Cmd::Navigation(NavigationCommands::PageReload { conn, ignore_cache }) => {
+            Box::pin(async move {
+                let (_b, tab) = browser_and_tab(&conn).await?;
+                sudohand_browser::tools::page_reload(&tab, ignore_cache).await
+            })
         }
-        Cmd::PageReload { conn, ignore_cache } => {
-            let (_b, tab) = browser_and_tab(&conn).await?;
-            sudohand_browser::tools::page_reload(&tab, ignore_cache).await
-        }
-        Cmd::PageWaitUrl {
+        Cmd::Navigation(NavigationCommands::PageWaitUrl {
             conn,
             pattern,
             exact,
             timeout,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::page_wait_url(
                 &tab,
@@ -1091,13 +1366,13 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 timeout,
             )
             .await
-        }
-        Cmd::PageWaitElement {
+        }),
+        Cmd::Navigation(NavigationCommands::PageWaitElement {
             conn,
             text,
             selector,
             timeout,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::page_wait_element(
                 &tab,
@@ -1106,15 +1381,15 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 timeout,
             )
             .await
-        }
-        Cmd::PageScroll {
+        }),
+        Cmd::Navigation(NavigationCommands::PageScroll {
             conn,
             direction,
             amount,
             to_bottom,
             to_top,
             to_element,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let opts = ScrollOptions {
                 direction,
@@ -1124,8 +1399,8 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 to_element,
             };
             sudohand_browser::tools::page_scroll(&tab, &opts).await
-        }
-        Cmd::PagePdf {
+        }),
+        Cmd::PageOutput(PageOutputCommands::PagePdf {
             conn,
             path,
             landscape,
@@ -1138,7 +1413,7 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             margin_left,
             margin_right,
             page_ranges,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let opts = PdfOptions {
                 path,
@@ -1154,144 +1429,155 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 page_ranges,
             };
             sudohand_browser::tools::page_pdf(&tab, &opts).await
+        }),
+        Cmd::PageOutput(PageOutputCommands::PageEmulateFocus { conn, enabled }) => {
+            Box::pin(async move {
+                let (_b, tab) = browser_and_tab(&conn).await?;
+                sudohand_browser::tools::page_emulate_focus(&tab, enabled).await
+            })
         }
-        Cmd::PageEmulateFocus { conn, enabled } => {
-            let (_b, tab) = browser_and_tab(&conn).await?;
-            sudohand_browser::tools::page_emulate_focus(&tab, enabled).await
-        }
-        Cmd::FocusByRef { conn, r#ref } => {
+        Cmd::Reference(ReferenceCommands::FocusByRef { conn, r#ref }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::focus_by_ref(&tab, &r#ref).await
-        }
-        Cmd::HoverByRef { conn, r#ref } => {
+        }),
+        Cmd::Reference(ReferenceCommands::HoverByRef { conn, r#ref }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::hover_by_ref(&tab, &r#ref).await
-        }
-        Cmd::HighlightByRef {
+        }),
+        Cmd::Reference(ReferenceCommands::HighlightByRef {
             conn,
             r#ref,
             duration,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::highlight_by_ref(&tab, &r#ref, duration).await
-        }
-        Cmd::HtmlByRef { conn, r#ref } => {
+        }),
+        Cmd::Reference(ReferenceCommands::HtmlByRef { conn, r#ref }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::html_by_ref(&tab, &r#ref).await
-        }
-        Cmd::ScreenshotByRef {
+        }),
+        Cmd::Reference(ReferenceCommands::ScreenshotByRef {
             conn,
             r#ref,
             path,
             image_cap,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let cap = image_cap.as_deref().map(ImageCap::from_json).transpose()?;
             sudohand_browser::tools::screenshot_by_ref(&tab, &r#ref, path.as_deref(), cap.as_ref())
                 .await
-        }
-        Cmd::SelectByRef { conn, r#ref } => {
+        }),
+        Cmd::Reference(ReferenceCommands::SelectByRef { conn, r#ref }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::select_by_ref(&tab, &r#ref).await
+        }),
+        Cmd::Reference(ReferenceCommands::UploadByRef { conn, r#ref, paths }) => {
+            Box::pin(async move {
+                let (_b, tab) = browser_and_tab(&conn).await?;
+                sudohand_browser::tools::upload_by_ref(&tab, &r#ref, &paths).await
+            })
         }
-        Cmd::UploadByRef { conn, r#ref, paths } => {
-            let (_b, tab) = browser_and_tab(&conn).await?;
-            sudohand_browser::tools::upload_by_ref(&tab, &r#ref, &paths).await
-        }
-        Cmd::PressKey {
+        Cmd::Reference(ReferenceCommands::PressKey {
             conn,
             key,
             r#ref,
             modifiers,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::press_key(&tab, &key, r#ref.as_deref(), modifiers).await
-        }
-        Cmd::FindByText {
+        }),
+        Cmd::Locator(LocatorCommands::FindByText {
             conn,
             text,
             interactable_only,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::find_by_text(&tab, &text, interactable_only).await
-        }
-        Cmd::FindByHtmlId { conn, html_id } => {
+        }),
+        Cmd::Locator(LocatorCommands::FindByHtmlId { conn, html_id }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::find_by_html_id(&tab, &html_id).await
-        }
-        Cmd::FindByXpath { conn, xpath } => {
+        }),
+        Cmd::Locator(LocatorCommands::FindByXpath { conn, xpath }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::find_by_xpath(&tab, &xpath).await
-        }
-        Cmd::ClickByHtmlId { conn, html_id } => {
+        }),
+        Cmd::Locator(LocatorCommands::ClickByHtmlId { conn, html_id }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::click_by_html_id(&tab, &html_id).await
-        }
-        Cmd::ClickByXpath { conn, xpath } => {
+        }),
+        Cmd::Locator(LocatorCommands::ClickByXpath { conn, xpath }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::click_by_xpath(&tab, &xpath).await
-        }
-        Cmd::ClickRowByText {
+        }),
+        Cmd::Locator(LocatorCommands::ClickRowByText {
             conn,
             text,
             double,
             nth,
             checkbox,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::click_row_by_text(&tab, &text, double, nth, checkbox).await
-        }
-        Cmd::TypeByText {
+        }),
+        Cmd::Locator(LocatorCommands::TypeByText {
             conn,
             name,
             text,
             clear,
             timeout,
             human_like,
+            no_human_like,
             enter,
             keystrokes,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let opts = TypeByTextOptions {
                 clear,
                 timeout,
-                human_like: human_like.then_some(true),
+                human_like: if no_human_like {
+                    Some(false)
+                } else {
+                    // The reference CLI's bool/None argument defaults to true;
+                    // its SDK still defaults to the humanization config.
+                    Some(human_like.unwrap_or(true))
+                },
                 enter,
                 keystrokes,
             };
             sudohand_browser::tools::type_by_text(&tab, &name, &text, opts).await
-        }
-        Cmd::SelectText {
+        }),
+        Cmd::Locator(LocatorCommands::SelectText {
             conn,
             text,
             to_text,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::select_text(&tab, &text, to_text.as_deref()).await
-        }
-        Cmd::TabNew { conn, url } => {
-            let mut browser = connect_browser(None, conn.port).await?;
+        }),
+        Cmd::Tab(TabCommands::TabNew { conn, url }) => Box::pin(async move {
+            let mut browser = connected(&conn).await?;
             sudohand_browser::tools::tab_new(&mut browser, url.as_deref()).await
-        }
-        Cmd::TabClose { conn, tab_id } => {
-            let mut browser = connect_browser(None, conn.port).await?;
+        }),
+        Cmd::Tab(TabCommands::TabClose { conn, tab_id }) => Box::pin(async move {
+            let mut browser = connected(&conn).await?;
             sudohand_browser::tools::tab_close(&mut browser, tab_id).await
-        }
-        Cmd::CdpSend {
+        }),
+        Cmd::Runtime(RuntimeCommands::CdpSend {
             conn,
             method,
             params,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::cdp_send(&tab, &method, params.as_deref()).await
-        }
-        Cmd::DialogRespond {
+        }),
+        Cmd::Runtime(RuntimeCommands::DialogRespond {
             conn,
             action,
             prompt_text,
             auto_handle,
             wait_timeout,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let opts = DialogOptions {
                 action,
@@ -1300,27 +1586,27 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 wait_timeout,
             };
             sudohand_browser::tools::dialog_respond(&tab, &opts).await
-        }
-        Cmd::WindowSet {
+        }),
+        Cmd::Runtime(RuntimeCommands::WindowSet {
             conn,
             width,
             height,
             state,
             focus,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::window_set(&tab, width, height, state.as_deref(), focus).await
-        }
-        Cmd::StorageGet { conn, key } => {
+        }),
+        Cmd::Runtime(RuntimeCommands::StorageGet { conn, key }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::storage_get(&tab, key.as_deref()).await
-        }
-        Cmd::StorageSet {
+        }),
+        Cmd::Runtime(RuntimeCommands::StorageSet {
             conn,
             items,
             key,
             value,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let items: Option<serde_json::Map<String, Value>> = match items {
                 Some(raw) => match serde_json::from_str::<Value>(&raw)? {
@@ -1340,29 +1626,29 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 value.as_deref(),
             )
             .await
-        }
-        Cmd::CookiesList { conn, domain } => {
+        }),
+        Cmd::Cookie(CookieCommands::CookiesList { conn, domain }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::cookies_list(&tab, domain.as_deref()).await
-        }
-        Cmd::CookiesSave {
+        }),
+        Cmd::Cookie(CookieCommands::CookiesSave {
             conn,
             path,
             pattern,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::cookies_save(&tab, path.as_deref(), pattern.as_deref()).await
-        }
-        Cmd::CookiesLoad { conn, path } => {
+        }),
+        Cmd::Cookie(CookieCommands::CookiesLoad { conn, path }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::cookies_load(&tab, path.as_deref()).await
-        }
-        Cmd::CookiesImport {
+        }),
+        Cmd::Cookie(CookieCommands::CookiesImport {
             conn,
             domain,
             browser,
             user_data_dir,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::cookies_import(
                 &tab,
@@ -1371,15 +1657,43 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 user_data_dir.as_deref(),
             )
             .await
+        }),
+        Cmd::Cookie(CookieCommands::LoginInteractive { url, cookies_path }) => {
+            Box::pin(async move {
+                sudohand_browser::tools::login_interactive(&url, cookies_path.as_deref()).await
+            })
         }
-        Cmd::LoginInteractive { url, cookies_path } => {
-            sudohand_browser::tools::login_interactive(&url, cookies_path.as_deref()).await
-        }
-        Cmd::CookiesExtract {
+        Cmd::Cookie(CookieCommands::CookiesExtractLive { conn, domain }) => Box::pin(async move {
+            let (_b, tab) = browser_and_tab(&conn).await?;
+            sudohand_browser::tools::cookies_extract_live(&tab, &domain).await
+        }),
+        Cmd::Cookie(CookieCommands::CookiesExtractOffline {
             domain,
             browser,
             user_data_dir,
-        } => {
+        }) => Box::pin(async move {
+            let cookies = sudohand_browser::tools::cookies_extract_offline(
+                &domain,
+                &browser,
+                user_data_dir.as_deref(),
+            )?;
+            Ok(Value::Array(
+                cookies
+                    .iter()
+                    .map(|c| {
+                        json!({
+                            "name": c.name, "value": c.value, "domain": c.domain, "path": c.path,
+                            "secure": c.secure, "httpOnly": c.http_only, "expires": c.expires,
+                        })
+                    })
+                    .collect(),
+            ))
+        }),
+        Cmd::Cookie(CookieCommands::CookiesExtract {
+            domain,
+            browser,
+            user_data_dir,
+        }) => Box::pin(async move {
             let cookies = sudohand_browser::tools::cookies_extract(
                 &domain,
                 &browser,
@@ -1392,74 +1706,82 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                     "secure": c.secure, "httpOnly": c.http_only, "expires": c.expires,
                 })).collect::<Vec<_>>(),
             }))
-        }
-        Cmd::Download { conn, url, path } => {
+        }),
+        Cmd::Download(DownloadCommands::Download { conn, url, path }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::download(&tab, &url, path.as_deref()).await
-        }
-        Cmd::DownloadLink {
+        }),
+        Cmd::Download(DownloadCommands::DownloadLink {
             conn,
             xpath,
             download_dir,
             timeout,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::download_link(&tab, &xpath, download_dir.as_deref(), timeout)
                 .await
-        }
-        Cmd::PageWaitReady {
+        }),
+        Cmd::PageOutput(PageOutputCommands::PageWaitReady {
             conn,
             timeout,
             idle_time,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let ready = sudohand_browser::tools::page_wait_ready(&tab, timeout, idle_time).await;
             if ready {
                 Ok(json!({"ready": true}))
             } else {
-                Ok(json!({"error": "Operation failed", "ready": false}))
+                Ok(json!({"error": "Operation failed"}))
             }
-        }
-        Cmd::PageHtml { conn, outer } => {
+        }),
+        Cmd::PageOutput(PageOutputCommands::PageHtml { conn, outer }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::page_html(&tab, outer).await
-        }
-        Cmd::ClickByRef {
+        }),
+        Cmd::Reference(ReferenceCommands::ClickByRef {
             conn,
             r#ref,
             human_like,
-        } => {
+            os_click,
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
-            sudohand_browser::tools::click_by_ref(&tab, &r#ref, human_like).await
-        }
-        Cmd::ClickByText {
+            sudohand_browser::actions::click_by_ref_with_os_click(
+                &tab, &r#ref, human_like, os_click,
+            )
+            .await
+        }),
+        Cmd::Reference(ReferenceCommands::ClickByText {
             conn,
             text,
             timeout,
             human_like,
-        } => {
+            os_click,
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
-            sudohand_browser::tools::click_by_text(&tab, &text, timeout, human_like).await
-        }
-        Cmd::DragByRef {
+            sudohand_browser::actions::click_by_text_with_os_click(
+                &tab, &text, timeout, human_like, os_click,
+            )
+            .await
+        }),
+        Cmd::Mouse(MouseCommands::DragByRef {
             conn,
             r#ref,
             to_x,
             to_y,
             steps,
             human_like,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::drag_by_ref(&tab, &r#ref, to_x, to_y, steps, human_like).await
-        }
-        Cmd::MouseMove {
+        }),
+        Cmd::Mouse(MouseCommands::MouseMove {
             conn,
             x,
             y,
             screenshot,
             steps,
             human_like,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let moved = sudohand_browser::tools::mouse_move(
                 &tab,
@@ -1471,8 +1793,8 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             )
             .await?;
             Ok(json!({"moved": moved}))
-        }
-        Cmd::MouseClick {
+        }),
+        Cmd::Mouse(MouseCommands::MouseClick {
             conn,
             x,
             y,
@@ -1482,7 +1804,7 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             double,
             human_like,
             r#move,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let opts = ClickOptions {
                 button,
@@ -1495,8 +1817,8 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 sudohand_browser::tools::mouse_click(&tab, x, y, screenshot.as_deref(), &opts)
                     .await?;
             Ok(json!({"clicked": clicked}))
-        }
-        Cmd::MouseDrag {
+        }),
+        Cmd::Mouse(MouseCommands::MouseDrag {
             conn,
             from_x,
             from_y,
@@ -1505,7 +1827,7 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             screenshot,
             steps,
             human_like,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             let dragged = sudohand_browser::tools::mouse_drag(
                 &tab,
@@ -1517,8 +1839,8 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             )
             .await?;
             Ok(json!({"dragged": dragged}))
-        }
-        Cmd::TypeByRef {
+        }),
+        Cmd::Reference(ReferenceCommands::TypeByRef {
             conn,
             r#ref,
             text,
@@ -1526,7 +1848,7 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
             enter,
             keystrokes,
             human_like,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::tools::type_by_ref(
                 &tab,
@@ -1540,30 +1862,43 @@ async fn run_async(tool: Cmd) -> sudohand_browser::Result<Value> {
                 },
             )
             .await
-        }
-        Cmd::TabList { conn } => {
-            let mut browser = connect_browser(None, conn.port).await?;
+        }),
+        Cmd::Tab(TabCommands::TabList { conn }) => Box::pin(async move {
+            let mut browser = connected(&conn).await?;
             sudohand_browser::tools::tab_list(&mut browser).await
-        }
-        Cmd::TabSwitch { conn, tab_id } => {
-            let mut browser = connect_browser(None, conn.port).await?;
+        }),
+        Cmd::Tab(TabCommands::TabSwitch { conn, tab_id }) => Box::pin(async move {
+            let mut browser = connected(&conn).await?;
             sudohand_browser::tools::tab_switch(&mut browser, tab_id).await
-        }
-        Cmd::JsEvaluate {
+        }),
+        Cmd::Runtime(RuntimeCommands::JsEvaluate {
             conn,
             expression,
             frame,
-        } => {
+        }) => Box::pin(async move {
             let (_b, tab) = browser_and_tab(&conn).await?;
             sudohand_browser::page::js_evaluate_in(&tab, &expression, frame.as_deref()).await
-        }
+        }),
     }
 }
 
 /// Entry from [`run`]: dispatch to the tool body, mapping its browser error
 /// onto the shared envelope.
 async fn run_flow(cmd: Cmd) -> sudohand_core::Result<Value> {
-    run_async(cmd).await.map_err(sudohand_core::Error::from)
+    let locator_hint = match &cmd {
+        Cmd::Locator(LocatorCommands::FindByHtmlId { .. }) => Some("No matching id in the page or its same-origin frames. Inspect page_discover, then use a current id, find_by_text, or find_by_xpath."),
+        Cmd::Locator(LocatorCommands::FindByXpath { .. }) => Some("No XPath match in the page or its same-origin frames. Try a broader XPath, inspect page_discover, or use find_by_text / find_by_html_id."),
+        Cmd::Locator(LocatorCommands::FindByText { .. }) => Some("No accessible name matches this text. Try a shorter label, inspect page_discover, or use find_by_html_id / find_by_xpath. For cross-origin frames, use js_evaluate --frame."),
+        Cmd::Navigation(NavigationCommands::PageWaitElement { .. }) => Some("The element did not become visible before the deadline. Check its opening action, inspect page_discover, or try a broader --selector. Text searches use the top frame; inspect other frames with js_evaluate --frame."),
+        _ => None,
+    };
+    let mut result = run_async(cmd).await.map_err(sudohand_core::Error::from)?;
+    if result["found"] == false {
+        if let (Some(hint), Some(fields)) = (locator_hint, result.as_object_mut()) {
+            fields.entry("hint").or_insert_with(|| json!(hint));
+        }
+    }
+    Ok(result)
 }
 
 /// Entry point for `suh browser <tool>`: a current-thread runtime, the
@@ -1574,4 +1909,66 @@ pub fn run(cmd: Cmd) -> sudohand_core::Result<Value> {
         .build()
         .map_err(|e| sudohand_core::Error::internal(format!("tokio: {e}")))?;
     rt.block_on(run_flow(cmd))
+}
+
+#[cfg(test)]
+mod parity_defaults {
+    use super::*;
+
+    #[test]
+    fn scalar_and_boolean_defaults_match_reference_parser() {
+        let expected: Vec<Value> =
+            serde_json::from_str(include_str!("../tests/fixtures/browser-cli-defaults.json"))
+                .unwrap();
+        let mut command = Cmd::augment_subcommands(clap::Command::new("browser"));
+        command.build();
+        let mut differences = Vec::new();
+        for row in expected {
+            let name = row["command"].as_str().unwrap();
+            let flag = row["flag"].as_str().unwrap();
+            let action = command.find_subcommand(name).unwrap();
+            let argument = action
+                .get_arguments()
+                .find(|arg| arg.get_long() == Some(flag))
+                .unwrap();
+            let mut actual = argument
+                .get_default_values()
+                .first()
+                .map(|value| value.to_string_lossy().into_owned());
+            // These two implementations store opposite sides of --no-*:
+            // argparse stores the enabled value; our SetTrue stores disabled.
+            if flag.starts_with("no-") && matches!(argument.get_action(), clap::ArgAction::SetTrue)
+            {
+                actual = actual
+                    .and_then(|value| value.parse::<bool>().ok())
+                    .map(|value| (!value).to_string());
+            }
+            // Transport resolves an absent flag after consulting the environment.
+            if name == "browser_connect" && flag == "transport" {
+                actual = Some(transport_with_env(actual.as_deref(), None));
+            }
+            let wanted = &row["default"];
+            let matches = match (actual.as_deref(), wanted) {
+                (Some(actual), Value::String(wanted)) => actual == wanted,
+                (Some(actual), Value::Bool(wanted)) => actual.parse::<bool>().ok() == Some(*wanted),
+                (Some(actual), Value::Number(wanted)) => {
+                    actual.parse::<f64>().ok() == wanted.as_f64()
+                }
+                _ => false,
+            };
+            if !matches {
+                differences.push(format!(
+                    "{name} --{flag}: reference={wanted}, rust={actual:?}"
+                ));
+            }
+        }
+        assert!(differences.is_empty(), "{}", differences.join("\n"));
+    }
+
+    #[test]
+    fn transport_default_and_explicit_precedence() {
+        assert_eq!(transport_with_env(None, None), "cdp");
+        assert_eq!(transport_with_env(None, Some("extension")), "extension");
+        assert_eq!(transport_with_env(Some("cdp"), Some("extension")), "cdp");
+    }
 }

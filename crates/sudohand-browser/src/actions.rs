@@ -3,12 +3,9 @@
 //! `screenshot_by_ref`, `select_by_ref`, `upload_by_ref`, `drag_by_ref`,
 //! `press_key`. Port of `core/ax.py`.
 //!
-//! Every element click goes through the shared human-like actuator
-//! ([`crate::human::click_box`]: in-bounds random offset, optional gaussian
-//! path / hold time) unless `human_like` is false, in which case it is a
-//! bare `mousePressed` → `mouseReleased` at the content-box centre — the
-//! same two paths as `ax._click_by_node_id`. Both run `scrollIntoViewIfNeeded`
-//! first.
+//! Reference/text clicks verify observable page changes and use synthetic/JS
+//! fallbacks when needed. Native mouse fallback is opt-in. Low-level node and
+//! coordinate actuators remain available for callers that need one dispatch.
 
 use std::time::Duration;
 
@@ -16,10 +13,10 @@ use chromiumoxide_cdp::cdp::browser_protocol::dom::{
     BackendNodeId, DescribeNodeParams, FocusParams, ResolveNodeParams, ScrollIntoViewIfNeededParams,
 };
 use chromiumoxide_cdp::cdp::browser_protocol::input::{
-    DispatchKeyEventParams, DispatchKeyEventType, InsertTextParams,
+    DispatchKeyEventParams, DispatchKeyEventType,
 };
 use chromiumoxide_cdp::cdp::browser_protocol::page::GetFrameTreeParams;
-use chromiumoxide_cdp::cdp::js_protocol::runtime::{CallArgument, CallFunctionOnParams};
+use chromiumoxide_cdp::cdp::js_protocol::runtime::CallFunctionOnParams;
 use serde_json::{json, Map, Value};
 
 use crate::cdp::MOUSE_EVENT_TIMEOUT;
@@ -227,13 +224,25 @@ async fn frame_id_by_prefix(tab: &Tab, prefix: &crate::refs::ScopePrefix) -> Opt
 }
 
 /// Click by `ref` (with embedded node id, or legacy index-only) and report
-/// navigation feedback: `{clicked, ref, url_before, url_after, title_after, navigated}`.
+/// navigation feedback plus `{verified, method}`. `clicked` means an attempt was
+/// dispatched; `verified` means the page observably changed.
 pub async fn click_by_ref(tab: &Tab, r#ref: &str, human_like: bool) -> Result<Value> {
+    click_by_ref_with_os_click(tab, r#ref, human_like, None).await
+}
+
+/// Click a reference, with an explicit override for opt-in native mouse fallback.
+pub async fn click_by_ref_with_os_click(
+    tab: &Tab,
+    r#ref: &str,
+    human_like: bool,
+    os_click: Option<bool>,
+) -> Result<Value> {
+    let os_click = crate::robust_click::resolve_os_click(os_click);
     let (url_before, _) = capture_page_state(tab).await?;
     let parsed = parse_ref(r#ref);
 
     let mut result = if let Some(node_id) = parsed.backend_node_id {
-        let mut r = click_by_node_id(tab, node_id, Some(r#ref), human_like).await;
+        let mut r = crate::robust_click::click(tab, node_id, r#ref, human_like, os_click).await;
         if r.get("clicked") == Some(&json!(true)) {
             r.insert("ref".into(), json!(r#ref));
         }
@@ -272,7 +281,7 @@ pub async fn click_by_ref(tab: &Tab, r#ref: &str, human_like: bool) -> Result<Va
             );
             return Ok(Value::Object(failed(m, &url_before)));
         };
-        let mut r = click_by_node_id(tab, nid, Some(r#ref), human_like).await;
+        let mut r = crate::robust_click::click(tab, nid, r#ref, human_like, os_click).await;
         if r.get("clicked") == Some(&json!(true)) {
             r.insert("ref".into(), json!(r#ref));
             r.insert(
@@ -339,10 +348,21 @@ pub async fn wait_ax_by_text(tab: &Tab, text: &str, timeout: f64) -> Result<Opti
 /// Locate by visible text / accessible name and click it. Waits up to
 /// `timeout` seconds for the text to appear.
 pub async fn click_by_text(tab: &Tab, text: &str, timeout: f64, human_like: bool) -> Result<Value> {
+    click_by_text_with_os_click(tab, text, timeout, human_like, None).await
+}
+
+/// Click text, with an explicit override for opt-in native mouse fallback.
+pub async fn click_by_text_with_os_click(
+    tab: &Tab,
+    text: &str,
+    timeout: f64,
+    human_like: bool,
+    os_click: Option<bool>,
+) -> Result<Value> {
     let (url_before, _) = capture_page_state(tab).await?;
     // Tier 1 — accessible name, the locator `find_by_text` uses.
     if let Some(el) = wait_ax_by_text(tab, text, timeout).await? {
-        let mut r = click_by_ref(tab, &el.r#ref, human_like).await?;
+        let mut r = click_by_ref_with_os_click(tab, &el.r#ref, human_like, os_click).await?;
         if let Some(m) = r.as_object_mut() {
             m.insert("text".into(), json!(text));
         }
@@ -463,7 +483,7 @@ async fn focus_node(tab: &Tab, r#ref: &str) -> Result<i64> {
 /// Options for [`type_by_ref`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TypeOptions {
-    /// Clear existing content first (select + real Backspace).
+    /// Compatibility option: verified filling always replaces the field.
     pub clear: bool,
     /// Press Enter after typing.
     pub enter: bool,
@@ -473,54 +493,16 @@ pub struct TypeOptions {
     pub human_like: bool,
 }
 
-/// Type into the element a `ref` names. Returns `{typed, ref, text}`
+/// Fill the element a `ref` names. Returns `{typed, verified, method, methods_tried, ref, text}`
 /// (+ `entered` when `enter`).
 pub async fn type_by_ref(tab: &Tab, r#ref: &str, text: &str, opts: TypeOptions) -> Result<Value> {
-    let node_id = match focus_node(tab, r#ref).await {
-        Ok(n) => n,
+    let element = match element_by_ref(tab, r#ref).await {
+        Ok(element) => element,
         Err(e) => {
-            return Ok(json!({"typed": false, "error": e.to_string()}));
+            return Ok(json!({"typed": false, "verified": false, "error": e.to_string()}));
         }
     };
-    if opts.clear {
-        let select = async {
-            let rp = ResolveNodeParams {
-                backend_node_id: Some(BackendNodeId::new(node_id)),
-                ..Default::default()
-            };
-            let obj = tab.send(rp).await?.object;
-            let Some(oid) = obj.object_id else {
-                return Ok::<(), Error>(());
-            };
-            let mut call = CallFunctionOnParams::builder()
-                .function_declaration(
-                    "(el) => { if (el.focus) el.focus(); if (typeof el.select === 'function') { el.select(); } else { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } }",
-                )
-                .object_id(oid.clone())
-                .return_by_value(true)
-                .user_gesture(true)
-                .build()
-                .map_err(Error::Invalid)?;
-            call.arguments = Some(vec![CallArgument::builder().object_id(oid).build()]);
-            tab.send(call).await?;
-            Ok(())
-        };
-        let _ = select.await;
-        let (k, c, v, _) = key_spec("backspace").expect("known key");
-        dispatch_key(tab, k, c, v, 0, None).await?;
-    }
-    if opts.keystrokes {
-        for ch in text.chars() {
-            let s = ch.to_string();
-            dispatch_key(tab, &s, "", 0, 0, Some(&s)).await?;
-        }
-    } else if opts.human_like {
-        human::type_text(tab, text, Some(true)).await?;
-    } else {
-        tab.send(InsertTextParams::new(text)).await?;
-    }
-    let mut out = Map::new();
-    out.insert("typed".into(), json!(true));
+    let mut out = crate::fill::fill(tab, &element, text, opts.keystrokes, opts.human_like).await;
     out.insert("ref".into(), json!(r#ref));
     out.insert("text".into(), json!(text));
     if opts.enter {

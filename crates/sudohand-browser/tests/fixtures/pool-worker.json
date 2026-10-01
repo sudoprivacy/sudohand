@@ -1,0 +1,12 @@
+{
+  "worker_id": 3,
+  "port": 9353,
+  "status": "busy",
+  "current_job_id": "active",
+  "stats": {
+    "success": 2,
+    "fail": 1,
+    "total": 3,
+    "success_rate": 0.67
+  }
+}

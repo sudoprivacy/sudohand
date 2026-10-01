@@ -39,7 +39,7 @@
 
 <button id="reveal" onclick="setTimeout(()=>{const b=document.createElement('button');b.id='late';b.textContent='Late Button';document.body.appendChild(b);}, 400)">Reveal</button>
 
-<input type="file" id="file" name="file">
+<input type="file" id="file" name="file" aria-label="Upload fixture">
 <p id="filecount"></p>
 <script>
   document.getElementById('file').addEventListener('change', e => {

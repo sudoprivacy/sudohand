@@ -43,13 +43,22 @@ async fn browser_lifecycle_start_list_stop() {
     // live there (every other test uses an ephemeral port outside the band).
     let chrome = common::start_chrome_in_band().await;
     assert!(sudohand_browser::port::is_port_in_use(chrome.port));
+    let initial = sudohand_browser::connection::BrowserClient::connect("127.0.0.1", chrome.port)
+        .await
+        .unwrap();
+    assert_eq!(
+        initial.page_targets().len(),
+        1,
+        "startup must publish its initial tab before returning"
+    );
+    drop(initial);
 
     let listed = browser_list(false).await.unwrap();
     let ports: Vec<u64> = listed["browsers"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|b| b["port"].as_u64().unwrap())
+        .filter_map(|b| b["port"].as_u64())
         .collect();
     assert!(ports.contains(&u64::from(chrome.port)), "{listed}");
 
@@ -60,10 +69,12 @@ async fn browser_lifecycle_start_list_stop() {
         .iter()
         .find(|b| b["port"].as_u64() == Some(u64::from(chrome.port)))
         .expect("listed in all_workspaces");
-    assert_eq!(
-        ours["workspace"].as_str().unwrap(),
-        std::env::current_dir().unwrap().to_string_lossy()
+    assert_eq!(ours["origin"], "adb");
+    assert!(
+        ours["workspace"].is_null(),
+        "temporary profiles have no workspace slug"
     );
+    assert!(ours["user_data_dir"].as_str().is_some());
 
     let stopped = browser_stop(Some(chrome.port), false).await.unwrap();
     assert_eq!(stopped["count"], 1);
@@ -1033,41 +1044,25 @@ async fn select_by_ref_and_upload_by_ref() {
     let dir = tempfile::tempdir().unwrap();
     let f = dir.path().join("hello.txt");
     std::fs::write(&f, "hi").unwrap();
-    let file_el = els
+    let file_ref = els
         .iter()
-        .find(|e| {
-            e.role == "textbox" || e.datarole.as_deref() == Some("file") || e.role == "button"
-        })
-        .map(|_| ())
-        .and(None::<()>);
-    let _ = file_el;
-    // Locate the file input via find_by_html_id -> its ref isn't returned; use JS-less path:
-    let file_ref = {
-        let all = page_discover(
-            &tab,
-            &DiscoverOptions {
-                interactable_only: false,
-                ..Default::default()
-            },
-        )
+        .find(|element| element.name.as_deref() == Some("Upload fixture"))
+        .expect("file input must be discoverable")
+        .r#ref
+        .clone();
+    let uploaded = upload_by_ref(&tab, &file_ref, f.to_str().unwrap())
         .await
         .unwrap();
-        all.iter()
-            .find(|e| e.role == "textbox" && e.name.is_none())
-            .or_else(|| all.iter().find(|e| e.role.contains("textbox")))
-            .map(|e| e.r#ref.clone())
-    };
-    if let Some(fref) = file_ref {
-        let r = upload_by_ref(&tab, &fref, f.to_str().unwrap()).await;
-        if let Ok(r) = r {
-            if r["uploaded"] == true {
-                assert_eq!(
-                    eval_str(&tab, "document.getElementById('filecount').textContent").await,
-                    "files:1"
-                );
-            }
-        }
-    }
+    assert_eq!(uploaded["uploaded"], true, "{uploaded}");
+    assert_eq!(uploaded["files"], 1, "{uploaded}");
+    assert_eq!(
+        eval_str(&tab, "document.getElementById('filecount').textContent").await,
+        "files:1"
+    );
+    assert_eq!(
+        eval_str(&tab, "document.getElementById('file').files[0].name").await,
+        "hello.txt"
+    );
 }
 
 #[tokio::test]
@@ -1211,6 +1206,17 @@ async fn page_wait_element_info_reload_url() {
         .await
         .unwrap();
     assert_eq!(r["found"], true);
+    tab.evaluate("document.querySelector('h1').textContent = 'Visible heading marker'")
+        .await
+        .unwrap();
+    let heading = page_wait_element(&tab, Some("Visible heading marker"), None, 5.0)
+        .await
+        .unwrap();
+    assert_eq!(heading["role"], "h1", "must return the element, not #text");
+    let html = html_by_ref(&tab, heading["ref"].as_str().unwrap())
+        .await
+        .unwrap();
+    assert!(html["html"].as_str().unwrap().starts_with("<h1"), "{html}");
     // timeout path
     let r = page_wait_element(&tab, None, Some("#does-not-exist"), 0.5)
         .await
@@ -1395,4 +1401,47 @@ async fn tab_new_and_close() {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
     assert_eq!(after, before);
+}
+
+#[tokio::test]
+async fn startup_without_a_window_honors_overridden_chrome_args() {
+    if skip_browser_tests() {
+        return;
+    }
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let result = browser_start(&sudohand_browser::browser::StartOptions {
+        port: Some(port),
+        headless: Some(sudohand_browser::chrome::Headless::New),
+        startup_timeout: Some(10.0),
+        override_default_args: vec![("--no-startup-window".into(), Some(String::new()))],
+        extra_args: std::env::var("ADB_TEST_CHROME_ARGS")
+            .unwrap_or_default()
+            .split_whitespace()
+            .map(str::to_string)
+            .collect(),
+        ..Default::default()
+    })
+    .await
+    .unwrap();
+    assert!(result.get("error").is_none(), "{result}");
+    let chrome = common::Chrome {
+        port,
+        pid: result["pid"].as_u64().unwrap() as u32,
+    };
+    let mut browser = sudohand_browser::connection::BrowserClient::connect("127.0.0.1", port)
+        .await
+        .unwrap();
+    assert!(
+        browser.page_targets().is_empty(),
+        "explicit no-startup-window must not create a tab"
+    );
+    let tab = sudohand_browser::connection::get_active_tab(&mut browser, None)
+        .await
+        .unwrap();
+    assert_eq!(tab.evaluate("1 + 1").await.unwrap(), serde_json::json!(2));
+    drop(chrome);
 }
