@@ -85,6 +85,22 @@
 
 本轮还在 Windows 调试构建中实际复现了 `--help` 栈溢出，并在未修改的 main 基线 `99a7c75` 上确认同样失败；release 构建与根因尚未确认。这项失败已加入启动／发行验收缺口，不能用编译成功代替运行验证。
 
+### 3.5 历史与行为盘点
+
+补充盘点覆盖 adb v0.51.1 可达的 **305 个 commits、107 个 tags**，导出全部 **61 个工具的实际 parser**、170 个生产 Python 模块、505 个手写代码声明，以及 64 个文件中的 370 个测试定义。已通读提交标题，并复核 16 个关键提交的选定生产代码补丁；没有把全量历史索引等同于全量语义验收。
+
+当前已形成 **27 个迁移单元**，每项关联源码、历史提交、现有测试、消费者组、main／PR #27 状态和真实验收任务。完整材料见 [历史与行为盘点](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/history-audit.md)、[行为矩阵](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/adb-behavior-matrix.json)及[机器清单](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/adb-history-inventory.json)。CI 会检查清单与固定参考的一致性。
+
+本轮最影响迁移判断的新增证据：
+
+- PR #27 的旧参考少了 **31 个后续提交**，原 parity 结论和“有意差异”说明需要按 v0.51.1 更新。
+- 真实 Chrome 的 14 次 CLI 调用确认 adb storage 存在旧方法名缺陷，PR #27 的草稿保存／刷新读取可用；应保留修复后的行为。
+- 超时相关 3 个现有 live tests 全部通过，其中默认超时测试确认 JS 只执行一次；opt-in 测试未实际触发重放，仍有覆盖缺口。
+- 当前 CI 显式选择了 28/50 个 integration 文件；文件名、skip 和静态参数对齐均不能代替真实任务证据。
+- sudocode 使用的 noun/verb 入口出现在未合入分支；Pool 的恢复／取消、旧状态文件、已撤回接口和代码来源记录需要单独处理。
+
+按 27 个单元推进验收后再讨论归档。此次交付是盘点与可重跑证据，运行时迁移及消费者切换仍按下文阶段执行。
+
 ## 4. 接口与兼容策略
 
 1. **先定义受支持合同。** 每个工具记录名称、参数／默认值、返回形状、stdout/stderr、退出码、重试规则、状态范围、文件产物和平台限制。与 adb 的差异要列出消费者、理由及升级方法。

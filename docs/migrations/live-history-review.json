@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "adb": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "rust_checkout": "045202ed16e58527743d00006ddececf79471a93",
+  "suh_binary_sha256": "8b131249d090f249ca687aed7c98747104f75e8e70100cd6be00251bcefbbeb9",
+  "environment": "Real Chrome, disposable profiles, local HTTP fixture, independent CLI processes",
+  "scope": "Storage draft persistence; known baseline defect is an expected audit observation, not desired replacement behavior",
+  "calls": [
+    {
+      "backend": "python",
+      "tool": "browser_start",
+      "exit": 0
+    },
+    {
+      "backend": "python",
+      "tool": "page_goto",
+      "exit": 0
+    },
+    {
+      "backend": "python",
+      "tool": "storage_set",
+      "exit": 1,
+      "result": {
+        "error": "'Tab' object has no attribute 'set_local_storage'",
+        "error_code": "error",
+        "retryable": false
+      }
+    },
+    {
+      "backend": "python",
+      "tool": "page_reload",
+      "exit": 0
+    },
+    {
+      "backend": "python",
+      "tool": "storage_get",
+      "exit": 1,
+      "result": {
+        "error": "'Tab' object has no attribute 'get_local_storage'",
+        "error_code": "error",
+        "retryable": false
+      }
+    },
+    {
+      "backend": "python",
+      "tool": "js_evaluate",
+      "exit": 0,
+      "result": {
+        "result": "EMPTY",
+        "url_before": "http://127.0.0.1:64649/",
+        "url_after": "http://127.0.0.1:64649/",
+        "title_after": "Draft recovery",
+        "navigated": false
+      }
+    },
+    {
+      "backend": "python",
+      "tool": "browser_stop",
+      "exit": 0
+    },
+    {
+      "backend": "rust",
+      "tool": "browser_start",
+      "exit": 0
+    },
+    {
+      "backend": "rust",
+      "tool": "page_goto",
+      "exit": 0
+    },
+    {
+      "backend": "rust",
+      "tool": "storage_set",
+      "exit": 0,
+      "result": {
+        "key": "draft",
+        "value": "migration-draft"
+      }
+    },
+    {
+      "backend": "rust",
+      "tool": "page_reload",
+      "exit": 0
+    },
+    {
+      "backend": "rust",
+      "tool": "storage_get",
+      "exit": 0,
+      "result": {
+        "key": "draft",
+        "value": "migration-draft"
+      }
+    },
+    {
+      "backend": "rust",
+      "tool": "js_evaluate",
+      "exit": 0,
+      "result": {
+        "result": "migration-draft",
+        "url_before": "http://127.0.0.1:64649/",
+        "url_after": "http://127.0.0.1:64649/",
+        "title_after": "Draft recovery",
+        "navigated": false
+      }
+    },
+    {
+      "backend": "rust",
+      "tool": "browser_stop",
+      "exit": 0
+    }
+  ],
+  "observations": {
+    "python": "Confirmed baseline bug: obsolete storage methods; UI remains EMPTY after reload",
+    "rust": "Draft survives reload and is visible in the page; intentional correction passes this journey"
+  }
+}

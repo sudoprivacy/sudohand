@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "adb": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "sudohand_main": "5743f025ea9c996e2176d22ff9e4c156de8f0dbb",
+  "python_file": "ai_dev_browser/core/elements.py",
+  "rust_file": "crates/sudohand-browser/src/elements.rs",
+  "method": "Python AST constant values compared byte-for-byte with Rust raw-string literals after UTF-8 reading; no whitespace normalization",
+  "matches": [
+    {
+      "python_symbol": "_ELEMENT_INFO_INLINE",
+      "rust_symbol": "ELEMENT_INFO_INLINE",
+      "characters": 772,
+      "sha256_utf8": "b67a9c64ce4cfb93d49211c342890e520f9261147a1087b6fb3cecdd4485acde"
+    },
+    {
+      "python_symbol": "_LOCATE_FOR_CLICK_JS",
+      "rust_symbol": "LOCATE_FOR_CLICK_JS",
+      "characters": 889,
+      "sha256_utf8": "a84b93d7ff007778b13d7113f1feb805ec2f601b3eb1db308645a39ce9e38871"
+    }
+  ],
+  "limit": "Selected literal comparison only; no legal conclusion or whole-repository provenance claim"
+}

@@ -49,6 +49,8 @@ with a [dependency inventory](docs/migrations/dependency-inventory.json) and a
 [pinned v0.51.1 reference](references/README.md). The plan distinguishes command
 coverage from real browser acceptance and downstream migration. Keep
 ai-dev-browser maintained until the archive gates pass.
+The [history and behavior audit](docs/migrations/history-audit.md) maps the pinned
+history, CLI, SDK, state and tests into 27 migration units, with reproducible checks.
 The [ShareOne reading view](https://s.shareone.vip/md/ai-dev-browser-to-sudohand)
 follows the plan source on `main`.
 

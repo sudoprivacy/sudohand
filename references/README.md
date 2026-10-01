@@ -21,6 +21,12 @@ behavior; the migration plan tracks the live acceptance gates.
 The existing parity PR #27 originally used adb v0.38.1. Pinning this newer
 reference does not certify or silently update that PR's tests.
 
+The [history and behavior audit](../docs/migrations/history-audit.md) indexes
+all 305 commits reachable from this pin and maps the current CLI, SDK, state,
+tests and release contracts into 27 migration units. Regenerate the inventory
+with `python scripts/audit_adb_reference.py --write` after reviewing a baseline
+change; CI uses `--check` to detect drift. This check does not certify Rust behavior.
+
 ## Update deliberately
 
 1. Fetch an explicit upstream tag in the submodule and review changes since the
