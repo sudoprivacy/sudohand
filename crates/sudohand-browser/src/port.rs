@@ -86,12 +86,15 @@ async fn fast_listening_check(port: u16) -> bool {
     )
 }
 
-/// Query Chrome's command line via `Browser.getBrowserCommandLine`.
+/// Read GUID-validated launch metadata, falling back to CDP command-line readback.
 /// `None` if the port is not a Chrome debug endpoint.
 pub async fn query_chrome_cmdline(port: u16, timeout: Duration) -> Option<Vec<String>> {
     let ws = http::ws_debugger_url(DEFAULT_DEBUG_HOST, port, timeout)
         .await
         .ok()?;
+    if let Some(args) = crate::registry::command_line(port, &ws) {
+        return Some(args);
+    }
     let conn = tokio::time::timeout(timeout, Connection::connect(&ws))
         .await
         .ok()?
@@ -344,6 +347,7 @@ pub fn kill_process_tree(pid: u32) -> bool {
 /// Remove temp profile dirs for `port` (`{prefix}{port}_*` and legacy `{prefix}{port}`).
 #[must_use]
 pub fn cleanup_temp_profile(port: u16) -> bool {
+    crate::registry::remove(port);
     let tmp = std::env::temp_dir();
     let prefix = format!("{DEFAULT_PROFILE_PREFIX}{port}_");
     let legacy = format!("{DEFAULT_PROFILE_PREFIX}{port}");

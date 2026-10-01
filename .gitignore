@@ -1,3 +1,6 @@
 /target
 **/*.rs.bk
 .DS_Store
+/scripts/__pycache__/
+/references/cli-steering-engineering/
+/artifacts/

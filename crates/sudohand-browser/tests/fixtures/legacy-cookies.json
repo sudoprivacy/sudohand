@@ -1,0 +1,17 @@
+[
+  {
+    "name": "legacy",
+    "value": "中文-value",
+    "domain": ".example.test",
+    "path": "/",
+    "size": 12,
+    "httpOnly": true,
+    "secure": true,
+    "session": false,
+    "priority": "High",
+    "sourceScheme": "Secure",
+    "sourcePort": 443,
+    "expires": 2000000000,
+    "sameSite": "Lax"
+  }
+]

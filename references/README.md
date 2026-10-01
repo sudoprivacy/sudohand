@@ -1,5 +1,32 @@
 # Reference sources
 
+## CLI Steering Engineering
+
+The recurring audit uses the separately maintained
+[CLI Steering Engineering skill](https://github.com/sudoprivacy/cli-steering-engineering/blob/8e597fc872ee0653790960cd96e67f59b5c38a8f/SKILL.md),
+pinned in [cli-steering-engineering.json](cli-steering-engineering.json).
+The upstream is currently private. It is an optional reference checkout, so
+public clones, CI and product packages do not require private Git credentials.
+
+```sh
+# Reuse an authenticated local checkout (also accepts directory symlinks):
+python scripts/steering_reference.py --source /path/to/cli-steering-engineering
+# Or use your existing Git credentials to fetch the exact pin:
+python scripts/steering_reference.py --fetch
+```
+
+The original local entry is
+`C:/Users/songym/cursor-projects/document-ai/.claude/skills/cli-steering-engineering`.
+The verifier prints the resolved SKILL.md path to read. An alternative is the
+`CLI_STEERING_ENGINEERING_SOURCE` environment variable. No credential is stored
+in this repository, and the private skill content is not redistributed.
+
+To update: review the upstream commit diff, update the manifest pin, load that
+revision, then repeat [the audit](../docs/cli-steering-audit.md). Updates are
+deliberate; CI never follows the upstream branch automatically.
+
+## ai-dev-browser
+
 `ai-dev-browser/` is a Git submodule pinned to **v0.51.1**,
 `c349d347251779357136685b6a698e3d2c59ce6d`. It preserves the source and
 behavior baseline for the [browser migration](../docs/migrations/ai-dev-browser-to-sudohand.md).

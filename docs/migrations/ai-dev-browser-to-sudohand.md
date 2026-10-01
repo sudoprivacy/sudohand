@@ -1,6 +1,6 @@
 # ai-dev-browser → sudohand 迁移规划
 
-更新：2026-10-01 · 状态：依赖盘点与参考基线已建立，运行时迁移尚未完成。
+更新：2026-10-02 · 状态：首批运行时修复和持续 CLI steering audit 已实现；完整迁移尚未完成。
 
 [ShareOne 阅读版](https://s.shareone.vip/md/ai-dev-browser-to-sudohand) · [规划 PR #28](https://github.com/sudoprivacy/sudohand/pull/28)
 
@@ -8,7 +8,7 @@
 
 **以 sudohand 作为后续工具层的主仓库；ai-dev-browser（下文 adb）在迁移期继续维护，所有归档门槛通过后再归档。** 现在不能把依赖里的包名替换完就宣布迁移成功。
 
-本轮交付是迁移规划、依赖清单和固定版本的源码参考。Rust 行为修复、各仓库升级、正式发行和 adb 归档均为后续任务。本规划不触发新版本发布。
+迁移规划、依赖清单和固定版本源码参考已经建立。首批 Rust 行为修复及持续 audit 的本地验收见下文；调用方升级、正式发行和 adb 归档仍需通过后续门槛。本规划不触发新版本发布。
 
 迁移保留三种调用需求：
 
@@ -38,6 +38,18 @@
 | 新工具与参数 | 缺少录制 start/stop；PDF 纸型／带单位尺寸、iframe 下载参数不接受 | 完成录制、PDF、跨域下载实际文件验收 |
 
 静态参数比对另发现 `mouse_click` / `mouse_move` 的 `--human-like`，以及 PDF `--margin`、`--prefer-css-page-size` 等差异。导航超时、扩展传输、OOPIF、Electron/CEF、桌面和 VLM 的完整行为尚未在本轮验收，必须在后续门槛中补齐。摘要记录见 [live-review.json](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/live-review.json)。
+
+### 2.1 首批运行时验收与持续 audit（2026-10-02）
+
+在 PR #27 的实现上接入迁移基线，并修复可信拖拽的 `buttons`、跨进程窄屏视口、HTML id／XPath 点击目标缺失的退出码、确定性 JS 异常分类及启动失败的退出码。旧观察保留为历史记录；新证据见 [browser-foundation-acceptance.json](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/browser-foundation-acceptance.json)。
+
+- Windows 本地 live PTY、真实 Chrome：31 次 CLI 调用，验证 7 条流程；另有 27 个 Chrome SDK 集成测试通过。
+- 真实 API key、Claude Opus 4.8：4 个工具选择／恢复场景、9 次模型请求。已知 id、失效定位器恢复、移动视口和拖拽均完成真实页面操作，并校验最终状态。该结果仅覆盖这些场景。
+- 模型曾把 `--html-id` 猜成 `--id`。新增 `suh describe --domain browser --with-args`，直接从 Clap 参数定义生成目录；最终实跑使用了正确参数。六个工具的首段说明共用于 SDK 文档、CLI help 和目录。
+- [CLI Steering Engineering](https://github.com/sudoprivacy/sudohand/blob/main/docs/cli-steering-audit.md) 已固定来源与 commit，写入根 `AGENTS.md`；支持复用现有 checkout 或一条命令下载验证。上游目前私有，因此采用可选 reference，公共 CI 不需要私有仓库权限。
+- CI 自动运行命令契约和真实 Chrome 流程；提供付费模型测试的手动入口。当前仓库尚未配置 `ANTHROPIC_API_KEY` secret，模型验收已用本机现有配置完成，不能把普通 CI 通过称为模型验收通过。
+
+下一步按调用方验收：sudowork 的 `browser` 包装器、发现列表、退出码、截图 sidechannel 和实际 Electron／agent 流程；再推进其他消费者。录制、PDF、SDK 深层依赖、源码许可追溯和发行／归档门槛继续保留。
 
 ## 3. 依赖盘点结果
 
@@ -83,7 +95,7 @@
 
 **这份盘点足以启动迁移，尚不足以宣布完整替换。** 61 个工具不覆盖全部 Python SDK、pool/profile、配置及消费者协议；这些接口已有单独的目录，但仍需逐项对应实现与真实验收。具体证据、排除项和待补门槛见 [覆盖范围与缺口](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/coverage-audit.md)。
 
-本轮还在 Windows 调试构建中实际复现了 `--help` 栈溢出，并在未修改的 main 基线 `99a7c75` 上确认同样失败；release 构建与根因尚未确认。这项失败已加入启动／发行验收缺口，不能用编译成功代替运行验证。
+盘点时在 Windows 调试构建中实际复现了 `--help` 栈溢出，并在未修改的 main 基线 `99a7c75` 上确认同样失败。首批实现接入 PR #27 的解析器／异步命令调整后，本地调试构建的 help 和真实浏览器命令已通过；正式发行包仍需完成独立验收。
 
 ### 3.5 历史与行为盘点
 
@@ -99,7 +111,7 @@
 - 当前 CI 显式选择了 28/50 个 integration 文件；文件名、skip 和静态参数对齐均不能代替真实任务证据。
 - sudocode 使用的 noun/verb 入口出现在未合入分支；Pool 的恢复／取消、旧状态文件、已撤回接口和代码来源记录需要单独处理。
 
-按 27 个单元推进验收后再讨论归档。此次交付是盘点与可重跑证据，运行时迁移及消费者切换仍按下文阶段执行。
+按 27 个单元推进验收后再讨论归档。本节保留盘点证据；首批运行时进展见 2.1 节，后续能力与消费者切换仍按下文阶段执行。
 
 ## 4. 接口与兼容策略
 

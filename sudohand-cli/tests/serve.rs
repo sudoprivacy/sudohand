@@ -39,7 +39,7 @@ async fn ready_catalog_call_and_denial() {
     let server = Server(
         std::process::Command::new(env!("CARGO_BIN_EXE_suh"))
             .args(["serve", "--bind", &format!("127.0.0.1:{port}")])
-            .stderr(std::process::Stdio::null())
+            .stderr(std::process::Stdio::inherit())
             .spawn()
             .expect("spawn suh serve"),
     );
@@ -115,7 +115,7 @@ async fn token_auth_rejects_wrong_token() {
                 "--token",
                 "s3cret",
             ])
-            .stderr(std::process::Stdio::null())
+            .stderr(std::process::Stdio::inherit())
             .spawn()
             .expect("spawn suh serve"),
     );

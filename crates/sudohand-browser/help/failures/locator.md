@@ -1,0 +1,1 @@
+Inspect page_discover for current targets, then use a current ref with click_by_ref or correct the id/XPath. Do not repeat the same missing locator. HTML id and XPath search same-origin frames; inspect cross-origin frames with js_evaluate --frame.

@@ -8,8 +8,7 @@ use crate::config::{resolve_viewport, DEFAULT_VIEWPORT_HEIGHT, DEFAULT_VIEWPORT_
 use crate::connection::Tab;
 use crate::{Error, Result};
 
-/// Render viewport (`width`/`height`), OS window `state`
-/// (`normal`/`maximized`/`minimized`/`fullscreen`, headed only) and `focus`.
+#[doc = include_str!("../help/window_set.md")]
 pub async fn window_set(
     tab: &Tab,
     width: Option<u32>,
@@ -19,12 +18,34 @@ pub async fn window_set(
 ) -> Result<Value> {
     let mut out = Map::new();
     if width.is_some() || height.is_some() {
-        let vp = resolve_viewport()?.unwrap_or((DEFAULT_VIEWPORT_WIDTH, DEFAULT_VIEWPORT_HEIGHT));
+        let vp = tab
+            .recorded_viewport()
+            .or(resolve_viewport()?)
+            .unwrap_or((DEFAULT_VIEWPORT_WIDTH, DEFAULT_VIEWPORT_HEIGHT));
         let w = width.unwrap_or(vp.0);
         let h = height.unwrap_or(vp.1);
+        if w == 0 || h == 0 || w > i32::MAX as u32 || h > i32::MAX as u32 {
+            return Err(Error::Invalid(
+                "viewport dimensions must be positive 32-bit integers".into(),
+            ));
+        }
         tab.set_viewport(w, h).await?;
         out.insert("width".into(), json!(w));
         out.insert("height".into(), json!(h));
+        match tab.persist_viewport(w, h) {
+            Ok(persisted) => {
+                out.insert("viewport_persisted".into(), json!(persisted));
+            }
+            Err(error) => {
+                out.insert("viewport_persisted".into(), json!(false));
+                out.insert(
+                    "hint".into(),
+                    json!(format!(
+                        "Viewport applied for this session but could not be saved: {error}"
+                    )),
+                );
+            }
+        }
     }
     if let Some(s) = state {
         let ws = match s {

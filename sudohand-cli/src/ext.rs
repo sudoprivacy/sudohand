@@ -347,6 +347,7 @@ pub fn run_cmd(cmd: Cmd) -> Result<serde_json::Value> {
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     fn tmp(tag: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("suh-ext-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
@@ -373,8 +374,9 @@ mod tests {
 
     #[test]
     fn search_order() {
+        let ext_path = std::env::join_paths(["/a", "/b"]).unwrap();
         let dirs = search_dirs(
-            Some("/a:/b"),
+            Some(ext_path.to_str().unwrap()),
             Some(Path::new("/home/u")),
             Some(Path::new("/opt/suh")),
             Some("/usr/bin"),
@@ -389,7 +391,14 @@ mod tests {
                 ("/a".to_string(), "ext_path"),
                 ("/b".to_string(), "ext_path"),
                 ("/opt/suh".to_string(), "sibling"),
-                ("/home/u/.suh/extensions".to_string(), "home"),
+                (
+                    Path::new("/home/u")
+                        .join(".suh")
+                        .join("extensions")
+                        .display()
+                        .to_string(),
+                    "home"
+                ),
                 ("/usr/bin".to_string(), "PATH"),
             ]
         );

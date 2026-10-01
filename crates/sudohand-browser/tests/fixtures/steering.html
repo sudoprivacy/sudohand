@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Browser migration acceptance</title><style>
+body{font:18px system-ui;margin:28px;background:#f6f8fc;color:#172336}main{max-width:780px}h1{font-size:28px}
+section{background:white;border:1px solid #ccd5e3;border-radius:12px;padding:20px;margin:16px 0}
+button{padding:12px 20px;border:0;border-radius:7px;background:#215bcc;color:white;font:inherit;cursor:pointer}
+#track{width:min(400px,100%);height:40px;background:#dce6f4;position:relative;border-radius:5px;margin:16px 0}
+#knob{position:absolute;width:40px;height:40px;background:#215bcc;left:0;top:0;border-radius:5px;cursor:grab}
+output{display:block;margin:10px 0}#mobile{display:none}@media(max-width:500px){#mobile{display:block}#desktop{display:none}}
+</style></head><body><main><h1>Browser migration acceptance</h1>
+<section><h2>Reservation</h2><button id="reserve-now">Reserve seat</button><output id="receipt">No reservation</output></section>
+<section><h2>Drag verification</h2><div id="track"><div id="knob" role="slider" aria-label="Volume" aria-valuenow="0"></div></div><output id="drag-result">0 pixels</output></section>
+<section><h2>Responsive layout</h2><p id="mobile">Mobile layout</p><p id="desktop">Desktop layout</p><output id="dimensions"></output></section>
+<section><h2>Saved draft</h2><output id="draft"></output><p>Available seats: <span id="seats">17</span></p></section>
+</main><script>
+const state=window.acceptance={reservations:0,untrusted:0,dragButtons:[],releases:[],moves:0};
+document.querySelector('#reserve-now').onclick=e=>{if(!e.isTrusted){state.untrusted++;return}state.reservations++;document.querySelector('#receipt').textContent='Reserved: '+state.reservations;location.hash='receipt'};
+const knob=document.querySelector('#knob');let start=null;
+knob.onmousedown=e=>{if(e.isTrusted&&e.buttons===1)start={x:e.clientX,left:knob.offsetLeft}};
+document.addEventListener('mousemove',e=>{if(!start)return;state.dragButtons.push(e.buttons);if(!e.isTrusted||e.buttons!==1)return;state.moves++;const x=Math.max(0,Math.min(knob.parentElement.clientWidth-40,start.left+e.clientX-start.x));knob.style.left=x+'px';knob.setAttribute('aria-valuenow',String(x));document.querySelector('#drag-result').textContent=x+' pixels'});
+document.addEventListener('mouseup',e=>{if(start)state.releases.push(e.buttons);start=null});
+function dimensions(){document.querySelector('#dimensions').textContent=innerWidth+' × '+innerHeight}onresize=dimensions;dimensions();
+document.querySelector('#draft').textContent=localStorage.getItem('draft')||'EMPTY';
+</script></body></html>

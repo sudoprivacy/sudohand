@@ -12,7 +12,7 @@ Each actuator is a **library plus a thin CLI** and contains **no
 policy, sessions, auditing, confirmation prompts, or transport** — an
 integrator links the crates and wraps them
 with those concerns. Success prints JSON to stdout; failure prints
-`{"error":{...}}` to stderr and exits 1.
+`{"error":{...}}` to stderr with a semantic nonzero exit code.
 
 ## Layout
 
@@ -30,6 +30,7 @@ sudohand/
 ## CLI
 
 ```
+suh describe --domain browser --with-args  # tool selection, flags and defaults
 suh browser ...     # was `adb`
 suh desktop ...     # was `adc`
 suh fs ...
@@ -42,6 +43,12 @@ One binary with domain subcommands — self-describing, and no clash
 with Android's `adb`.
 
 ## Status
+
+Changes to agent-facing tools require the recurring
+[CLI steering audit](docs/cli-steering-audit.md), using the
+[pinned engineering skill](references/README.md#cli-steering-engineering).
+CI covers executable contracts and real browser behavior; live model tests
+check tool choice and recovery.
 
 The browser replacement is being tracked in the
 [ai-dev-browser migration plan](docs/migrations/ai-dev-browser-to-sudohand.md),
@@ -61,11 +68,45 @@ value types, `MacBackend`, `FakeBackend`) and wired up as
 `sudohand-core` carries the shared `Error`, JSON-CLI contract, base64 and
 permission probing. `sudohand-browser` implements browser operations as
 `suh browser <tool>` with adb-style names, flags and JSON; the migration plan
-tracks current coverage and unresolved behavior differences. It also provides
+and [parity checklist](docs/browser-parity.md) track current coverage and
+unresolved behavior differences. It also provides
 `workflows|flow` via the `flow` feature (built-ins `form-signup`,
 `page-extract`). `sudohand-fs` (`suh fs read|write|ls|stat|mkdir|rm|mv|cp|exists`)
 and `sudohand-shell` (`suh shell run`) are thin over `std::fs` /
 `std::process::Command`, each with a fake backend. See [DESIGN.md](DESIGN.md).
+
+## Browser connection modes
+
+Use `suh browser browser_start --headless` for a disposable CDP browser, then
+pass its `--port` to browser commands. `browser_connect --port PORT` checks an
+existing connection. Startup supports `--timezone`, `--geo`, `--locale`, and
+proxy location matching; overrides persist across separate CLI calls.
+
+To control a running Chrome profile through an extension, run:
+
+```sh
+suh browser browser_connect --transport extension
+```
+
+This starts the local Rust bridge and extracts the bundled extension. Follow the
+returned `setup_instructions` to load it into the intended Chrome profile once.
+Subsequent commands accept `--transport extension` (or set
+`AI_DEV_BROWSER_TRANSPORT=extension`). The extension uses dedicated automation
+tabs, follows popups they open, and reports the signed-in profile account when
+available. `browser_disconnect` stops the bridge without closing Chrome.
+
+Reference/text clicks report `verified` and `method` in addition to `clicked`.
+They check for an observable page change before trying another browser click
+method. `--os-click true` (or `AI_DEV_BROWSER_OS_CLICK=true`) enables a final
+native mouse fallback; it requires a visible window and OS input permissions,
+and moves the desktop cursor. `--os-click false` overrides an environment opt-in.
+
+`browser_list` classifies managed, orphaned, and external Chrome processes.
+Preview orphan cleanup with `browser_cleanup --scope profile --profile NAME
+--dry-run`; remove `--dry-run` to apply it. `browser_stop --stop-all` only stops
+registered browser instances. `cookies_extract_live` and
+`cookies_extract_offline` return complete cookie values; `cookies_list` retains
+its value previews.
 
 ## Extensions (`suh <name> …`)
 

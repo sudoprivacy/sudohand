@@ -447,7 +447,22 @@ pub async fn dispatch_mouse(
     click_count: Option<i64>,
     modifiers: i64,
 ) -> Result<()> {
-    let mut b = DispatchMouseEventParams::builder().r#type(kind).x(x).y(y);
+    let released = kind == DispatchMouseEventType::MouseReleased;
+    let buttons = if released {
+        0
+    } else {
+        match button.as_ref() {
+            Some(MouseButton::Left) => 1,
+            Some(MouseButton::Right) => 2,
+            Some(MouseButton::Middle) => 4,
+            _ => 0,
+        }
+    };
+    let mut b = DispatchMouseEventParams::builder()
+        .r#type(kind)
+        .x(x)
+        .y(y)
+        .buttons(buttons);
     if let Some(btn) = button {
         b = b.button(btn);
     }

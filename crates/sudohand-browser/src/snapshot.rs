@@ -520,8 +520,7 @@ async fn dom_scan(tab: &Tab, text: Option<&str>, limit: usize) -> Result<Vec<Ele
     Ok(results)
 }
 
-/// Broad discovery of interactable elements (AX tree + DOM scan), each with
-/// a `ref` usable by `click_by_ref` / `type_by_ref`.
+#[doc = include_str!("../help/page_discover.md")]
 pub async fn page_discover(tab: &Tab, opts: &DiscoverOptions) -> Result<Vec<Element>> {
     let mut elements =
         get_snapshot(tab, opts.interactable_only, None, opts.include_iframes).await?;

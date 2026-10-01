@@ -12,8 +12,8 @@ use chromiumoxide_cdp::cdp::browser_protocol::input::{DispatchMouseEventType, Mo
 use serde_json::{json, Map, Value};
 
 use crate::actions::{
-    ax_by_text, capture_page_state, dispatch_key, element_by_ref, failed, key_spec,
-    wait_ax_by_text, with_nav_feedback,
+    ax_by_text, capture_page_state, element_by_ref, failed, key_spec, wait_ax_by_text,
+    with_nav_feedback,
 };
 use crate::connection::Tab;
 use crate::element::{find_element_by_text, find_with_timeout, query_selector_all, DomElement};
@@ -48,7 +48,7 @@ pub async fn find_by_text(tab: &Tab, text: &str, interactable_only: bool) -> Res
 /// Options for [`type_by_text`].
 #[derive(Debug, Clone, Copy)]
 pub struct TypeByTextOptions {
-    /// `el.value = ""` first.
+    /// Compatibility option: verified filling always replaces the field.
     pub clear: bool,
     /// Seconds to wait for the name to appear.
     pub timeout: f64,
@@ -72,8 +72,8 @@ impl Default for TypeByTextOptions {
     }
 }
 
-/// Locate an input by accessible name and type into it. Default actuator is
-/// per-character `char` events (not `insertText`). `{typed, name, ref}`
+/// Locate an input by accessible name, fill it, and verify the resulting value.
+/// Falls back from bulk input to key events to a native setter. `{typed, verified, method, methods_tried, name, ref}`
 /// (+ `entered`).
 pub async fn type_by_text(
     tab: &Tab,
@@ -91,28 +91,10 @@ pub async fn type_by_text(
             json!({"typed": false, "error": format!("Element with name '{name}' not found")}),
         );
     };
-    if opts.clear {
-        element.clear_input(tab).await?;
-    }
-    if opts.keystrokes {
-        element.focus(tab).await?;
-        for ch in text.chars() {
-            let s = ch.to_string();
-            dispatch_key(tab, &s, "", 0, 0, Some(&s)).await?;
-        }
-    } else {
-        let use_human = opts
-            .human_like
-            .unwrap_or_else(|| human::get_config().type_humanize);
-        if use_human {
-            element.focus(tab).await?;
-            human::type_text(tab, text, Some(true)).await?;
-        } else {
-            element.send_keys(tab, text).await?;
-        }
-    }
-    let mut out = Map::new();
-    out.insert("typed".into(), json!(true));
+    let human_like = opts
+        .human_like
+        .unwrap_or_else(|| human::get_config().type_humanize);
+    let mut out = crate::fill::fill(tab, &element, text, opts.keystrokes, human_like).await;
     out.insert("name".into(), json!(name));
     out.insert("ref".into(), json!(located.r#ref));
     if opts.enter {
@@ -776,8 +758,9 @@ pub async fn trusted_click(
     action.insert("clicked".into(), json!(false));
     action.insert(locator_key.to_string(), json!(locator_val));
     if hit.is_null() {
-        action.insert("error".into(), json!("not found"));
-        return Ok(Value::Object(failed(action, &url_before)));
+        return Err(crate::Error::TargetNotFound(format!(
+            "No element matching {locator_key}={locator_val:?}"
+        )));
     }
     let g = |k: &str| hit.get(k).and_then(Value::as_f64).unwrap_or(0.0);
     if g("w") == 0.0 || g("h") == 0.0 {
@@ -796,12 +779,16 @@ pub async fn trusted_click(
     Ok(Value::Object(with_nav_feedback(tab, action).await))
 }
 
-/// Trusted click on the element with html `id` (same-origin frames included).
+#[doc = include_str!("../help/click_by_html_id.md")]
+#[doc = "\n\nFailure:\n"]
+#[doc = include_str!("../help/failures/locator.md")]
 pub async fn click_by_html_id(tab: &Tab, html_id: &str) -> Result<Value> {
     trusted_click(tab, &html_id_finder_js(html_id), "html_id", html_id).await
 }
 
-/// Trusted click on the first XPath match (same-origin frames included).
+#[doc = include_str!("../help/click_by_xpath.md")]
+#[doc = "\n\nFailure:\n"]
+#[doc = include_str!("../help/failures/locator.md")]
 pub async fn click_by_xpath(tab: &Tab, xpath: &str) -> Result<Value> {
     trusted_click(tab, &xpath_finder_js(xpath), "xpath", xpath).await
 }
