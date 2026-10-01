@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "share_id": "RqPg0QZk8fLggFS3",
+  "share_url": "https://s.shareone.vip/md/ai-dev-browser-to-sudohand",
+  "remote_url": "https://raw.githubusercontent.com/sudoprivacy/sudohand/main/docs/migrations/ai-dev-browser-to-sudohand.md",
+  "source_path": "docs/migrations/ai-dev-browser-to-sudohand.md",
+  "source_branch": "main",
+  "published_at": "2026-10-01",
+  "publisher": "shareone-skill remote-url",
+  "planning_pr": "https://github.com/sudoprivacy/sudohand/pull/28",
+  "maintenance": "Update the Markdown source on main. Use shareone-skill refresh_share.js for an immediate refresh; keep the existing share ID and URL.",
+  "browser_acceptance": {
+    "date": "2026-10-01",
+    "browser": "Real Chrome over CDP, driven by ai-dev-browser v0.51.1 from a live PTY",
+    "document_frame": "about:srcdoc",
+    "rendered_tables": 7,
+    "checks": [
+      "Chinese title and archive gates",
+      "Inventory counts 142 / 123",
+      "Apeiron section",
+      "Reference link",
+      "No desktop horizontal overflow",
+      "Desktop and inventory screenshots visually inspected"
+    ]
+  }
+}

@@ -50,6 +50,8 @@ with a [dependency inventory](docs/migrations/dependency-inventory.json) and a
 [pinned v0.51.1 reference](references/README.md). The plan distinguishes command
 coverage from real browser acceptance and downstream migration. Keep
 ai-dev-browser maintained until the archive gates pass.
+The [ShareOne reading view](https://s.shareone.vip/md/ai-dev-browser-to-sudohand)
+follows the plan source on `main`.
 
 `sudohand-desktop` is ported from `ai-desktop-control` (backend trait,
 value types, `MacBackend`, `FakeBackend`) and wired up as

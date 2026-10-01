@@ -35,7 +35,7 @@
 | 确定性 JS 异常 | Rust 返回 exit 9 / `io`；Python 标为不可重试 | 区分脚本错误和临时连接故障，避免盲目重试 |
 | 新工具与参数 | 缺少录制 start/stop；PDF 纸型／带单位尺寸、iframe 下载参数不接受 | 完成录制、PDF、跨域下载实际文件验收 |
 
-静态参数比对另发现 `mouse_click` / `mouse_move` 的 `--human-like`，以及 PDF `--margin`、`--prefer-css-page-size` 等差异。导航超时、扩展传输、OOPIF、Electron/CEF、桌面和 VLM 的完整行为尚未在本轮验收，必须在后续门槛中补齐。摘要记录见 [live-review.json](https://github.com/sudoprivacy/sudohand/blob/docs/adb-migration-plan/docs/migrations/live-review.json)。
+静态参数比对另发现 `mouse_click` / `mouse_move` 的 `--human-like`，以及 PDF `--margin`、`--prefer-css-page-size` 等差异。导航超时、扩展传输、OOPIF、Electron/CEF、桌面和 VLM 的完整行为尚未在本轮验收，必须在后续门槛中补齐。摘要记录见 [live-review.json](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/live-review.json)。
 
 ## 3. 依赖盘点结果
 
@@ -47,7 +47,7 @@
 | 仅文档引用 | 6 | 更新当前推荐；历史证据可保留 |
 | adb 源仓库与 sudohand 目标仓库 | 2 | 作为基线／交付方单独跟踪 |
 
-23 个调用／分发方中，5 个公开仓库、18 个受限仓库。公开证据及匿名任务编号见 [dependency-inventory.json](https://github.com/sudoprivacy/sudohand/blob/docs/adb-migration-plan/docs/migrations/dependency-inventory.json)。受限仓库的名称、路径、版本和证据保存在本地完整台账中；在进入批量迁移前，须转存到团队可访问的私有跟踪位置，并保持 R 编号稳定。
+23 个调用／分发方中，5 个公开仓库、18 个受限仓库。公开证据及匿名任务编号见 [dependency-inventory.json](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/dependency-inventory.json)。受限仓库的名称、路径、版本和证据保存在本地完整台账中；在进入批量迁移前，须转存到团队可访问的私有跟踪位置，并保持 R 编号稳定。
 
 ### 3.1 公开调用方
 
@@ -155,7 +155,7 @@ sudohand 的 M3 必须明确版本与平台支持，建立 GitHub Release 的可
 
 ## 9. Reference 与长期更新
 
-`references/ai-dev-browser` 是指向公开 adb 仓库的 Git submodule，固定在 v0.51.1；[baseline.json](https://github.com/sudoprivacy/sudohand/blob/docs/adb-migration-plan/references/ai-dev-browser-baseline.json) 记录完整 SHA 和工具目录。它用于源码、合同和行为对照，不参与产品打包。操作见 [references/README.md](https://github.com/sudoprivacy/sudohand/blob/docs/adb-migration-plan/references/README.md)。
+`references/ai-dev-browser` 是指向公开 adb 仓库的 Git submodule，固定在 v0.51.1；[baseline.json](https://github.com/sudoprivacy/sudohand/blob/main/references/ai-dev-browser-baseline.json) 记录完整 SHA 和工具目录。它用于源码、合同和行为对照，不参与产品打包。操作见 [references/README.md](https://github.com/sudoprivacy/sudohand/blob/main/references/README.md)。
 
 升级参考时单独提交 PR，列出上次基线后新增或改变的工具，更新 manifest、parity 检查和真实测试。保留历史 SHA，不自动追随远端 HEAD。使用任何源码／资源时保留原许可证与出处。
 
