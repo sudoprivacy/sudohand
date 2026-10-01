@@ -77,6 +77,14 @@
 
 “命中引用”与“当前能运行”分别记录。若旧脚本已经使用失效符号或机器专属路径，先建旧后端基线，再决定修复、迁移或停止维护；不得把失效项目默认为已迁移。
 
+### 3.4 完整性复核
+
+补查扩大到当前 146 个本地工作目录，并重新检查原有 123 个远端仓库；取消源码后缀白名单，补搜 `aidb` 别名与已知传递依赖，远端检查 102,492 个文本文件。人工复核后没有新增实际调用仓库，23 个调用／分发方的分类保持不变。上文保留首轮扫描的范围与数字，便于追踪证据来源。
+
+**这份盘点足以启动迁移，尚不足以宣布完整替换。** 61 个工具不覆盖全部 Python SDK、pool/profile、配置及消费者协议；这些接口已有单独的目录，但仍需逐项对应实现与真实验收。具体证据、排除项和待补门槛见 [覆盖范围与缺口](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/coverage-audit.md)。
+
+本轮还在 Windows 调试构建中实际复现了 `--help` 栈溢出，并在未修改的 main 基线 `99a7c75` 上确认同样失败；release 构建与根因尚未确认。这项失败已加入启动／发行验收缺口，不能用编译成功代替运行验证。
+
 ## 4. 接口与兼容策略
 
 1. **先定义受支持合同。** 每个工具记录名称、参数／默认值、返回形状、stdout/stderr、退出码、重试规则、状态范围、文件产物和平台限制。与 adb 的差异要列出消费者、理由及升级方法。
@@ -163,15 +171,7 @@ sudohand 的 M3 必须明确版本与平台支持，建立 GitHub Release 的可
 
 每次消费者发布或基线变化时更新台账的状态与证据；每次切换波次结束重新盘点。公开 JSON 是机器可读记录，受限详情由同一 ID 关联。
 
-## 10. Apeiron 的位置
-
-sudohand 的 [README](https://github.com/sudoprivacy/sudohand/blob/c62b244a43d53bb87e1f14e97c5858ce41480745/README.md) 把 Apeiron 描述为 service/brain 层，并举 `apeiron-bridge` 作为包装工具能力、接管 policy/session/audit 的集成方。sudocode 的 [v0.2.3 发布记录](https://github.com/sudoprivacy/sudocode/blob/main/docs/release-notes/v0.2.3.md)记录了 Apeiron 使用 ACP 创建／派生会话的需求；[v0.2.10 发布记录](https://github.com/sudoprivacy/sudocode/blob/main/docs/release-notes/v0.2.10.md)明确提到无法访问的私有 Apeiron 部署。
-
-据此可把它理解为上层 agent 服务／应用宿主：通过 sudocode 管理执行会话，并计划集成 sudohand 的机器操作能力。这是基于公开接口和文档的角色判断。README 链接的 [joezhoujinjing/apeiron](https://github.com/joezhoujinjing/apeiron) 在本次匿名访问和当前授权账号访问时均返回 404，无法确认其完整实现、现状或具体部署结构。
-
-本次浏览器迁移不要求同时接入 Apeiron。将来获得其维护者和接口信息后，作为单独集成消费者登记，不把不可访问的实现假设当成迁移前提。
-
-## 11. 文档发布与维护
+## 10. 文档发布与维护
 
 本文件是规划源文件，通过 ShareOne skill 的 `--remote-url` 绑定 GitHub 内容，按 Markdown 原格式发布。正式源地址为 `main` 分支的本文件；分享记录保存在同目录 `shareone.json`。
 

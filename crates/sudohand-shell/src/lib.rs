@@ -6,14 +6,11 @@
 //! records every request for side-effect-free tests.
 //!
 //! ## RED LINE
-//! Shell is the most dangerous actuator. Per the apeiron-bridge
-//! capability model, **the bridge does not expose shell to agents by
-//! default.** This crate existing in the workspace does NOT mean the
-//! agent gets a shell — the library is policy-free, and the "no shell
-//! over the wire" decision is enforced by the integrator (which simply
-//! does not link / register this crate). If shell is ever exposed, it
-//! needs its own authz model (command allow-list, cwd fence, timeout,
-//! dry-run) distinct from fs/browser/desktop.
+//! **`suh serve` does not expose shell operations.** This library is
+//! policy-free; other integrators choose which capabilities to link and
+//! register. Exposing shell requires an explicit authorization model
+//! (command allow-list, cwd fence, timeout, dry-run) distinct from
+//! fs/browser/desktop.
 
 #![deny(unsafe_code)]
 

@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "assessment": "Sufficient to begin migration; insufficient to claim full replacement or archive readiness.",
+  "baseline_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "local": {
+    "worktrees": 146,
+    "selected_tracked_files": 162950,
+    "extension_allowlist": false,
+    "file_size_limit": null,
+    "errors": 0
+  },
+  "remote": {
+    "repositories": 123,
+    "scanned_nonempty": 120,
+    "empty": 3,
+    "text_files": 102492,
+    "binary_files_excluded": 2913,
+    "files_over_32_mib_excluded": 4,
+    "extension_allowlist": false,
+    "errors": 0
+  },
+  "searches": [
+    "ai-dev-browser / ai_dev_browser",
+    "aidb command and environment aliases",
+    "Known upstream package/module and repository references"
+  ],
+  "reviewed_false_positives": [
+    "Alias bytes in binary image files",
+    "Reverse service relationship in a protocol comment; an API provider is not automatically a consumer of its clients browser dependency"
+  ],
+  "result": {
+    "new_confirmed_consumers": 0,
+    "existing_migration_consumers": 23,
+    "existing_documentation_repositories": 6
+  },
+  "limitations": [
+    "Known repository set; no new enumeration of all external users",
+    "Remote default branches only; local tracked files from current worktrees",
+    "Build/dependency/session directories excluded",
+    "Dynamic imports, unknown transitive edges and deployment-only wrappers require consumer confirmation",
+    "Supplement does not expand initial ignored-skill-directory coverage",
+    "NUL/UTF-8 sampling can omit legacy-encoded text"
+  ],
+  "additional_live_observation": {
+    "platform": "Windows",
+    "build_profile": "debug",
+    "build_command": "cargo build --locked -p sudohand-cli",
+    "commands": [
+      [
+        "--help"
+      ],
+      [
+        "serve",
+        "--help"
+      ]
+    ],
+    "result": "Both overflow the main thread stack with exit 0xc00000fd",
+    "reproduced_on_unchanged_main": "99a7c75bb286ca5ab6bb9f5a4e0828c6c65f5ea5",
+    "release_build_tested": false,
+    "root_cause_confirmed": false,
+    "migration_gate": "M3 real binary startup and release acceptance"
+  }
+}

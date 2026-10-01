@@ -73,7 +73,7 @@ enum Domain {
     /// Print the command tree (domain, action, description) as TSV, plus the
     /// exit-code contract — the machine-readable API for an agent.
     Describe,
-    /// Expose the actuators over a WebSocket. Agents — a remote apeiron pod or
+    /// Expose the actuators over a WebSocket. Agents — a remote service or
     /// a local sudocode — connect here as clients; suh still runs on this
     /// machine. One action per frame; `shell` and the meta commands are refused.
     Serve {

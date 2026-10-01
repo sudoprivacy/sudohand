@@ -1,7 +1,7 @@
 //! `suh serve` — expose the actuators over a WebSocket.
 //!
 //! This is the bridge, living inside sudohand itself: `suh serve` listens on a
-//! WS and every agent — a remote apeiron pod *and* a local sudocode — connects
+//! WS and every agent — a remote service *and* a local sudocode — connects
 //! to it as a client. One path, one protocol, wherever the caller sits. suh
 //! still executes on this machine (the one with the apps); the WS only carries
 //! the call in and the result out.

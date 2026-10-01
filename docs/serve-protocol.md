@@ -2,9 +2,9 @@
 
 `suh serve` turns this machine into an actuator any agent can drive over a
 WebSocket. The bridge lives inside sudohand; there is no separate process.
-Both callers connect the same way:
+Local and remote callers connect the same way:
 
-- a **remote** apeiron pod, and
+- a **remote** agent service, and
 - a **local** sudocode
 
 `suh` still executes here (the machine with the apps); the socket only carries
