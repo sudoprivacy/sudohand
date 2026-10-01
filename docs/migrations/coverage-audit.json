@@ -41,5 +41,24 @@
     "Dynamic imports, unknown transitive edges and deployment-only wrappers require consumer confirmation",
     "Supplement does not expand initial ignored-skill-directory coverage",
     "NUL/UTF-8 sampling can omit legacy-encoded text"
-  ]
+  ],
+  "additional_live_observation": {
+    "platform": "Windows",
+    "build_profile": "debug",
+    "build_command": "cargo build --locked -p sudohand-cli",
+    "commands": [
+      [
+        "--help"
+      ],
+      [
+        "serve",
+        "--help"
+      ]
+    ],
+    "result": "Both overflow the main thread stack with exit 0xc00000fd",
+    "reproduced_on_unchanged_main": "99a7c75bb286ca5ab6bb9f5a4e0828c6c65f5ea5",
+    "release_build_tested": false,
+    "root_cause_confirmed": false,
+    "migration_gate": "M3 real binary startup and release acceptance"
+  }
 }
