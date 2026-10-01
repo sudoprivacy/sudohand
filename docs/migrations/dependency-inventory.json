@@ -1,0 +1,1634 @@
+{
+  "schema": 1,
+  "scope": {
+    "date": "2026-10-01",
+    "local_worktrees": 142,
+    "remote_repositories": 123,
+    "nonempty_remote_repositories": 120,
+    "selected_remote_text_files": 60791,
+    "remote_files_skipped_over_2_mib": 7,
+    "repositories_with_direct_mentions": 28,
+    "additional_transitive_repositories": 2,
+    "migration_consumers": 23,
+    "documentation_only": 6,
+    "source_and_target": 2,
+    "limitations": [
+      "Remote scan covers accessible default branches; local scan covers known worktrees.",
+      "Excluded dependency/build directories, session caches, binaries and nonselected file types.",
+      "Seven remote files over 2 MiB skipped; three remote repositories empty.",
+      "Keyword and selected transitive scans require manual classification; unrecognized aliases or dynamic imports may be missed.",
+      "No guarantee of discovering unknown external/private consumers or all nondefault branches.",
+      "nexi-lab/nexus evidence is local-only. A mention does not prove an operational integration."
+    ]
+  },
+  "repositories": [
+    {
+      "id": "R01",
+      "kind": "documentation",
+      "wave": "D",
+      "complexity": "low",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "P01",
+      "repository": "elfenlieds7/chatgpt-skill",
+      "kind": "python-sdk-skill",
+      "wave": "W3",
+      "complexity": "medium",
+      "explanation": "Python browser automation scripts; copies exist in another repository.",
+      "acceptance": "Existing login -> find test conversation -> preview/export -> validate content; update maintained copies and clean isolated test data.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "5f197da",
+      "branch": "main",
+      "scope": "remote-default",
+      "evidence": [
+        {
+          "path": "README.md",
+          "lines": [
+            3,
+            9
+          ]
+        },
+        {
+          "path": "SKILL.md",
+          "lines": [
+            8,
+            13
+          ]
+        },
+        {
+          "path": "scripts/delete_chat.py",
+          "lines": [
+            13,
+            14,
+            15
+          ]
+        },
+        {
+          "path": "scripts/download_chat.py",
+          "lines": [
+            15,
+            16
+          ]
+        },
+        {
+          "path": "scripts/list_chats.py",
+          "lines": [
+            14,
+            15
+          ]
+        },
+        {
+          "path": "scripts/new_chat.py",
+          "lines": [
+            12,
+            13
+          ]
+        },
+        {
+          "path": "scripts/open_chat.py",
+          "lines": [
+            13,
+            14
+          ]
+        },
+        {
+          "path": "scripts/send_message.py",
+          "lines": [
+            14,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "id": "R02",
+      "kind": "python-scripts-and-copied-skills",
+      "wave": "W3",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R03",
+      "kind": "vendored-python-path",
+      "wave": "W3",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R04",
+      "kind": "transitive-runtime-pin",
+      "wave": "W3",
+      "complexity": "high",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R05",
+      "kind": "direct-and-transitive-python",
+      "wave": "W3",
+      "complexity": "high",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R06",
+      "kind": "optional-python-login",
+      "wave": "W3",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R07",
+      "kind": "direct-and-transitive-python",
+      "wave": "W3",
+      "complexity": "high",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R08",
+      "kind": "python-cli-wrapper",
+      "wave": "W1",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R09",
+      "kind": "vendored-python-path",
+      "wave": "W3",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R10",
+      "kind": "embedded-browser-cli",
+      "wave": "W3",
+      "complexity": "high",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R11",
+      "kind": "documentation",
+      "wave": "D",
+      "complexity": "low",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "D01",
+      "repository": "elfenlieds7/sudowork-physics-rubric",
+      "kind": "documentation",
+      "wave": "D",
+      "complexity": "low",
+      "explanation": "Historical context/report reference.",
+      "acceptance": "Annotate successor when helpful; do not rewrite past evidence.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "21999f3",
+      "branch": "main",
+      "scope": "remote-default-and-local",
+      "evidence": [
+        {
+          "path": "context/shareone_state.md",
+          "lines": [
+            36,
+            37
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D02",
+      "repository": "nexi-lab/nexus",
+      "kind": "documentation",
+      "wave": "D",
+      "complexity": "low",
+      "explanation": "Historical architecture HTML in local worktrees; remote default not scanned in this inventory.",
+      "acceptance": "Review current guidance separately from historical design documents.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "2035f130058358881398628cb20a3fb88d0836cd",
+      "branch": "chore/bump-sudocode-9de4dec3",
+      "scope": "local-only",
+      "evidence": []
+    },
+    {
+      "id": "B01",
+      "repository": "sudoprivacy/ai-dev-browser",
+      "kind": "baseline",
+      "wave": "M0",
+      "complexity": "reference",
+      "explanation": "Python source baseline v0.51.1",
+      "acceptance": "Retain tags, packages and source history.",
+      "status": "reference-pinned",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "c349d34",
+      "branch": "master",
+      "scope": "remote-default-and-local",
+      "evidence": []
+    },
+    {
+      "id": "R12",
+      "kind": "python-sdk",
+      "wave": "W3",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R13",
+      "kind": "generator-reference",
+      "wave": "W1",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R14",
+      "kind": "documentation",
+      "wave": "D",
+      "complexity": "low",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R15",
+      "kind": "embedded-python",
+      "wave": "W3",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "P02",
+      "repository": "sudoprivacy/grok-web-connector",
+      "kind": "deep-python-sdk",
+      "wave": "W3; spike M1",
+      "complexity": "high",
+      "explanation": "ai-dev-browser>=0.15.0,<1.0; CDP/Tab/private element APIs, launch monkeypatch, BrowserPool inheritance/reexports.",
+      "acceptance": "Existing profile -> account/session -> pool job -> real request/download -> restart/resume/cancel; extension and CDP transports; update pinned transitive consumers.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "a4e527c",
+      "branch": "main",
+      "scope": "remote-default-and-local",
+      "evidence": [
+        {
+          "path": "README.md",
+          "lines": [
+            6
+          ]
+        },
+        {
+          "path": "grok_web/__init__.py",
+          "lines": [
+            121,
+            127,
+            134
+          ]
+        },
+        {
+          "path": "grok_web/actions/__init__.py",
+          "lines": [
+            3
+          ]
+        },
+        {
+          "path": "grok_web/actions/composer_menu.py",
+          "lines": [
+            204
+          ]
+        },
+        {
+          "path": "grok_web/actions/direct_rest.py",
+          "lines": [
+            16,
+            319
+          ]
+        },
+        {
+          "path": "grok_web/actions/extend_seed.py",
+          "lines": [
+            32,
+            326
+          ]
+        },
+        {
+          "path": "grok_web/actions/imagine_input.py",
+          "lines": [
+            15,
+            96,
+            164
+          ]
+        },
+        {
+          "path": "grok_web/actions/network_monitor.py",
+          "lines": [
+            57
+          ]
+        },
+        {
+          "path": "grok_web/actions/post_image.py",
+          "lines": [
+            4,
+            23,
+            55,
+            56
+          ]
+        },
+        {
+          "path": "grok_web/actions/post_media.py",
+          "lines": [
+            96
+          ]
+        },
+        {
+          "path": "grok_web/actions/post_video.py",
+          "lines": [
+            4,
+            23,
+            54,
+            55
+          ]
+        },
+        {
+          "path": "grok_web/agent_client.py",
+          "lines": [
+            22,
+            71,
+            132,
+            133,
+            136,
+            138,
+            843,
+            1374,
+            1433,
+            1487,
+            1745
+          ]
+        },
+        {
+          "path": "grok_web/auth_manager.py",
+          "lines": [
+            20,
+            21,
+            22,
+            99
+          ]
+        },
+        {
+          "path": "grok_web/client.py",
+          "lines": [
+            4,
+            19,
+            183,
+            185,
+            196,
+            202,
+            205,
+            206,
+            207,
+            212,
+            214,
+            237,
+            244,
+            252,
+            300,
+            313,
+            318,
+            321,
+            336,
+            337,
+            387,
+            504,
+            515,
+            601,
+            602,
+            606,
+            609,
+            621,
+            622,
+            671,
+            686,
+            697,
+            810,
+            818,
+            820,
+            888,
+            901,
+            904,
+            906,
+            915,
+            917,
+            946,
+            954,
+            1061,
+            1300,
+            2251,
+            2252,
+            3249,
+            4943,
+            5306,
+            5458,
+            5472,
+            5887,
+            5931,
+            6290,
+            6921,
+            7188,
+            7271,
+            7302,
+            8579
+          ]
+        },
+        {
+          "path": "grok_web/pool/__init__.py",
+          "lines": [
+            24,
+            41,
+            45,
+            49,
+            54
+          ]
+        },
+        {
+          "path": "grok_web/pool/job.py",
+          "lines": [
+            1,
+            3
+          ]
+        },
+        {
+          "path": "grok_web/pool/persistence.py",
+          "lines": [
+            1,
+            3
+          ]
+        },
+        {
+          "path": "grok_web/pool/worker.py",
+          "lines": [
+            1,
+            3
+          ]
+        },
+        {
+          "path": "grok_web/pool/worker_pool.py",
+          "lines": [
+            3,
+            18,
+            19,
+            20,
+            21,
+            68,
+            102,
+            222,
+            355
+          ]
+        },
+        {
+          "path": "grok_web/selectors.py",
+          "lines": [
+            138
+          ]
+        },
+        {
+          "path": "pyproject.toml",
+          "lines": [
+            28
+          ]
+        },
+        {
+          "path": "scripts/dump_grok_banner.py",
+          "lines": [
+            25,
+            189,
+            190,
+            211,
+            236,
+            295
+          ]
+        },
+        {
+          "path": "tests/integration/__init__.py",
+          "lines": [
+            4
+          ]
+        },
+        {
+          "path": "tests/integration/test_workflows.py",
+          "lines": [
+            107
+          ]
+        },
+        {
+          "path": "tests/test_extension_lifecycle.py",
+          "lines": [
+            5
+          ]
+        },
+        {
+          "path": "tests/test_uploaded_source_signal.py",
+          "lines": [
+            10
+          ]
+        },
+        {
+          "path": "uv.lock",
+          "lines": [
+            6,
+            15,
+            17,
+            125,
+            140
+          ]
+        }
+      ]
+    },
+    {
+      "id": "R16",
+      "kind": "python-sdk-preview",
+      "wave": "W1",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R17",
+      "kind": "optional-python-sdk",
+      "wave": "W3",
+      "complexity": "high",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R18",
+      "kind": "test-infrastructure",
+      "wave": "W1",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R19",
+      "kind": "python-sdk-distribution",
+      "wave": "W3",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "R20",
+      "kind": "transitive-distribution",
+      "wave": "W1",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    },
+    {
+      "id": "P03",
+      "repository": "sudoprivacy/sudocode",
+      "kind": "agent-skill-integration",
+      "wave": "W2",
+      "complexity": "medium",
+      "explanation": "Bundled browser plugin/skill and image delivery guidance; not a Python dependency of the entire engine.",
+      "acceptance": "Real model discovers suh from bundled skill -> interacts with fixture -> consumes screenshot; test failure recovery with a real API key locally.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "90a61a5",
+      "branch": "main",
+      "scope": "remote-default-and-local",
+      "evidence": [
+        {
+          "path": "docs/design/agent-context-storage-matrix.html",
+          "lines": [
+            286,
+            494
+          ]
+        },
+        {
+          "path": "docs/design/image-handling-non-user-facing.html",
+          "lines": [
+            112,
+            125,
+            239,
+            240,
+            242,
+            312,
+            334,
+            424,
+            426,
+            428,
+            430,
+            494,
+            515,
+            534
+          ]
+        },
+        {
+          "path": "rust/crates/engine-acp/src/vlm_describe.rs",
+          "lines": [
+            74
+          ]
+        },
+        {
+          "path": "rust/crates/plugins/bundled/browser/.sudocode-plugin/plugin.json",
+          "lines": [
+            4
+          ]
+        },
+        {
+          "path": "rust/crates/plugins/bundled/browser/skills/browser/SKILL.md",
+          "lines": [
+            29,
+            32
+          ]
+        },
+        {
+          "path": "sudo-code-roadmap.html",
+          "lines": [
+            257,
+            536,
+            629
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P04",
+      "repository": "sudoprivacy/sudograph",
+      "kind": "workflow-examples",
+      "wave": "W1",
+      "complexity": "medium",
+      "explanation": "Three YAML connector examples contain Python module commands; examples, not proven engine runtime dependency.",
+      "acceptance": "Execute a maintained download example -> verify file contents and downstream node input; repair stale flags before changing backend.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "5f5f4c3",
+      "branch": "main",
+      "scope": "remote-default-and-local",
+      "evidence": [
+        {
+          "path": "examples/ruzu-clinical.yaml",
+          "lines": [
+            62,
+            66,
+            70,
+            74
+          ]
+        },
+        {
+          "path": "examples/weiwai-capitalisation.yaml",
+          "lines": [
+            31,
+            35
+          ]
+        },
+        {
+          "path": "examples/weiwai-real.yaml",
+          "lines": [
+            88
+          ]
+        }
+      ]
+    },
+    {
+      "id": "B02",
+      "repository": "sudoprivacy/sudohand",
+      "kind": "target",
+      "wave": "M0-M3",
+      "complexity": "high",
+      "explanation": "Rust migration target; main differs from parity PR #27",
+      "acceptance": "Pass behavior, installation and steering gates before downstream defaults change.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "c62b244",
+      "branch": "main",
+      "scope": "remote-default",
+      "evidence": []
+    },
+    {
+      "id": "D03",
+      "repository": "sudoprivacy/sudostack",
+      "kind": "documentation",
+      "wave": "D",
+      "complexity": "low",
+      "explanation": "Architecture README, generator and generated diagram references.",
+      "acceptance": "Update current architecture source and regenerate diagrams; preserve historical statements with date.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "6ece323",
+      "branch": "main",
+      "scope": "remote-default-and-local",
+      "evidence": [
+        {
+          "path": "README.md",
+          "lines": [
+            147,
+            241
+          ]
+        },
+        {
+          "path": "docs/_build/build_arch.py",
+          "lines": [
+            53,
+            56
+          ]
+        },
+        {
+          "path": "docs/architecture.html",
+          "lines": [
+            178,
+            181
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P05",
+      "repository": "sudoprivacy/sudowork",
+      "kind": "runtime-packaging-ci",
+      "wave": "W2",
+      "complexity": "high",
+      "explanation": "Vendored Python, aidb wrapper, stdout capture, result sidechannel, login helper and Electron E2E.",
+      "acceptance": "Fresh install -> agent discovers browser -> fill local form -> screenshot delivered to conversation -> restart app -> repeat; Electron/CDP and rollback.",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "revision": "0c8a5bb",
+      "branch": "dev",
+      "scope": "remote-default-and-local",
+      "evidence": [
+        {
+          "path": ".github/workflows/README.md",
+          "lines": [
+            26
+          ]
+        },
+        {
+          "path": ".github/workflows/_build-reusable.yml",
+          "lines": [
+            100,
+            112,
+            116,
+            119,
+            122,
+            125
+          ]
+        },
+        {
+          "path": ".github/workflows/pr-e2e-artifacts.yml",
+          "lines": [
+            56,
+            70
+          ]
+        },
+        {
+          "path": ".github/workflows/pr-integration-smoke.yml",
+          "lines": [
+            42
+          ]
+        },
+        {
+          "path": ".github/workflows/update-ai-dev-browser.yml",
+          "lines": [
+            1,
+            7,
+            22,
+            26,
+            31,
+            32,
+            34,
+            37,
+            39
+          ]
+        },
+        {
+          "path": ".gitmodules",
+          "lines": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "lines": [
+            233,
+            235,
+            242,
+            248,
+            252,
+            253,
+            259,
+            270,
+            275,
+            290
+          ]
+        },
+        {
+          "path": "apps/desktop/electron-builder.yml",
+          "lines": [
+            38,
+            39,
+            175,
+            182,
+            322,
+            325,
+            327,
+            352,
+            355
+          ]
+        },
+        {
+          "path": "apps/desktop/hook/node/src/index.ts",
+          "lines": [
+            106,
+            108,
+            109,
+            117,
+            119
+          ]
+        },
+        {
+          "path": "apps/desktop/hook/node/src/process/AdbStdoutCapture.ts",
+          "lines": [
+            3,
+            32,
+            34,
+            35,
+            37,
+            41,
+            115,
+            119,
+            228,
+            234,
+            260,
+            267
+          ]
+        },
+        {
+          "path": "apps/desktop/hook/node/src/process/SudoclawConfigGuard.ts",
+          "lines": [
+            91
+          ]
+        },
+        {
+          "path": "apps/desktop/resources/pwdLogin/pwd_fill.py",
+          "lines": [
+            75,
+            84,
+            115,
+            242,
+            252
+          ]
+        },
+        {
+          "path": "apps/desktop/resources/sudoclaw-bin/browser_helper.py",
+          "lines": [
+            9,
+            27,
+            36,
+            38,
+            49,
+            50,
+            62,
+            66,
+            94,
+            100,
+            112,
+            144,
+            145,
+            159,
+            194,
+            195,
+            196
+          ]
+        },
+        {
+          "path": "apps/desktop/scripts/spikes/pwd_login_secret_read_spike.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/skills/_builtin/browser/SKILL.md",
+          "lines": [
+            12,
+            15
+          ]
+        },
+        {
+          "path": "apps/desktop/src/agent/acp/acpConnectors.ts",
+          "lines": [
+            244,
+            248,
+            276,
+            277,
+            721,
+            723,
+            732,
+            733,
+            735,
+            736,
+            738
+          ]
+        },
+        {
+          "path": "apps/desktop/src/agent/acp/inferToolFailure.ts",
+          "lines": [
+            13
+          ]
+        },
+        {
+          "path": "apps/desktop/src/agent/codex/handlers/CodexToolHandlers.ts",
+          "lines": [
+            198,
+            200
+          ]
+        },
+        {
+          "path": "apps/desktop/src/common/navigation/NavigationInterceptor.ts",
+          "lines": [
+            12,
+            14,
+            20,
+            26,
+            27,
+            31,
+            35,
+            117,
+            120,
+            124,
+            130,
+            143,
+            165,
+            191,
+            256,
+            262,
+            264,
+            275,
+            286,
+            317,
+            352
+          ]
+        },
+        {
+          "path": "apps/desktop/src/common/navigation/index.ts",
+          "lines": [
+            10,
+            11
+          ]
+        },
+        {
+          "path": "apps/desktop/src/common/presets/assistantPresets.ts",
+          "lines": [
+            27
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/initStorage.ts",
+          "lines": [
+            540,
+            541,
+            543,
+            545,
+            552,
+            553,
+            558,
+            559,
+            560,
+            569,
+            573,
+            580,
+            597,
+            599,
+            668,
+            669,
+            908,
+            910
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/services/pwdLogin/memorySafety.ts",
+          "lines": [
+            50
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/services/pwdLogin/pwdLoginService.ts",
+          "lines": [
+            233
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/services/python/PythonRuntimeService.ts",
+          "lines": [
+            175,
+            223,
+            232,
+            237,
+            239,
+            258
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/services/serviceManager/ServiceManager.ts",
+          "lines": [
+            462,
+            463,
+            472,
+            473,
+            476,
+            480,
+            485,
+            500,
+            536,
+            544,
+            971
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/services/sudoclaw/AdbResultSidechannel.ts",
+          "lines": [
+            8,
+            15,
+            16,
+            17,
+            147
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/services/sudoclaw/SudoclawInstallService.ts",
+          "lines": [
+            533,
+            538,
+            586
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/services/transcription/TranscriptionService.ts",
+          "lines": [
+            17
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/task/AcpAgent.ts",
+          "lines": [
+            2675
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/task/presetRuntime.ts",
+          "lines": [
+            91,
+            105
+          ]
+        },
+        {
+          "path": "apps/desktop/src/process/utils/previewUtils.ts",
+          "lines": [
+            31,
+            57
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/README.md",
+          "lines": [
+            3,
+            15
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/cases/acp-session-preserved-after-error.yaml",
+          "lines": [
+            32
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/cases/scode-interrupt-queue-batched-flush.yaml",
+          "lines": [
+            14
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/cases/scode-resume-after-model-switch.yaml",
+          "lines": [
+            13
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/cases/scode-resume-after-restart.yaml",
+          "lines": [
+            20
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/cases/sidebar-nav-by-text.yaml",
+          "lines": [
+            11
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/generate.py",
+          "lines": [
+            40,
+            43,
+            53,
+            63,
+            73,
+            83,
+            89,
+            96,
+            110,
+            116,
+            133,
+            144
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/live_smokes/auto_interrupt_live_smoke.py",
+          "lines": [
+            54,
+            55,
+            56
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/live_smokes/batched_flush_live_smoke.py",
+          "lines": [
+            4,
+            44,
+            45,
+            46,
+            97
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/_ui_ready.py",
+          "lines": [
+            21
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/assert_contains_any.py",
+          "lines": [
+            18
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/assert_not_contains.py",
+          "lines": [
+            16
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/connect.py",
+          "lines": [
+            5
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/db_audit.py",
+          "lines": [
+            137,
+            141
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/dismiss_init_dialog.py",
+          "lines": [
+            23
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/get_page_text.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/js_eval.py",
+          "lines": [
+            5
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/judge.py",
+          "lines": [
+            12
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/mouse_click.py",
+          "lines": [
+            3,
+            25,
+            26
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/paste_clipboard_image_file.py",
+          "lines": [
+            5,
+            24
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/press_key.py",
+          "lines": [
+            8
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/reset_conversation.py",
+          "lines": [
+            18
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/restart_app.py",
+          "lines": [
+            29
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/stop_conversation.py",
+          "lines": [
+            10
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/type_text.py",
+          "lines": [
+            5
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/wait_for_response.py",
+          "lines": [
+            18
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/ops/wait_for_text.py",
+          "lines": [
+            20
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/click.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/get_attribute.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/get_text.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/is_displayed.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/key_down.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/key_up.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/pointer_down.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/pointer_move.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/pointer_up.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/screenshot.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/primitives/scroll.py",
+          "lines": [
+            7
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/restart_electron.py",
+          "lines": [
+            153,
+            154
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/e2e/utils.py",
+          "lines": [
+            10
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/integration/browser_port_isolation.py",
+          "lines": [
+            4,
+            98,
+            99,
+            126,
+            140
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/integration/managed_agent_ipc.py",
+          "lines": [
+            23
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/unit/adbResultSidechannel.test.ts",
+          "lines": [
+            29
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/unit/adbStdoutCapture.test.ts",
+          "lines": [
+            66,
+            70,
+            71,
+            72,
+            73,
+            75,
+            87,
+            89,
+            91,
+            108,
+            134,
+            154
+          ]
+        },
+        {
+          "path": "apps/desktop/tests/unit/navigationInterceptor.test.ts",
+          "lines": [
+            21,
+            34,
+            35,
+            39,
+            52,
+            55,
+            61,
+            64,
+            76,
+            120
+          ]
+        },
+        {
+          "path": "docs/ai-dev-browser-sidechannel-spec.md",
+          "lines": [
+            1,
+            3,
+            4,
+            6,
+            12,
+            13,
+            14,
+            22,
+            38,
+            58,
+            77,
+            78,
+            155,
+            156,
+            157,
+            165
+          ]
+        },
+        {
+          "path": "docs/plan-browser-bypass-phase1-findings.md",
+          "lines": [
+            27,
+            40,
+            47,
+            48,
+            54
+          ]
+        },
+        {
+          "path": "docs/plans/2026-06-13-channel-voice-transcription-design.md",
+          "lines": [
+            39
+          ]
+        },
+        {
+          "path": "docs/plans/2026-06-13-pwd-login-autofill-design.md",
+          "lines": [
+            7,
+            18,
+            47,
+            49,
+            53,
+            89,
+            105
+          ]
+        },
+        {
+          "path": "docs/plans/2026-06-13-pwd-login-autofill-spike-findings.md",
+          "lines": [
+            10,
+            26
+          ]
+        },
+        {
+          "path": "docs/plans/2026-07-01-conversation-interrupt-and-queue.html",
+          "lines": [
+            58,
+            60,
+            61,
+            194,
+            209
+          ]
+        },
+        {
+          "path": "docs/plans/lis8-harness-evidence.md",
+          "lines": [
+            30
+          ]
+        },
+        {
+          "path": "packages/common/src/assistantTypes.ts",
+          "lines": [
+            67
+          ]
+        },
+        {
+          "path": "packages/host-bridge/src/ipcBridge.ts",
+          "lines": [
+            863,
+            3141
+          ]
+        },
+        {
+          "path": "packages/renderer/src/pages/conversation/preview/context/PreviewContext.tsx",
+          "lines": [
+            573
+          ]
+        },
+        {
+          "path": "sudo-code-roadmap.html",
+          "lines": [
+            257,
+            535,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "id": "R21",
+      "kind": "bundled-python-skill",
+      "wave": "W3",
+      "complexity": "medium",
+      "status": "identified",
+      "owner": null,
+      "migration_pr": null,
+      "live_evidence": null,
+      "visibility": "restricted",
+      "details": "Maintained in the access-controlled migration ledger."
+    }
+  ]
+}

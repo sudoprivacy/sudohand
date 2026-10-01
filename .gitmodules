@@ -1,0 +1,3 @@
+[submodule "references/ai-dev-browser"]
+	path = references/ai-dev-browser
+	url = https://github.com/sudoprivacy/ai-dev-browser.git

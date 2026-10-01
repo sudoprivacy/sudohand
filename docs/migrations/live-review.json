@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "platform": "Windows",
+  "transport": "Real local Chrome over CDP",
+  "sudohand_commit": "045202ed16e58527743d00006ddececf79471a93",
+  "adb_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "adb_version": "0.51.1",
+  "cli_calls": 39,
+  "scope": "Real local Chrome over CDP, local HTML and public example.com; no local extension, desktop, VLM or complete suite acceptance.",
+  "form_result": {
+    "rust": "Saved: Review passed",
+    "python": "Saved: Review passed"
+  },
+  "observations": {
+    "drag": {
+      "rust": {
+        "left": 0,
+        "events": [
+          {
+            "type": "mousedown",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 0,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 0,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 0,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 0,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 0,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 0,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 0,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 0,
+            "trusted": true
+          },
+          {
+            "type": "mouseup",
+            "buttons": 0,
+            "trusted": true
+          }
+        ]
+      },
+      "python": {
+        "left": 220,
+        "events": [
+          {
+            "type": "mousedown",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mousemove",
+            "buttons": 1,
+            "trusted": true
+          },
+          {
+            "type": "mouseup",
+            "buttons": 0,
+            "trusted": true
+          }
+        ]
+      }
+    },
+    "nonexistent_click": {
+      "rust": {
+        "exit": 0,
+        "clicked": false,
+        "error": "not found",
+        "retryable": null
+      },
+      "python": {
+        "exit": 4,
+        "clicked": false,
+        "error": "not found",
+        "retryable": false
+      }
+    },
+    "viewport_after_next_process": {
+      "rust": {
+        "width": 1600,
+        "height": 950
+      },
+      "python": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    "deterministic_js_exception": {
+      "rust": {
+        "exit": 9,
+        "classification": "io",
+        "retryable": null
+      },
+      "python": {
+        "exit": 1,
+        "classification": "error",
+        "retryable": false
+      }
+    },
+    "public_page": {
+      "url": "https://example.com",
+      "rust_title": "Example Domain"
+    }
+  },
+  "missing_cli_surface": [
+    "page_record_start",
+    "page_record_stop",
+    "page_pdf --paper",
+    "page_pdf --paper-width 90mm",
+    "download_link --frame"
+  ],
+  "static_only_parameter_differences": [
+    "mouse_click --human-like",
+    "mouse_move --human-like",
+    "page_pdf --margin",
+    "page_pdf --prefer-css-page-size"
+  ],
+  "not_verified": [
+    "Full extension transport",
+    "Desktop",
+    "VLM/real model tool selection",
+    "Electron/CEF",
+    "Complete OOPIF and iframe download workflows",
+    "Full acceptance suite"
+  ],
+  "cleanup": "Both test browser ports were closed.",
+  "evidence_note": "Sanitized summary of observed live runs. This is not an automated regression suite or a claim of full parity. Original CLI transcript and screenshots were retained locally; migration M1/M2 must turn the failing journeys into durable regression tests."
+}
