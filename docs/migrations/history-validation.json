@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "platform": "Windows, Python 3.14.5, real local Chrome",
+  "reference": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "pr27": "045202ed16e58527743d00006ddececf79471a93",
+  "inventory": {
+    "command": "python scripts/audit_adb_reference.py --check",
+    "result": "passed",
+    "kind": "Static and effective-parser inventory consistency; not browser acceptance"
+  },
+  "storage": {
+    "script": "scripts/live_adb_history_review.py",
+    "record": "live-history-review.json",
+    "cli_calls": 14,
+    "runner": "live PTY",
+    "result": "Expected pinned observations reproduced: Python baseline bug, Rust draft survives reload"
+  },
+  "timeout": {
+    "command": "python -m pytest tests/integration/test_timeout_and_retry.py -v",
+    "cwd": "adb v0.51.1 checkout",
+    "runner": "live PTY",
+    "passed": 3,
+    "skipped": 0,
+    "seconds": 14.34,
+    "tests": [
+      "test_timeout_param_overrides_default",
+      "test_short_timeout_raises_without_retry",
+      "test_retry_on_timeout_opt_in_still_works"
+    ],
+    "limit": "Last test uses fast arithmetic with retry flag; it does not force timeout/rediscovery/replay"
+  },
+  "current_reference_cli_comparison": {
+    "script": "PR #27 scripts/cli_parity.py",
+    "arguments": "--suh <PR27-binary> --reference <adb-v0.51.1>",
+    "runner": "live PTY, actual --help subprocesses",
+    "exit": 1,
+    "missing_commands": ["page_record_start", "page_record_stop"],
+    "missing_flags": {
+      "download_link": ["--frame"],
+      "mouse_click": ["--human-like"],
+      "mouse_move": ["--human-like"],
+      "page_pdf": ["--margin", "--paper", "--prefer-css-page-size"]
+    },
+    "limit": "Help declaration comparison only; not exhaustive argument type, default, JSON or browser semantics validation"
+  }
+}
