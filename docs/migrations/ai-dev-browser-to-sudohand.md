@@ -41,12 +41,12 @@
 
 ### 2.1 首批运行时验收与持续 audit（2026-10-02）
 
-在 PR #27 的实现上接入迁移基线，并修复可信拖拽的 `buttons`、跨进程窄屏视口、HTML id／XPath 点击目标缺失的退出码、确定性 JS 异常分类及启动失败的退出码。旧观察保留为历史记录；新证据见 [browser-foundation-acceptance.json](browser-foundation-acceptance.json)。
+在 PR #27 的实现上接入迁移基线，并修复可信拖拽的 `buttons`、跨进程窄屏视口、HTML id／XPath 点击目标缺失的退出码、确定性 JS 异常分类及启动失败的退出码。旧观察保留为历史记录；新证据见 [browser-foundation-acceptance.json](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/browser-foundation-acceptance.json)。
 
 - Windows 本地 live PTY、真实 Chrome：31 次 CLI 调用，验证 7 条流程；另有 27 个 Chrome SDK 集成测试通过。
 - 真实 API key、Claude Opus 4.8：4 个工具选择／恢复场景、9 次模型请求。已知 id、失效定位器恢复、移动视口和拖拽均完成真实页面操作，并校验最终状态。该结果仅覆盖这些场景。
 - 模型曾把 `--html-id` 猜成 `--id`。新增 `suh describe --domain browser --with-args`，直接从 Clap 参数定义生成目录；最终实跑使用了正确参数。六个工具的首段说明共用于 SDK 文档、CLI help 和目录。
-- [CLI Steering Engineering](../cli-steering-audit.md) 已固定来源与 commit，写入根 `AGENTS.md`；支持复用现有 checkout 或一条命令下载验证。上游目前私有，因此采用可选 reference，公共 CI 不需要私有仓库权限。
+- [CLI Steering Engineering](https://github.com/sudoprivacy/sudohand/blob/main/docs/cli-steering-audit.md) 已固定来源与 commit，写入根 `AGENTS.md`；支持复用现有 checkout 或一条命令下载验证。上游目前私有，因此采用可选 reference，公共 CI 不需要私有仓库权限。
 - CI 自动运行命令契约和真实 Chrome 流程；提供付费模型测试的手动入口。当前仓库尚未配置 `ANTHROPIC_API_KEY` secret，模型验收已用本机现有配置完成，不能把普通 CI 通过称为模型验收通过。
 
 下一步按调用方验收：sudowork 的 `browser` 包装器、发现列表、退出码、截图 sidechannel 和实际 Electron／agent 流程；再推进其他消费者。录制、PDF、SDK 深层依赖、源码许可追溯和发行／归档门槛继续保留。

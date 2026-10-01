@@ -4,6 +4,10 @@ Reference: `sudoprivacy/ai-dev-browser` commit
 `94170d23f65f5f9140792d1de4a158c086a39325` (2026-09-13).
 Starting sudohand revision: `c62b244a43d53bb87e1f14e97c5858ce41480745`.
 
+This document records the older v0.38.1 parity work. The current migration
+baseline is v0.51.1; additional acceptance and remaining gaps are tracked in the
+[migration plan](migrations/ai-dev-browser-to-sudohand.md).
+
 **Scope: browser capability parity against the pinned reference, with the
 intentional compatibility choices below.** This does not promise identical
 Python imports, every Python regex construct, or identical behavior on every
@@ -73,6 +77,11 @@ not counted as failures or passes.
   the test explicitly records that bug with a fresh subsequent tab listing.
 - `storage_get/storage_set` use working Tab storage methods. The pinned reference
   CLI calls nonexistent `get_local_storage/set_local_storage` methods.
+- `window_set` persists explicit dimensions for managed CDP browsers. The
+  v0.38.1 reference can lose its override when a CLI session disconnects.
+  Page parity records that reset separately and requires Rust to retain the
+  requested 900×600 viewport across processes; the foundation suite also checks
+  mobile layout and a newly opened tab.
 - `browser_connect` honors the transport environment variable; an explicit flag
   wins. The reference's standalone CLI currently forces its default CDP value.
 - One extension profile owns a live bridge at a time. A second profile is
@@ -93,8 +102,10 @@ not counted as failures or passes.
   correct reference behavior rather than duplicating lost/duplicate work.
 - The Rust SDK supplies equivalent capabilities through Rust traits and futures;
   it does not provide Python source/import compatibility.
-- ai-dev-browser is AGPL-3.0; sudohand is MIT. The extension and new implementations
-  are independent, not copied reference assets relabeled as MIT.
+- ai-dev-browser is AGPL-3.0; sudohand currently declares MIT. The later
+  [source provenance review](migrations/source-provenance-review.json) found
+  shared source fragments, so the earlier independence claim is not sufficient.
+  Source provenance remains a release gate in the migration plan.
 
 ## Reproduction
 

@@ -41,7 +41,10 @@ def main():
     thread.start()
     try:
         with tempfile.TemporaryDirectory(prefix='suh-page-parity-') as temporary:
-            env = dict(os.environ, HOME=temporary, USERPROFILE=temporary,
+            # Keep the OS account environment intact for installed Windows
+            # Chrome. browser_start supplies a disposable profile; all commands
+            # use its explicit port and artifacts stay in this fixture dir.
+            env = dict(os.environ,
                        PYTHONPATH=str(args.reference.resolve()), PYTHONIOENCODING='utf-8',
                        AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false')
             def invoke(command):
@@ -247,14 +250,23 @@ def main():
                 # Disable per-command default viewport enforcement before
                 # observing the custom window size on another CLI connection.
                 env['AI_DEV_BROWSER_VIEWPORT'] = 'native'
+                native_viewport = python('js_evaluate', *connection, '--expression', '[innerWidth,innerHeight]')['result']
                 expected_viewport = python('window_set', *connection, '--width', '900', '--height', '600')
                 actual_viewport = rust('window_set', *connection, '--width', '900', '--height', '600')
                 # Additive persistence feedback is new; the original dimensions
                 # still match. Cross-process persistence has its own live suite.
                 assert actual_viewport.pop('viewport_persisted') is True, actual_viewport
                 assert actual_viewport == expected_viewport, (actual_viewport, expected_viewport)
-                viewport = equivalent('js_evaluate', '--expression', '[innerWidth,innerHeight]')
-                assert viewport['result'] == [900,600], viewport
+                reference_viewport = python('js_evaluate', *connection, '--expression', '[innerWidth,innerHeight]')
+                viewport = rust('js_evaluate', *connection, '--expression', '[innerWidth,innerHeight]')
+                assert viewport.pop('result') == [900,600], viewport
+                # The v0.38.1 reference has no viewport persistence. Chrome may
+                # reset the override when that CLI's CDP session detaches. Keep
+                # its observed limitation separate from the replacement gate.
+                observed_reference = reference_viewport.pop('result')
+                assert observed_reference in (native_viewport, [900,600]), observed_reference
+                assert viewport == reference_viewport, (viewport, reference_viewport)
+                print(f'PASS viewport: Rust retained 900x600; old reference observed {observed_reference} (native {native_viewport})', flush=True)
                 equivalent('dialog_respond')
                 for implementation in (python, rust):
                     created = implementation('tab_new', *connection)
