@@ -2,6 +2,8 @@
 
 更新：2026-10-01 · 状态：依赖盘点与参考基线已建立，运行时迁移尚未完成。
 
+[ShareOne 阅读版](https://s.shareone.vip/md/ai-dev-browser-to-sudohand) · [规划 PR #28](https://github.com/sudoprivacy/sudohand/pull/28)
+
 ## 1. 决策与范围
 
 **以 sudohand 作为后续工具层的主仓库；ai-dev-browser（下文 adb）在迁移期继续维护，所有归档门槛通过后再归档。** 现在不能把依赖里的包名替换完就宣布迁移成功。
@@ -171,6 +173,6 @@ sudohand 的 [README](https://github.com/sudoprivacy/sudohand/blob/c62b244a43d53
 
 ## 11. 文档发布与维护
 
-本文件是规划源文件，通过 ShareOne skill 的 `--remote-url` 绑定 GitHub 内容，按 Markdown 原格式发布。首次源地址为 `docs/adb-migration-plan` 分支的本文件；分享记录保存在同目录 `shareone.json`。
+本文件是规划源文件，通过 ShareOne skill 的 `--remote-url` 绑定 GitHub 内容，按 Markdown 原格式发布。正式源地址为 `main` 分支的本文件；分享记录保存在同目录 `shareone.json`。
 
-合并规划 PR 后，将同一 share 的 remote URL 更新到 `main`，保持 share ID 和分享链接不变；确认源已成功刷新后再删除临时分支。后续只需更新源文件，ShareOne 在访问时检查远端变更。发布验收要实际打开分享页，检查中文标题、表格和链接。
+首次发布曾使用规划分支；合并后将同一 share 绑定到 `main`，保持 share ID 和分享链接不变。后续更新源文件后，ShareOne 在访问时检查远端变更；需要立即同步时使用 skill 的 `refresh_share.js`。发布验收要实际打开分享页，检查中文标题、表格和链接。

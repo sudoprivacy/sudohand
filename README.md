@@ -58,8 +58,9 @@ value types, `MacBackend`, `FakeBackend`) and wired up as
 `suh desktop status|apps|screenshot|ax-tree|activate|click|type|paste-file|key`;
 (+ `locate|workflows|flow` via the `agent` feature);
 `sudohand-core` carries the shared `Error`, JSON-CLI contract, base64 and
-permission probing. `sudohand-browser` is ported from `ai-dev-browser` — all 56 tools as
-`suh browser <tool>` with adb's names/flags/JSON, plus
+permission probing. `sudohand-browser` implements browser operations as
+`suh browser <tool>` with adb-style names, flags and JSON; the migration plan
+tracks current coverage and unresolved behavior differences. It also provides
 `workflows|flow` via the `flow` feature (built-ins `form-signup`,
 `page-extract`). `sudohand-fs` (`suh fs read|write|ls|stat|mkdir|rm|mv|cp|exists`)
 and `sudohand-shell` (`suh shell run`) are thin over `std::fs` /
