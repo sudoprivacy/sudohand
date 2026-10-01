@@ -44,13 +44,23 @@ with Android's `adb`.
 
 ## Status
 
+The browser replacement is being tracked in the
+[ai-dev-browser migration plan](docs/migrations/ai-dev-browser-to-sudohand.md),
+with a [dependency inventory](docs/migrations/dependency-inventory.json) and a
+[pinned v0.51.1 reference](references/README.md). The plan distinguishes command
+coverage from real browser acceptance and downstream migration. Keep
+ai-dev-browser maintained until the archive gates pass.
+The [ShareOne reading view](https://s.shareone.vip/md/ai-dev-browser-to-sudohand)
+follows the plan source on `main`.
+
 `sudohand-desktop` is ported from `ai-desktop-control` (backend trait,
 value types, `MacBackend`, `FakeBackend`) and wired up as
 `suh desktop status|apps|screenshot|ax-tree|activate|click|type|paste-file|key`;
 (+ `locate|workflows|flow` via the `agent` feature);
 `sudohand-core` carries the shared `Error`, JSON-CLI contract, base64 and
-permission probing. `sudohand-browser` is ported from `ai-dev-browser` — all 56 tools as
-`suh browser <tool>` with adb's names/flags/JSON, plus
+permission probing. `sudohand-browser` implements browser operations as
+`suh browser <tool>` with adb-style names, flags and JSON; the migration plan
+tracks current coverage and unresolved behavior differences. It also provides
 `workflows|flow` via the `flow` feature (built-ins `form-signup`,
 `page-extract`). `sudohand-fs` (`suh fs read|write|ls|stat|mkdir|rm|mv|cp|exists`)
 and `sudohand-shell` (`suh shell run`) are thin over `std::fs` /
