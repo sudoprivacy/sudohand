@@ -4,14 +4,13 @@
 intent into real actions on a computer: **browser · desktop ·
 filesystem · shell**, as one Rust workspace.
 
-*sudohand*: the hands of the sudo agent stack — the counterpart to the
-thinking layer. Sibling to [`apeiron`](https://github.com/joezhoujinjing/apeiron)
-(the service/brain layer); sudohand is what actually touches the machine.
+*sudohand*: the hands of the sudo agent stack — the layer that performs
+computer operations for an agent or application.
 The CLI binary is `suh` (**s**uper **u**ser **h**and).
 
 Each actuator is a **library plus a thin CLI** and contains **no
 policy, sessions, auditing, confirmation prompts, or transport** — an
-integrator (e.g. `apeiron-bridge`) links the crates and wraps them
+integrator links the crates and wraps them
 with those concerns. Success prints JSON to stdout; failure prints
 `{"error":{...}}` to stderr and exits 1.
 

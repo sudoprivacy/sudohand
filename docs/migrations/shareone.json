@@ -17,7 +17,6 @@
     "checks": [
       "Chinese title and archive gates",
       "Inventory counts 142 / 123",
-      "Apeiron section",
       "Reference link",
       "No desktop horizontal overflow",
       "Desktop and inventory screenshots visually inspected"

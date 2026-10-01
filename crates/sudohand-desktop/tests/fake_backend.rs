@@ -1,4 +1,4 @@
-//! The fake backend is what consumers (apeiron-bridge) test their policy and
+//! The fake backend is what consumers test their policy and
 //! session logic against; verify its recorded shape here so a regression shows
 //! up in this crate rather than only downstream.
 

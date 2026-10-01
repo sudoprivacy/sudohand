@@ -735,7 +735,7 @@ impl DesktopBackend for MacBackend {
                 Error::not_found(format!("window {window_id} does not belong to {bundle_id}"))
             })?;
         let tmp = std::env::temp_dir().join(format!(
-            "apeiron-bridge-shot-{}-{}.png",
+            "sudohand-shot-{}-{}.png",
             std::process::id(),
             window_id
         ));

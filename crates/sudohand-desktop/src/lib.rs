@@ -5,7 +5,7 @@
 //!
 //! It is a library; the CLI lives in `sudohand-cli` (`suh desktop <cmd>`).
 //! It deliberately contains no policy, sessions, auditing, confirmation
-//! prompts, or transport — an integrator such as `apeiron-bridge` wraps the
+//! prompts, or transport — an integrator wraps the
 //! [`DesktopBackend`] with those and exposes it over the wire.
 //!
 //! - [`backend`] — OS-neutral value types, the [`DesktopBackend`] trait, and

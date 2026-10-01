@@ -6,7 +6,7 @@
 //! actuator crate follows ([`print_result`]), a dependency-free base64
 //! encoder ([`b64`]) and OS permission probing ([`permissions`]). It
 //! contains **no** policy, sessions, auditing, confirmation prompts, or
-//! transport — those belong to an integrator (e.g. apeiron-bridge) that
+//! transport — those belong to an integrator that
 //! links these crates and wraps them with such concerns.
 //!
 //! The wire contract (inherited unchanged from adc / ai-desktop-control):

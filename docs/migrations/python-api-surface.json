@@ -1,0 +1,439 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "baseline_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "acceptance_status": "Inventory only; no equivalence claim",
+  "exports": {
+    "ai_dev_browser/__init__.py": {
+      "count": 34,
+      "names": [
+        "__version__",
+        "DEFAULT_BASE_DIR",
+        "DEFAULT_PROFILE_DIR",
+        "DEFAULT_COOKIES_FILE",
+        "DEFAULT_COOKIES_DIR",
+        "DEFAULT_PROFILE_PREFIX",
+        "DEFAULT_DEBUG_HOST",
+        "DEFAULT_DEBUG_PORT",
+        "DEFAULT_PORT_RANGE",
+        "find_chrome",
+        "launch_chrome",
+        "is_port_in_use",
+        "find_debug_chromes",
+        "find_workspace_chromes",
+        "get_available_port",
+        "get_pid_on_port",
+        "BrowserPool",
+        "Job",
+        "JobResult",
+        "JobStatus",
+        "Worker",
+        "WorkerStats",
+        "WorkerStatus",
+        "PoolState",
+        "load_state",
+        "save_state",
+        "ProfileManager",
+        "ProfileMode",
+        "core",
+        "cdp",
+        "browser_start",
+        "browser_stop",
+        "browser_cleanup",
+        "connect_browser"
+      ]
+    },
+    "ai_dev_browser/core/__init__.py": {
+      "count": 86,
+      "names": [
+        "click_by_ref",
+        "drag_by_ref",
+        "focus_by_ref",
+        "highlight_by_ref",
+        "hover_by_ref",
+        "html_by_ref",
+        "screenshot_by_ref",
+        "select_by_ref",
+        "type_by_ref",
+        "upload_by_ref",
+        "press_key",
+        "browser_start",
+        "browser_stop",
+        "browser_list",
+        "browser_connect",
+        "browser_disconnect",
+        "browser_cleanup",
+        "DEFAULT_BASE_DIR",
+        "DEFAULT_PROFILE_DIR",
+        "DEFAULT_COOKIES_FILE",
+        "DEFAULT_COOKIES_DIR",
+        "DEFAULT_PROFILE_PREFIX",
+        "DEFAULT_DEBUG_HOST",
+        "DEFAULT_DEBUG_PORT",
+        "DEFAULT_PORT_RANGE",
+        "DEFAULT_REUSE_STRATEGY",
+        "ReuseStrategy",
+        "get_workspace_slug",
+        "get_workspace_profile_dir",
+        "find_chrome",
+        "launch_chrome",
+        "cdp_send",
+        "is_port_in_use",
+        "find_debug_chromes",
+        "find_workspace_chromes",
+        "get_available_port",
+        "get_pid_on_port",
+        "connect_browser",
+        "get_active_tab",
+        "graceful_close_browser",
+        "page_goto",
+        "page_reload",
+        "page_wait_ready",
+        "page_wait_url",
+        "click_by_text",
+        "click_row_by_text",
+        "type_by_text",
+        "page_scroll",
+        "page_wait_element",
+        "find_by_text",
+        "find_by_html_id",
+        "click_by_html_id",
+        "find_by_xpath",
+        "click_by_xpath",
+        "select_text",
+        "MatchResult",
+        "JsEvaluationError",
+        "RecordingError",
+        "page_discover",
+        "tab_new",
+        "tab_list",
+        "tab_switch",
+        "tab_close",
+        "page_info",
+        "page_html",
+        "page_pdf",
+        "js_evaluate",
+        "page_screenshot",
+        "page_record_start",
+        "page_record_stop",
+        "mouse_move",
+        "mouse_click",
+        "mouse_drag",
+        "window_set",
+        "page_emulate_focus",
+        "storage_get",
+        "storage_set",
+        "download",
+        "download_link",
+        "dialog_respond",
+        "login_interactive",
+        "cookies_load",
+        "cookies_save",
+        "cookies_extract_live",
+        "cookies_import",
+        "cookies_extract_offline"
+      ]
+    },
+    "ai_dev_browser/pool/__init__.py": {
+      "count": 10,
+      "names": [
+        "BrowserPool",
+        "Job",
+        "JobResult",
+        "JobStatus",
+        "Worker",
+        "WorkerStats",
+        "WorkerStatus",
+        "PoolState",
+        "load_state",
+        "save_state"
+      ]
+    }
+  },
+  "package_configuration_references": {
+    "AI_DEV_BROWSER_TAB_URL": [
+      {
+        "path": "ai_dev_browser/_cli.py",
+        "line": 253
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 122
+      },
+      {
+        "path": "ai_dev_browser/core/connection.py",
+        "line": 411
+      },
+      {
+        "path": "ai_dev_browser/core/connection.py",
+        "line": 418
+      }
+    ],
+    "AI_DEV_BROWSER_TRANSPORT": [
+      {
+        "path": "ai_dev_browser/_cli.py",
+        "line": 265
+      },
+      {
+        "path": "ai_dev_browser/core/browser.py",
+        "line": 626
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 38
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 42
+      }
+    ],
+    "AI_DEV_BROWSER_REDIRECT": [
+      {
+        "path": "ai_dev_browser/_cli.py",
+        "line": 403
+      },
+      {
+        "path": "ai_dev_browser/_cli.py",
+        "line": 405
+      }
+    ],
+    "AI_DEV_BROWSER_OS_CLICK": [
+      {
+        "path": "ai_dev_browser/core/ax.py",
+        "line": 594
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 82
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 86
+      },
+      {
+        "path": "ai_dev_browser/core/elements.py",
+        "line": 872
+      }
+    ],
+    "AI_DEV_BROWSER_OUTPUT_DIR": [
+      {
+        "path": "ai_dev_browser/core/ax.py",
+        "line": 1137
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 32
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 128
+      },
+      {
+        "path": "ai_dev_browser/core/page.py",
+        "line": 243
+      },
+      {
+        "path": "ai_dev_browser/core/page.py",
+        "line": 606
+      },
+      {
+        "path": "ai_dev_browser/core/recording.py",
+        "line": 76
+      }
+    ],
+    "AI_DEV_BROWSER_IMAGE_CAP_MAX_BYTES": [
+      {
+        "path": "ai_dev_browser/core/ax.py",
+        "line": 1145
+      },
+      {
+        "path": "ai_dev_browser/core/page.py",
+        "line": 268
+      },
+      {
+        "path": "ai_dev_browser/core/_image_cap.py",
+        "line": 39
+      }
+    ],
+    "AI_DEV_BROWSER_IMAGE_CAP_MAX_DIMENSION": [
+      {
+        "path": "ai_dev_browser/core/ax.py",
+        "line": 1146
+      },
+      {
+        "path": "ai_dev_browser/core/page.py",
+        "line": 269
+      },
+      {
+        "path": "ai_dev_browser/core/_image_cap.py",
+        "line": 40
+      }
+    ],
+    "AI_DEV_BROWSER_HEADLESS": [
+      {
+        "path": "ai_dev_browser/core/browser.py",
+        "line": 83
+      },
+      {
+        "path": "ai_dev_browser/core/browser.py",
+        "line": 88
+      },
+      {
+        "path": "ai_dev_browser/core/browser.py",
+        "line": 232
+      },
+      {
+        "path": "ai_dev_browser/core/page.py",
+        "line": 642
+      }
+    ],
+    "AI_DEV_BROWSER_STARTUP_TIMEOUT": [
+      {
+        "path": "ai_dev_browser/core/browser.py",
+        "line": 248
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 58
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 63
+      }
+    ],
+    "AI_DEV_BROWSER_MATCH_PROXY": [
+      {
+        "path": "ai_dev_browser/core/browser.py",
+        "line": 303
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 103
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 107
+      }
+    ],
+    "AI_DEV_BROWSER_GEO_ENDPOINT": [
+      {
+        "path": "ai_dev_browser/core/browser.py",
+        "line": 304
+      },
+      {
+        "path": "ai_dev_browser/core/browser.py",
+        "line": 514
+      },
+      {
+        "path": "ai_dev_browser/core/identity.py",
+        "line": 34
+      }
+    ],
+    "AI_DEV_BROWSER_VIEWPORT": [
+      {
+        "path": "ai_dev_browser/core/cdp.py",
+        "line": 172
+      },
+      {
+        "path": "ai_dev_browser/core/cdp.py",
+        "line": 176
+      },
+      {
+        "path": "ai_dev_browser/core/chrome.py",
+        "line": 290
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 164
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 171
+      },
+      {
+        "path": "ai_dev_browser/core/connection.py",
+        "line": 503
+      },
+      {
+        "path": "ai_dev_browser/core/window.py",
+        "line": 29
+      }
+    ],
+    "AI_DEV_BROWSER_CHROME": [
+      {
+        "path": "ai_dev_browser/core/chrome.py",
+        "line": 32
+      },
+      {
+        "path": "ai_dev_browser/core/chrome.py",
+        "line": 39
+      },
+      {
+        "path": "ai_dev_browser/core/chrome.py",
+        "line": 57
+      }
+    ],
+    "AI_DEV_BROWSER_DIALOG": [
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 201
+      },
+      {
+        "path": "ai_dev_browser/core/config.py",
+        "line": 207
+      },
+      {
+        "path": "ai_dev_browser/core/connection.py",
+        "line": 438
+      },
+      {
+        "path": "ai_dev_browser/core/dialog.py",
+        "line": 124
+      },
+      {
+        "path": "ai_dev_browser/core/dialog.py",
+        "line": 125
+      },
+      {
+        "path": "ai_dev_browser/core/download.py",
+        "line": 99
+      }
+    ],
+    "AI_DEV_BROWSER_PORT": [
+      {
+        "path": "ai_dev_browser/core/connection.py",
+        "line": 327
+      },
+      {
+        "path": "ai_dev_browser/core/connection.py",
+        "line": 339
+      },
+      {
+        "path": "ai_dev_browser/core/connection.py",
+        "line": 364
+      }
+    ],
+    "AI_DEV_BROWSER_RECORDING_DIR": [
+      {
+        "path": "ai_dev_browser/core/recording.py",
+        "line": 22
+      }
+    ]
+  },
+  "consumer_protocol_examples": [
+    "AI_DEV_BROWSER_CALL_ID",
+    "AI_DEV_BROWSER_SIDECHANNEL_URL",
+    "AI_DEV_BROWSER_SIDECHANNEL_SECRET"
+  ],
+  "other_surfaces": [
+    "ProfileManager and ProfileMode methods",
+    "CDP protocol domains and events",
+    "Tab and connection lifecycles",
+    "Private helpers imported by actual consumers"
+  ],
+  "limitations": [
+    "Export lists overlap and include constants and types, not only functions",
+    "Does not enumerate class methods, all submodules, generated CDP commands or private APIs",
+    "Configuration references include documentation and code; values/defaults/precedence still require contract mapping"
+  ]
+}

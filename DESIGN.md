@@ -1,12 +1,12 @@
 # sudohand — design & consolidation plan
 
 ## Why this repo
-`ai-dev-browser` (adb) and `ai-desktop-control` (adc) are already Rust,
-already share the same DNA — OS-neutral backend trait + real backend +
-fake backend, library + thin CLI, `{"error":{}}` / exit-1 contract, "no
-policy/session/transport; integrators wrap it." Filesystem and shell are
-the other two local-computer-control primitives. Consolidating all four
-under one workspace gives integrators (apeiron-bridge) one dependency,
+This Rust workspace consolidates browser capabilities from
+`ai-dev-browser` (adb), desktop capabilities from `ai-desktop-control`
+(adc), and filesystem and shell primitives. The adb reference is Python;
+its Rust replacement and downstream migration are tracked in the
+[migration plan](docs/migrations/ai-dev-browser-to-sudohand.md).
+Consolidating the actuator crates gives integrators one workspace,
 aligned versioning, shared CI, and shared value types / error model /
 encoding / permission probing.
 
@@ -21,8 +21,8 @@ per-crate platform `cfg` stay clean (desktop is macOS-only via AX/CG;
 browser/fs/shell are cross-platform). Integrators link only what they need.
 
 ## Naming decisions (2026-08-29)
-- Umbrella = **sudohand** (the "hands" of the sudo agent stack; pairs with
-  apeiron; distinctive). Considered: `computer-control` (plain but generic),
+- Umbrella = **sudohand** (the "hands" of the sudo agent stack).
+  Considered: `computer-control` (plain but generic),
   `genie` (rejected — saturated in AI: Google Genie / Netflix Genie / WSL
   `genie`; and it connotes the assistant/brain layer, not the actuator
   layer), a Greek "action/doing" word (fine but obscure).
@@ -31,26 +31,25 @@ browser/fs/shell are cross-platform). Integrators link only what they need.
   vs ai-**desktop**-control). Use domain subcommands: `suh browser|desktop|fs|shell`.
 
 ## RED LINE: shell
-Per the apeiron-bridge capability model, **shell is not exposed to agents
-by default** (file/browser/desktop are the three authorized domains).
-Resolution: the library layer stays neutral and *may* contain
-`sudohand-shell`, but the bridge enforces the red line by simply not
-linking/registering it. A `shell` crate existing ≠ an agent getting a
-shell. If shell is ever exposed, it needs its own authz model
+**`suh serve` does not expose shell operations.** The library layer
+contains `sudohand-shell`; other integrators choose which capabilities
+to link and register. A `shell` crate existing does not grant an agent
+access to it. Exposing shell requires an explicit authorization model
 (command allow-list, cwd fence, timeout, dry-run), separate from the others.
 
 ## Sequencing
 1. **core**: extract shared `Error` / value types / JSON-CLI / permission
    probing from adc & adb into `sudohand-core`.
-2. Re-home **adc → sudohand-desktop** and **adb → sudohand-browser** as member
-   crates depending on core (public interface unchanged; integrators unaffected).
+2. Port **adc → sudohand-desktop** and **adb → sudohand-browser** as member
+   crates depending on core. Verify the CLI contract and migrate SDK consumers
+   explicitly; matching command names does not preserve Python object APIs.
 3. Add **sudohand-fs** (thin over `std::fs`) and **sudohand-shell**
    (thin over `std::process::Command`), each with fake backends for
    side-effect-free tests.
 4. Fill in the `suh` CLI subcommand trees.
 
-Do the port after adb/adc each stabilized (both just landed their current
-state) — this is the right moment, before they grow more divergent conventions.
+Use the migration plan's pinned reference and acceptance gates to track
+browser coverage, releases and consumer cutovers.
 
 ## One workflow engine: sudohand-flow (2026-08-30, revised)
 There is a single workflow engine, `sudohand-flow`: a `Workflow` is a Rust
