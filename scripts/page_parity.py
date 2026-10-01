@@ -267,6 +267,10 @@ def main():
                 assert observed_reference in (native_viewport, [900,600]), observed_reference
                 assert viewport == reference_viewport, (viewport, reference_viewport)
                 print(f'PASS viewport: Rust retained 900x600; old reference observed {observed_reference} (native {native_viewport})', flush=True)
+                # Later coordinate comparisons need the same layout in both
+                # implementations. The old CLI reapplies this explicit setting
+                # on each connection; Rust also retains its recorded override.
+                env['AI_DEV_BROWSER_VIEWPORT'] = '900x600'
                 equivalent('dialog_respond')
                 for implementation in (python, rust):
                     created = implementation('tab_new', *connection)

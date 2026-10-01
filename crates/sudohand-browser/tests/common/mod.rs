@@ -10,6 +10,7 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use sudohand_browser::browser::{browser_start, StartOptions};
 use sudohand_browser::chrome::Headless;
@@ -91,16 +92,23 @@ impl Drop for Chrome {
     }
 }
 
-fn ephemeral_port() -> u16 {
-    TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port()
+fn test_browser_port() -> u16 {
+    // Windows CI observed a bind collision after releasing a bind(:0) probe.
+    // Such a port can become an outgoing client's source port. Stay below the
+    // usual ephemeral ranges, and allocate distinct candidates across sibling
+    // tests before dropping the bind probe. Occupied ports are still skipped.
+    static NEXT_PORT: AtomicUsize = AtomicUsize::new(0);
+    for _ in 0..10_000 {
+        let port = 20_000 + (NEXT_PORT.fetch_add(1, Ordering::Relaxed) % 10_000) as u16;
+        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
+            return port;
+        }
+    }
+    panic!("no browser fixture port available in 20000-29999");
 }
 
 pub async fn start_chrome() -> Chrome {
-    start_with_port(Some(ephemeral_port())).await
+    start_with_port(Some(test_browser_port())).await
 }
 
 /// A Chrome on the preferred 9350-9450 band, where `browser_list` scans.
