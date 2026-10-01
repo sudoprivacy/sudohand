@@ -92,6 +92,10 @@ def build(reference):
             getattr(module, name), requires_tab=meta["requires_tab"]
         )
         fn = getattr(core, name)
+        source_path = fn.__module__.replace(".", "/") + ".py"
+        assert by_tool.get(name) in by_source.get(source_path, []), (
+            f"Tool implementation missing from capability sources: {name} -> {source_path}"
+        )
         options = []
         for a in parser._actions:
             options.append(
@@ -113,7 +117,7 @@ def build(reference):
                 **meta,
                 "capability": by_tool.get(name),
                 "signature": str(inspect.signature(fn)),
-                "source": fn.__module__.replace(".", "/") + ".py",
+                "source": source_path,
                 "summary": parser.description,
                 "failure_hint": _parse_docstring_failure(doc),
                 "options": options,

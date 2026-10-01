@@ -22,7 +22,7 @@
     {
       "id": "C02", "name": "浏览器发现、所有权与清理",
       "tools": ["browser_list", "browser_cleanup"],
-      "sources": ["ai_dev_browser/core/cleanup.py", "ai_dev_browser/core/port.py", "ai_dev_browser/core/registry.py"],
+      "sources": ["ai_dev_browser/core/cleanup.py", "ai_dev_browser/core/port.py", "ai_dev_browser/core/registry.py", "ai_dev_browser/core/browser.py"],
       "history": ["df15c13", "427cdb6", "0e83b31", "1e3c1d8"],
       "tests": ["tests/integration/test_browser_inventory.py", "tests/integration/test_port_detection.py", "tests/integration/test_stealth_defaults.py"],
       "consumers": ["P02", "P05", "R10"],
@@ -46,7 +46,7 @@
     {
       "id": "C04", "name": "扩展、连接、账号、弹窗与断开",
       "tools": ["browser_connect", "browser_disconnect"],
-      "sources": ["ai_dev_browser/core/extension.py", "ai_dev_browser/core/ext_bridge.py", "ai_dev_browser/extension/background.js", "ai_dev_browser/extension/manifest.json"],
+      "sources": ["ai_dev_browser/core/extension.py", "ai_dev_browser/core/ext_bridge.py", "ai_dev_browser/extension/background.js", "ai_dev_browser/extension/manifest.json", "ai_dev_browser/core/browser.py"],
       "history": ["21a91fb", "7417b9d", "acb4dd9", "370bc82", "d56989c", "14e112f", "c257a8f", "5be14dc", "a63f2ef", "369eeda"],
       "tests": ["tests/integration/test_ext_bridge.py", "tests/integration/test_cli_extension_workflows.py", "tests/integration/test_recording_workflows.py"],
       "consumers": ["P01", "P05", "R17"],
@@ -70,7 +70,7 @@
     {
       "id": "C06", "name": "导航、等待、对话框与焦点",
       "tools": ["page_goto", "page_reload", "page_wait_ready", "page_wait_url", "dialog_respond", "page_emulate_focus"],
-      "sources": ["ai_dev_browser/core/navigation.py", "ai_dev_browser/core/dialog.py", "ai_dev_browser/core/page.py"],
+      "sources": ["ai_dev_browser/core/navigation.py", "ai_dev_browser/core/dialog.py", "ai_dev_browser/core/page.py", "ai_dev_browser/core/window.py"],
       "history": ["f48df34", "296d91a", "8d09fc6", "81b09ec"],
       "tests": ["tests/integration/test_page_goto.py", "tests/integration/test_page_reload.py", "tests/integration/test_dialog_auto.py", "tests/integration/test_dialog_respond.py"],
       "consumers": ["P01", "P02", "P05", "R10"],
@@ -82,7 +82,7 @@
     {
       "id": "C07", "name": "发现、AX/DOM 与 ref",
       "tools": ["page_discover", "page_wait_element"],
-      "sources": ["ai_dev_browser/core/ax.py", "ai_dev_browser/core/snapshot.py", "ai_dev_browser/core/_ref.py"],
+      "sources": ["ai_dev_browser/core/ax.py", "ai_dev_browser/core/snapshot.py", "ai_dev_browser/core/_ref.py", "ai_dev_browser/core/elements.py"],
       "history": ["b6722e0", "15bc05c", "b1ac66e", "c4d8f61", "f4784d7", "dfbb3a4", "0316df0"],
       "tests": ["tests/integration/test_page_discover.py", "tests/integration/test_dom_discovery.py", "tests/integration/test_page_wait_element.py"],
       "consumers": ["P01", "P02", "P03", "P05"],
@@ -106,7 +106,7 @@
     {
       "id": "C09", "name": "点击与结果确认",
       "tools": ["click_by_ref", "click_by_text", "click_by_html_id", "click_by_xpath", "click_row_by_text"],
-      "sources": ["ai_dev_browser/core/elements.py", "ai_dev_browser/core/overlays.py"],
+      "sources": ["ai_dev_browser/core/elements.py", "ai_dev_browser/core/overlays.py", "ai_dev_browser/core/ax.py"],
       "history": ["6180600", "77e555b", "e95e961", "4039ab7"],
       "tests": ["tests/integration/test_click_robust.py", "tests/integration/test_trusted_click.py", "tests/integration/test_locator_workflows.py"],
       "consumers": ["P01", "P03", "P05", "R12", "R15"],
@@ -118,7 +118,7 @@
     {
       "id": "C10", "name": "输入、按键和文本选择",
       "tools": ["type_by_ref", "type_by_text", "press_key", "select_text"],
-      "sources": ["ai_dev_browser/core/elements.py"],
+      "sources": ["ai_dev_browser/core/elements.py", "ai_dev_browser/core/ax.py"],
       "history": ["04a4582", "4f4fb5c", "0bcdeaa", "8a2de56", "e1502a5", "35f2f09"],
       "tests": ["tests/integration/test_press_key.py", "tests/integration/test_type_verified_fill.py", "tests/integration/test_select_text.py"],
       "consumers": ["P01", "P02", "P05", "R12", "R15"],
@@ -130,7 +130,7 @@
     {
       "id": "C11", "name": "鼠标、拖拽、滚动与人类化",
       "tools": ["mouse_move", "mouse_click", "mouse_drag", "page_scroll", "drag_by_ref"],
-      "sources": ["ai_dev_browser/core/mouse.py", "ai_dev_browser/core/human.py"],
+      "sources": ["ai_dev_browser/core/mouse.py", "ai_dev_browser/core/human.py", "ai_dev_browser/core/ax.py", "ai_dev_browser/core/elements.py"],
       "history": ["425c6cb", "ec3b215", "5e4c26f", "9eaace0", "3e3c12c", "e3c868e"],
       "tests": ["tests/integration/test_mouse_drag_move.py", "tests/integration/test_mouse_click.py", "tests/integration/test_page_scroll_verify.py", "tests/integration/test_scroll_embedded_target.py"],
       "consumers": ["P03", "P05", "R10"],
@@ -142,7 +142,7 @@
     {
       "id": "C12", "name": "元素级动作与上传",
       "tools": ["focus_by_ref", "hover_by_ref", "highlight_by_ref", "html_by_ref", "select_by_ref", "upload_by_ref"],
-      "sources": ["ai_dev_browser/core/_element.py"],
+      "sources": ["ai_dev_browser/core/_element.py", "ai_dev_browser/core/ax.py"],
       "history": ["0bfa572", "f8bb8c8", "2303521"],
       "tests": ["tests/integration/test_find_and_interact_workflows.py", "tests/integration/test_locator_workflows.py"],
       "consumers": ["P01", "P02", "R03", "R21"],
@@ -178,7 +178,7 @@
     {
       "id": "C15", "name": "截图、坐标和图像预算",
       "tools": ["page_screenshot", "screenshot_by_ref"],
-      "sources": ["ai_dev_browser/core/snapshot.py", "ai_dev_browser/core/_image_cap.py"],
+      "sources": ["ai_dev_browser/core/snapshot.py", "ai_dev_browser/core/_image_cap.py", "ai_dev_browser/core/page.py", "ai_dev_browser/core/ax.py"],
       "history": ["6531bd6", "128fa10", "51f5d1a", "7c25952", "4e2c874", "6ef2499", "754efed", "d5c4218"],
       "tests": ["tests/integration/test_screenshot_coords.py", "tests/integration/test_image_cap.py"],
       "consumers": ["P03", "P05", "R16", "R18"],

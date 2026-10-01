@@ -8237,7 +8237,12 @@
     {
       "path": "ai_dev_browser/core/ax.py",
       "capabilities": [
-        "C07"
+        "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "generated_cdp": false,
       "sha256_normalized": "75f542e54e1d2438f6667d6a2a6d3beba88cb51f6179548bec02f5449e1d7fc3",
@@ -8487,7 +8492,9 @@
     {
       "path": "ai_dev_browser/core/browser.py",
       "capabilities": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "generated_cdp": false,
       "sha256_normalized": "4c7a6978af2172cb92f837c68058b678d3a02db9683d3bde21a1b44913c610cb",
@@ -9293,9 +9300,11 @@
     {
       "path": "ai_dev_browser/core/elements.py",
       "capabilities": [
+        "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11"
       ],
       "generated_cdp": false,
       "sha256_normalized": "32b02ff4620829fbc0c9f2ce2cad03ec7a691bf1b1a0b2c86c4f6421743a92db",
@@ -10228,6 +10237,7 @@
       "capabilities": [
         "C06",
         "C13",
+        "C15",
         "C16"
       ],
       "generated_cdp": false,
@@ -10827,6 +10837,7 @@
     {
       "path": "ai_dev_browser/core/window.py",
       "capabilities": [
+        "C06",
         "C14"
       ],
       "generated_cdp": false,
@@ -17661,6 +17672,7 @@
         "ai_dev_browser/tools/window_focus_emulation.py"
       ],
       "capabilities_by_current_path": [
+        "C06",
         "C14",
         "C26"
       ],
@@ -17756,6 +17768,7 @@
         "ai_dev_browser/core/mouse.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
@@ -17808,6 +17821,7 @@
         "tests/integration/test_workflows.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
@@ -17861,6 +17875,7 @@
       ],
       "capabilities_by_current_path": [
         "C06",
+        "C07",
         "C08",
         "C09",
         "C10",
@@ -18015,9 +18030,11 @@
       "capabilities_by_current_path": [
         "C05",
         "C06",
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C13",
         "C14",
         "C15",
@@ -18049,10 +18066,13 @@
       ],
       "capabilities_by_current_path": [
         "C06",
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C13",
+        "C15",
         "C16",
         "C26"
       ],
@@ -18086,6 +18106,7 @@
       "capabilities_by_current_path": [
         "C01",
         "C02",
+        "C04",
         "C06",
         "C07",
         "C15",
@@ -18106,6 +18127,11 @@
       ],
       "capabilities_by_current_path": [
         "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C15",
         "C26"
       ],
       "curated_anchors": []
@@ -18143,8 +18169,11 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
+        "C04",
         "C06",
         "C13",
+        "C15",
         "C16",
         "C26",
         "C27"
@@ -18182,6 +18211,8 @@
         "C08",
         "C09",
         "C10",
+        "C11",
+        "C12",
         "C13",
         "C15",
         "C16",
@@ -18214,7 +18245,9 @@
         "C08",
         "C09",
         "C10",
+        "C11",
         "C12",
+        "C15",
         "C26"
       ],
       "curated_anchors": []
@@ -18342,7 +18375,9 @@
         "ai_dev_browser/core/browser.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -18357,9 +18392,11 @@
         "pyproject.toml"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C26",
         "C27"
       ],
@@ -18379,6 +18416,9 @@
         "C08",
         "C09",
         "C10",
+        "C11",
+        "C12",
+        "C15",
         "C26"
       ],
       "curated_anchors": []
@@ -18392,9 +18432,11 @@
         "ai_dev_browser/core/elements.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C26"
       ],
       "curated_anchors": []
@@ -18425,11 +18467,14 @@
         "C01",
         "C02",
         "C03",
+        "C04",
         "C06",
         "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
+        "C12",
         "C15",
         "C24",
         "C26"
@@ -18485,7 +18530,9 @@
         "ai_dev_browser/core/process.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -18497,7 +18544,9 @@
         "ai_dev_browser/core/browser.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -18523,6 +18572,7 @@
         "C01",
         "C02",
         "C03",
+        "C04",
         "C22",
         "C26"
       ],
@@ -18872,6 +18922,7 @@
         "C03",
         "C06",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": []
@@ -18988,7 +19039,9 @@
         "ai_dev_browser/core/browser.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -19000,7 +19053,9 @@
         "ai_dev_browser/core/browser.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -19012,7 +19067,9 @@
         "ai_dev_browser/core/browser.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -19064,6 +19121,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": [
@@ -19082,6 +19140,7 @@
         "C06",
         "C11",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": []
@@ -19096,6 +19155,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": []
@@ -19110,6 +19170,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": []
@@ -19124,6 +19185,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": [
@@ -19354,6 +19416,8 @@
       "capabilities_by_current_path": [
         "C07",
         "C08",
+        "C09",
+        "C10",
         "C11",
         "C12",
         "C15",
@@ -19448,6 +19512,7 @@
       "capabilities_by_current_path": [
         "C01",
         "C02",
+        "C04",
         "C05",
         "C06",
         "C07",
@@ -19524,6 +19589,7 @@
         "C08",
         "C09",
         "C10",
+        "C11",
         "C12",
         "C13",
         "C14",
@@ -19565,6 +19631,7 @@
       "capabilities_by_current_path": [
         "C01",
         "C02",
+        "C04",
         "C05",
         "C19",
         "C23",
@@ -19593,6 +19660,7 @@
         "C01",
         "C02",
         "C03",
+        "C04",
         "C05",
         "C19",
         "C23",
@@ -19636,6 +19704,7 @@
         "C01",
         "C02",
         "C03",
+        "C04",
         "C26"
       ],
       "curated_anchors": []
@@ -19760,6 +19829,8 @@
         "C08",
         "C09",
         "C10",
+        "C11",
+        "C12",
         "C13",
         "C15",
         "C16",
@@ -19780,7 +19851,9 @@
         "tests/integration/test_workspace_workflows.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": [
         "C01"
@@ -19819,6 +19892,7 @@
         "C09",
         "C10",
         "C11",
+        "C12",
         "C13",
         "C15",
         "C16"
@@ -19857,6 +19931,10 @@
       "capabilities_by_current_path": [
         "C06",
         "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
         "C13",
         "C15",
         "C16"
@@ -19872,7 +19950,9 @@
         "tests/integration/test_startup_timeout.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": [
         "C01"
@@ -19892,9 +19972,11 @@
         "tests/integration/test_locator_workflows.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C26"
       ],
       "curated_anchors": []
@@ -19942,9 +20024,12 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
+        "C04",
         "C05",
         "C06",
         "C13",
+        "C15",
         "C16",
         "C19",
         "C23",
@@ -19967,9 +20052,12 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
+        "C04",
         "C05",
         "C06",
         "C13",
+        "C15",
         "C16",
         "C19",
         "C23",
@@ -20026,7 +20114,10 @@
         "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "curated_anchors": []
     },
@@ -20043,6 +20134,7 @@
         "C08",
         "C09",
         "C10",
+        "C11",
         "C15"
       ],
       "curated_anchors": [
@@ -20063,6 +20155,9 @@
         "C08",
         "C09",
         "C10",
+        "C11",
+        "C12",
+        "C15",
         "C26"
       ],
       "curated_anchors": [
@@ -20081,6 +20176,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16",
         "C23"
       ],
@@ -20118,6 +20214,7 @@
         "C08",
         "C09",
         "C10",
+        "C11",
         "C15",
         "C26"
       ],
@@ -20165,7 +20262,9 @@
         "ai_dev_browser/core/chrome.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -20193,7 +20292,9 @@
         "ai_dev_browser/core/chrome.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -20213,7 +20314,12 @@
         "C03",
         "C06",
         "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
         "C13",
+        "C15",
         "C16",
         "C26"
       ],
@@ -20230,7 +20336,9 @@
         "ai_dev_browser/core/chrome.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -20270,7 +20378,9 @@
         "ai_dev_browser/core/chrome.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": [
         "C03"
@@ -20299,7 +20409,9 @@
         "tests/integration/test_ci_integration.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": [
         "C03"
@@ -20475,6 +20587,10 @@
       "capabilities_by_current_path": [
         "C06",
         "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
         "C13",
         "C15",
         "C16",
@@ -20517,6 +20633,10 @@
       "capabilities_by_current_path": [
         "C06",
         "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
         "C13",
         "C15",
         "C16"
@@ -20626,6 +20746,7 @@
         "tests/integration/test_select_text.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
@@ -20645,9 +20766,11 @@
         "tests/integration/test_scroll_embedded_target.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11"
       ],
       "curated_anchors": []
     },
@@ -20675,7 +20798,11 @@
       ],
       "capabilities_by_current_path": [
         "C07",
+        "C09",
         "C10",
+        "C11",
+        "C12",
+        "C15",
         "C26",
         "C27"
       ],
@@ -20692,7 +20819,12 @@
         "tests/integration/test_press_key.py"
       ],
       "capabilities_by_current_path": [
-        "C07"
+        "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "curated_anchors": [
         "C10"
@@ -20724,7 +20856,12 @@
         "ai_dev_browser/core/ax.py"
       ],
       "capabilities_by_current_path": [
-        "C07"
+        "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "curated_anchors": [
         "C10"
@@ -20748,6 +20885,7 @@
         "C08",
         "C09",
         "C10",
+        "C11",
         "C15",
         "C26",
         "C27"
@@ -20783,6 +20921,7 @@
         "C08",
         "C09",
         "C10",
+        "C11",
         "C15"
       ],
       "curated_anchors": []
@@ -20795,9 +20934,11 @@
         "ai_dev_browser/core/elements.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11"
       ],
       "curated_anchors": []
     },
@@ -20811,9 +20952,11 @@
         "tests/integration/test_page_wait_element.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C27"
       ],
       "curated_anchors": [
@@ -20829,9 +20972,11 @@
         "tests/integration/test_page_wait_element.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11"
       ],
       "curated_anchors": [
         "C08"
@@ -20845,9 +20990,11 @@
         "ai_dev_browser/core/elements.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11"
       ],
       "curated_anchors": []
     },
@@ -20865,7 +21012,10 @@
         "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "curated_anchors": []
     },
@@ -20877,9 +21027,11 @@
         "ai_dev_browser/core/elements.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11"
       ],
       "curated_anchors": []
     },
@@ -20896,7 +21048,10 @@
         "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "curated_anchors": [
         "C10"
@@ -20915,6 +21070,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16",
         "C23"
       ],
@@ -20932,10 +21088,13 @@
       ],
       "capabilities_by_current_path": [
         "C06",
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": []
@@ -20953,6 +21112,7 @@
         "C08",
         "C09",
         "C10",
+        "C11",
         "C15"
       ],
       "curated_anchors": []
@@ -20973,6 +21133,7 @@
       "capabilities_by_current_path": [
         "C03",
         "C05",
+        "C06",
         "C14",
         "C19",
         "C23"
@@ -21005,6 +21166,7 @@
         "tests/integration/test_viewport.py"
       ],
       "capabilities_by_current_path": [
+        "C06",
         "C14"
       ],
       "curated_anchors": []
@@ -21064,7 +21226,9 @@
         "tests/integration/test_multi_profile_pool.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": [
         "C01"
@@ -21116,9 +21280,11 @@
         "tests/integration/test_trusted_click.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11"
       ],
       "curated_anchors": [
         "C09"
@@ -21154,9 +21320,11 @@
         "tests/integration/test_download_link.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C18",
         "C26"
       ],
@@ -21204,6 +21372,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": [
@@ -21260,6 +21429,7 @@
       "capabilities_by_current_path": [
         "C01",
         "C02",
+        "C04",
         "C27"
       ],
       "curated_anchors": [
@@ -21283,6 +21453,7 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
         "C04",
         "C26",
         "C27"
@@ -21379,6 +21550,7 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
         "C04",
         "C26"
       ],
@@ -21399,6 +21571,7 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
         "C04",
         "C05",
         "C19",
@@ -21416,7 +21589,9 @@
         "ai_dev_browser/core/browser.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -21435,6 +21610,7 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
         "C04",
         "C05",
         "C19",
@@ -21472,7 +21648,9 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
         "C03",
+        "C04",
         "C27"
       ],
       "curated_anchors": []
@@ -21490,6 +21668,7 @@
       "capabilities_by_current_path": [
         "C01",
         "C02",
+        "C04",
         "C27"
       ],
       "curated_anchors": [
@@ -21527,6 +21706,7 @@
       "capabilities_by_current_path": [
         "C01",
         "C02",
+        "C04",
         "C26",
         "C27"
       ],
@@ -21545,7 +21725,8 @@
       ],
       "capabilities_by_current_path": [
         "C01",
-        "C02"
+        "C02",
+        "C04"
       ],
       "curated_anchors": [
         "C02"
@@ -21566,6 +21747,9 @@
         "C08",
         "C09",
         "C10",
+        "C11",
+        "C12",
+        "C15",
         "C27"
       ],
       "curated_anchors": [
@@ -21587,6 +21771,9 @@
         "C08",
         "C09",
         "C10",
+        "C11",
+        "C12",
+        "C15",
         "C27"
       ],
       "curated_anchors": [
@@ -21602,7 +21789,12 @@
         "tests/integration/test_click_robust.py"
       ],
       "capabilities_by_current_path": [
-        "C07"
+        "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "curated_anchors": [
         "C09"
@@ -21626,6 +21818,9 @@
         "C08",
         "C09",
         "C10",
+        "C11",
+        "C12",
+        "C15",
         "C27"
       ],
       "curated_anchors": []
@@ -21639,7 +21834,12 @@
         "tests/integration/test_click_robust.py"
       ],
       "capabilities_by_current_path": [
-        "C07"
+        "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "curated_anchors": []
     },
@@ -21669,6 +21869,7 @@
         "C01",
         "C02",
         "C03",
+        "C04",
         "C05",
         "C19",
         "C23",
@@ -21690,7 +21891,9 @@
       ],
       "capabilities_by_current_path": [
         "C01",
-        "C03"
+        "C02",
+        "C03",
+        "C04"
       ],
       "curated_anchors": [
         "C03"
@@ -21704,7 +21907,9 @@
         "ai_dev_browser/core/browser.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -21717,7 +21922,12 @@
         "tests/integration/test_click_robust.py"
       ],
       "capabilities_by_current_path": [
-        "C07"
+        "C07",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C15"
       ],
       "curated_anchors": [
         "C09"
@@ -21732,7 +21942,9 @@
         "tests/integration/test_proxy_identity.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": [
         "C03"
@@ -21839,6 +22051,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16",
         "C27"
       ],
@@ -21876,9 +22089,11 @@
         "tests/integration/test_download_link_frame.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C18",
         "C23",
         "C27"
@@ -21898,6 +22113,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16"
       ],
       "curated_anchors": [
@@ -21917,6 +22133,7 @@
       "capabilities_by_current_path": [
         "C02",
         "C05",
+        "C06",
         "C14",
         "C19",
         "C23"
@@ -21985,9 +22202,11 @@
         "tests/unit/test_find_hint.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
         "C10",
+        "C11",
         "C27"
       ],
       "curated_anchors": [
@@ -22018,7 +22237,9 @@
         "tests/unit/test_build_info.py"
       ],
       "capabilities_by_current_path": [
-        "C01"
+        "C01",
+        "C02",
+        "C04"
       ],
       "curated_anchors": []
     },
@@ -22031,9 +22252,11 @@
         "tests/integration/test_page_scroll_verify.py"
       ],
       "capabilities_by_current_path": [
+        "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C11"
       ],
       "curated_anchors": [
         "C11"
@@ -22140,6 +22363,7 @@
       ],
       "capabilities_by_current_path": [
         "C01",
+        "C02",
         "C04",
         "C23",
         "C26",
@@ -22237,6 +22461,7 @@
       "capabilities_by_current_path": [
         "C06",
         "C13",
+        "C15",
         "C16",
         "C17",
         "C26",
