@@ -69,7 +69,8 @@ async def main():
             # Chrome needs the real OS account environment on Windows. Its
             # disposable --user-data-dir supplies isolation; the CLI/bridge
             # keep their separate temporary home for extracted assets.
-            chrome = subprocess.Popen([args.chrome, '--headless=new', '--use-mock-keychain', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--enable-unsafe-extension-debugging', f'--remote-debugging-port={chrome_port}', f'--user-data-dir={root / "chrome"}', 'about:blank'], env=dict(os.environ), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            initial_page = ['--no-startup-window'] if args.startup_only else ['about:blank']
+            chrome = subprocess.Popen([args.chrome, '--headless=new', '--use-mock-keychain', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--enable-unsafe-extension-debugging', f'--remote-debugging-port={chrome_port}', f'--user-data-dir={root / "chrome"}', *initial_page], env=dict(os.environ), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             children.append(chrome)
             version = None
             for _ in range(100):
@@ -97,8 +98,33 @@ async def main():
                 assert setup['connected'] is False and setup['bridge_running'] is True, setup
                 extension_dir = setup['extension_dir']
             async with websockets.connect(version['webSocketDebuggerUrl']) as cdp:
-                before = await command(cdp, 'Target.getTargets')
-                personal = next(t for t in before['targetInfos'] if t['type'] == 'page')
+                create_page = None
+                if args.startup_only:
+                    # Reproduce the real startup gap: DevTools responds before
+                    # Chrome publishes its initial page. Use a second socket so
+                    # only one coroutine receives from each CDP connection.
+                    before = await command(cdp, 'Target.getTargets')
+                    assert not any(t['type'] == 'page' for t in before['targetInfos']), before
+                    async def publish_page():
+                        await asyncio.sleep(.25)
+                        async with websockets.connect(version['webSocketDebuggerUrl']) as creator:
+                            await command(creator, 'Target.createTarget', {'url': 'about:blank'})
+                    create_page = asyncio.create_task(publish_page())
+                try:
+                    async with asyncio.timeout(10):
+                        while True:
+                            before = await command(cdp, 'Target.getTargets')
+                            personal = next((t for t in before['targetInfos'] if t['type'] == 'page'), None)
+                            if personal is not None:
+                                break
+                            await asyncio.sleep(.1)
+                    if create_page is not None:
+                        await create_page
+                        print('PASS startup gap: DevTools with no page -> delayed real tab -> ready')
+                finally:
+                    if create_page is not None and not create_page.done():
+                        create_page.cancel()
+                        await asyncio.gather(create_page, return_exceptions=True)
                 loaded = await command(cdp, 'Extensions.loadUnpacked', {'path': extension_dir})
                 assert loaded.get('id'), loaded
                 if args.startup_only:

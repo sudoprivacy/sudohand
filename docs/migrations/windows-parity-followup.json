@@ -24,6 +24,11 @@
       "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36994672410/job/110798539840",
       "failure": "The PowerShell subprocess used to generate a DPAPI fixture timed out after 20 seconds, before the browser/cleanup journey",
       "status": "Replace the subprocess with direct CryptProtectData using the current Windows account. The trace does not distinguish PowerShell startup from its wrapped DPAPI call. Linux and macOS passed; all other Windows steps passed."
+    },
+    {
+      "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36996396060/job/110803991838",
+      "failure": "The startup-only extension fixture received an empty Target.getTargets result and raised StopIteration before loading the extension",
+      "status": "Windows DPAPI and complete differential teardown passed. Wait for the initial page, because the DevTools version endpoint becomes ready earlier. Startup-only now deterministically exercises this gap with real Chrome and a delayed real Target.createTarget."
     }
   ],
   "local_checks": {
@@ -51,7 +56,8 @@
     "differential_installed_chrome_limit": "Installed Chrome did not start under this suite's isolated HOME/USERPROFILE. Use the same Chrome for Testing build as CI for full differential acceptance; the failed local attempt did not reach the teardown change.",
     "final_differential_parity": "Passed with Chrome for Testing 154.0.8037.92 (the CI build): plaintext/DPAPI cookies, identity, live/pickle cookie migration, real Chrome proxy routing, scoped cleanup, external-browser preservation, stop-all ownership and process-tree teardown; temporary profile removal succeeded",
     "process_helpers": "All three bounded-capture and owned-descendant tests passed",
-    "direct_dpapi_final": "Full differential workflow passed after direct Win32 fixture generation and stronger assertions: exact GCM/legacy plaintext, invalid-tag/app-bound rejection, real Chrome identity/proxy/cookies, ownership cleanup and profile removal"
+    "direct_dpapi_final": "Full differential workflow passed after direct Win32 fixture generation and stronger assertions: exact GCM/legacy plaintext, invalid-tag/app-bound rejection, real Chrome identity/proxy/cookies, ownership cleanup and profile removal",
+    "delayed_initial_page": "Passed on both installed Chrome and Chrome for Testing 154.0.8037.92: empty real target list -> delayed real target -> extension load -> Rust bridge -> evaluation=42; existing personal bridge preserved"
   },
   "changes": [
     "Keep Chrome's OS account environment intact; only CLI and bridge asset extraction use the temporary home",
@@ -59,7 +65,8 @@
     "Serve the binary download fixture as application/octet-stream instead of text/html",
     "Print pool worker phases and pool status on wait failure without changing timeout budgets or assertions",
     "Capture owned direct Chrome process trees before cleanup assertions and wait for their termination before removing disposable profiles; preserve the OS environment for these direct Chrome launches too",
-    "Generate encrypted cookie fixtures through real CryptProtectData directly; assert exact decrypted GCM/legacy values and rejection of invalid-tag/app-bound entries in addition to Python/Rust equality"
+    "Generate encrypted cookie fixtures through real CryptProtectData directly; assert exact decrypted GCM/legacy values and rejection of invalid-tag/app-bound entries in addition to Python/Rust equality",
+    "Wait up to 10 seconds for a real initial page before extension loading; startup-only starts without a page, verifies that state, then creates a real page after a delay and continues through bridge handshake and evaluation"
   ],
   "limits": [
     "The local Windows account-environment problem is reproduced; it does not establish that every hosted timeout had the same cause",
