@@ -53,13 +53,14 @@
 
 ### 2.2 sudowork 可选后端与真实消费者验收（2026-10-02）
 
-[sudowork PR #1181](https://github.com/sudoprivacy/sudowork/pull/1181) 保留 `browser` 入口和默认 Python 后端，通过 `SUDOWORK_BROWSER_BACKEND=sudohand` 选择 Rust。测试固定 sudohand `ec9ae623`；旧后端使用 sudowork 当前固定的 adb `ec3b2151`，没有顺便升级 vendor。配置与回退步骤见 [接入说明](https://github.com/sudoprivacy/sudowork/blob/92beb4e7ea507e30f32a2c6760b34a4f0a67d53c/docs/tech/browser-backends.md)，机器记录见 [验收证据](https://github.com/sudoprivacy/sudowork/blob/92beb4e7ea507e30f32a2c6760b34a4f0a67d53c/docs/tech/browser-backend-acceptance.json)。
+[sudowork PR #1181](https://github.com/sudoprivacy/sudowork/pull/1181) 保留 `browser` 入口和默认 Python 后端，通过 `SUDOWORK_BROWSER_BACKEND=sudohand` 选择 Rust。测试固定 sudohand `ec9ae623`；旧后端使用 sudowork 当前固定的 adb `ec3b2151`，没有顺便升级 vendor。配置与回退步骤见 [接入说明](https://github.com/sudoprivacy/sudowork/blob/cabd0718d79c2c936de61056a658a1a39289f5c5/docs/tech/browser-backends.md)，机器记录见 [验收证据](https://github.com/sudoprivacy/sudowork/blob/cabd0718d79c2c936de61056a658a1a39289f5c5/docs/tech/browser-backend-acceptance.json)。
 
 - 包装器从所选后端生成目录，保留 JSON、退出码、产物路径与 sidechannel 关联。失败时不自动切换后端或重放动作。
 - 本地 live PTY、真实 Chrome、两后端共 31 次包装器调用：中文填写、可信提交且只提交一次、截图、刷新后收据、逐次 HTTP 结果关联、定位失败恢复及配置／参数错误通过。已加入 Windows/Linux PR CI。
 - 真实 Electron 应用、scode 0.2.21、Claude Opus 4.8、真实 API 凭据：Rust 使用 7 次成功 PowerShell 调用，完成预订并读对只存在于图像像素中的随机徽章；点击会话附件后实际加载 1600×950 截图。移除后端变量并重启应用，Python 使用 11 次成功 PowerShell 调用完成相同任务。两次最终验收均无失败工具调用。
 - 实测修复了 ACP 新配置未安装包装器、monorepo 开发路径找不到 Python 包、skill junction 无法被模型文件工具读取的问题。Windows skill 摘要和正文明确描述如何发现并调用独立 PowerShell 工具；修改摘要后须重启以清除索引缓存。
 - UI 测试等待附件生成并请求实际绘制帧，避免被遮挡的 Electron 虚拟列表尚未重绘时误点同名工作区条目。通过记录保留真实预览截图的哈希；早期失败没有计入通过结果。
+- 共享 skill 补充无 `ToolSearch` 宿主的原生 Windows shell 路径后，再跑 scode 真实模型／UI：9 次 PowerShell 调用、零失败工具、预订／读图／附件预览全部通过。条件式开头曾导致两次 Bash 失败，该措辞已撤回，失败保留在证据中；其他 ACP 宿主仍待单独验收。
 - [CLI steering 上游改进](https://github.com/sudoprivacy/cli-steering-engineering/pull/1) 已合入，并将本仓库引用更新至 `5f149174`。后续 audit 覆盖 skill 摘要、实际文件路径、延迟加载工具和第一条执行调用。
 
 本地 typecheck、应用构建和相关测试通过；全量 Windows 测试为 2799 通过、15 失败、31 跳过，15 项失败均在未修改基线上复现，未宣称全量通过。
