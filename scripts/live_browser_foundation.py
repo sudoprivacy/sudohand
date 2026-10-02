@@ -59,6 +59,7 @@ def main():
             viewport = browser.call('window_set', '--width', 390, '--height', 844)
             assert viewport['viewport_persisted'] is True, viewport
             browser.call('page_reload')
+            assert browser.call('page_wait_ready')['ready'] is True
             dimensions = browser.js('({width:innerWidth,height:innerHeight,mobile:getComputedStyle(document.querySelector("#mobile")).display})')
             assert dimensions == {'width': 390, 'height': 844, 'mobile': 'block'}, dimensions
             browser.call('window_set', '--height', 780)
@@ -69,10 +70,18 @@ def main():
             assert dimensions == [390, 780], dimensions
             report['checks'].append('mobile dimensions survive independent processes, reload, partial update and a new tab')
 
-            browser.call('storage_set', '--key', 'draft', '--value', 'migration draft 2026')
-            browser.call('page_reload')
-            assert browser.js('document.querySelector("#draft").textContent') == 'migration draft 2026'
-            report['checks'].append('saved draft is visible after reload')
+            # Independent calls choose a page target afresh. Once two pages
+            # exist, pin the whole workflow and wait for reload completion.
+            target = ['--tab-url', '?second=1']
+            before = browser.call('js_evaluate', *target, '--expression', 'document.querySelector("#draft").textContent')
+            assert before['result'] == 'EMPTY', before
+            browser.call('storage_set', *target, '--key', 'draft', '--value', 'migration draft 2026')
+            browser.call('page_reload', *target)
+            assert browser.call('page_wait_ready', *target)['ready'] is True
+            restored = browser.call('js_evaluate', *target, '--expression', 'document.querySelector("#draft").textContent')
+            assert restored['result'] == 'migration draft 2026', restored
+            assert restored['url_after'] == browser.url + '?second=1', restored
+            report['checks'].append('saved draft is visible after reload on the same explicitly selected tab')
         report['status'] = 'passed'
     finally:
         (args.output / 'foundation.json').write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding='utf-8')
