@@ -73,8 +73,10 @@
       "macOS",
       "Linux"
     ],
-    "status": "pending PR run",
-    "legacy_reference_retained": "94170d23f65f5f9140792d1de4a158c086a39325"
+    "status": "Current-reference declaration and real-browser steps passed on all three platforms; overall workflow pending, Windows stdio step failed and needs log review.",
+    "legacy_reference_retained": "94170d23f65f5f9140792d1de4a158c086a39325",
+    "tested_commit": "85474e5d1c6cb647b60243b9e482e013aa378dab",
+    "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37018744546"
   },
   "prior_unchanged_windows_failure": {
     "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37016817332/job/110869606662",
@@ -93,5 +95,102 @@
     "Argument types/choices/boolean or undisplayed defaults",
     "Grok SDK route, events, pool cancellation and restart failures",
     "Other consumers, installed releases and rollback"
-  ]
+  ],
+  "download_probe": {
+    "script": "scripts/live_download_completion_probe.py",
+    "status": "failed_acceptance_reproduced",
+    "execution": "Windows live PTY; Chrome 154; isolated profiles, explicit temporary fallback directory; local HTTP response delayed one second",
+    "exit_code": 1,
+    "backends": [
+      {
+        "backend": "python-old",
+        "reference_commit": "94170d23f65f5f9140792d1de4a158c086a39325",
+        "binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56",
+        "duration": 1.0479936000047019,
+        "result": {
+          "path": "slow.bin",
+          "success": true
+        },
+        "files_at_return": [],
+        "files_after_wait": [
+          {
+            "relative": "fallback\\slow.bin",
+            "bytes": "636f6e74726f6c6c656420646f776e6c6f616400ff"
+          }
+        ],
+        "download_history": [
+          {
+            "name": "slow.bin",
+            "path": "fallback/slow.bin",
+            "state": 2,
+            "danger": 0
+          }
+        ],
+        "returned_success_before_file": true,
+        "download_accepted": false
+      },
+      {
+        "backend": "python-current",
+        "reference_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+        "binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56",
+        "duration": 1.2360272000078112,
+        "result": {
+          "path": "slow.bin",
+          "success": true
+        },
+        "files_at_return": [],
+        "files_after_wait": [
+          {
+            "relative": "fallback\\slow.bin",
+            "bytes": "636f6e74726f6c6c656420646f776e6c6f616400ff"
+          }
+        ],
+        "download_history": [
+          {
+            "name": "slow.bin",
+            "path": "fallback/slow.bin",
+            "state": 2,
+            "danger": 0
+          }
+        ],
+        "returned_success_before_file": true,
+        "download_accepted": false
+      },
+      {
+        "backend": "rust",
+        "reference_commit": null,
+        "binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56",
+        "duration": 0.1650563000002876,
+        "result": {
+          "path": "slow.bin",
+          "success": true
+        },
+        "files_at_return": [],
+        "files_after_wait": [
+          {
+            "relative": "fallback\\slow.bin",
+            "bytes": "636f6e74726f6c6c656420646f776e6c6f616400ff"
+          }
+        ],
+        "download_history": [
+          {
+            "name": "slow.bin",
+            "path": "fallback/slow.bin",
+            "state": 2,
+            "danger": 0
+          }
+        ],
+        "returned_success_before_file": true,
+        "download_accepted": false
+      }
+    ],
+    "interpretation": "All three return success before the file exists in the requested directory. The complete bytes subsequently appear in the isolated default download directory. This reproduces the CI symptom; the exact CI destination was not captured. A source review shows each injected async fetch is launched without awaiting completion, followed by a 100ms sleep.",
+    "next_fix": "Keep the download connection/behavior alive through completed or canceled events; verify final file location and bytes before success; add this delayed response journey to CI after fixing it."
+  },
+  "stdio_followup": {
+    "script": "scripts/stdio_parity.py",
+    "before": "Installed Windows Chrome starts but fails to expose DevTools within the unchanged 30-second startup deadline when HOME/USERPROFILE are replaced. Reproduced locally; Chrome for Testing passed the old harness.",
+    "change": "Keep real OS account environment; use browser_start temporary profile and explicit port for isolation. Capture owned descendants and finish them after stop. Pipe EOF and timeouts remain unchanged.",
+    "after": "Real installed Chrome and Chrome for Testing both passed via live PTY on Windows. CI follow-up pending."
+  }
 }
