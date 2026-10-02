@@ -4,7 +4,7 @@
 
 When adding or changing a public tool, help text, parameters, result shape,
 error handling, or a consumer's tool-discovery surface, apply
-[CLI Steering Engineering](https://github.com/sudoprivacy/cli-steering-engineering/blob/8e597fc872ee0653790960cd96e67f59b5c38a8f/SKILL.md).
+[CLI Steering Engineering](https://github.com/sudoprivacy/cli-steering-engineering/blob/5f1491743b1c70c639fc5d6933fd0800b407bda1/SKILL.md).
 Its pinned source and loading instructions are in
 [references/README.md](references/README.md#cli-steering-engineering).
 Read the verified SKILL.md before the audit. If access is unavailable, say so

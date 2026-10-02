@@ -1,6 +1,6 @@
 # ai-dev-browser → sudohand 迁移规划
 
-更新：2026-10-02 · 状态：首批运行时修复和持续 CLI steering audit 已实现；完整迁移尚未完成。
+更新：2026-10-02 · 状态：sudowork 可选 Rust 后端已完成本地真实模型／UI 验收及 Python 回退验收；完整迁移尚未完成。
 
 [ShareOne 阅读版](https://s.shareone.vip/md/ai-dev-browser-to-sudohand) · [规划 PR #28](https://github.com/sudoprivacy/sudohand/pull/28)
 
@@ -49,7 +49,22 @@
 - [CLI Steering Engineering](https://github.com/sudoprivacy/sudohand/blob/main/docs/cli-steering-audit.md) 已固定来源与 commit，写入根 `AGENTS.md`；支持复用现有 checkout 或一条命令下载验证。上游目前私有，因此采用可选 reference，公共 CI 不需要私有仓库权限。
 - CI 自动运行命令契约和真实 Chrome 流程；提供付费模型测试的手动入口。当前仓库尚未配置 `ANTHROPIC_API_KEY` secret，模型验收已用本机现有配置完成，不能把普通 CI 通过称为模型验收通过。
 
-下一步按调用方验收：sudowork 的 `browser` 包装器、发现列表、退出码、截图 sidechannel 和实际 Electron／agent 流程；再推进其他消费者。录制、PDF、SDK 深层依赖、源码许可追溯和发行／归档门槛继续保留。
+首个调用方试验见 2.2 节。录制、PDF、SDK 深层依赖、源码许可追溯和发行／归档门槛继续保留。
+
+### 2.2 sudowork 可选后端与真实消费者验收（2026-10-02）
+
+[sudowork PR #1181](https://github.com/sudoprivacy/sudowork/pull/1181) 保留 `browser` 入口和默认 Python 后端，通过 `SUDOWORK_BROWSER_BACKEND=sudohand` 选择 Rust。测试固定 sudohand `ec9ae623`；旧后端使用 sudowork 当前固定的 adb `ec3b2151`，没有顺便升级 vendor。配置与回退步骤见 [接入说明](https://github.com/sudoprivacy/sudowork/blob/92beb4e7ea507e30f32a2c6760b34a4f0a67d53c/docs/tech/browser-backends.md)，机器记录见 [验收证据](https://github.com/sudoprivacy/sudowork/blob/92beb4e7ea507e30f32a2c6760b34a4f0a67d53c/docs/tech/browser-backend-acceptance.json)。
+
+- 包装器从所选后端生成目录，保留 JSON、退出码、产物路径与 sidechannel 关联。失败时不自动切换后端或重放动作。
+- 本地 live PTY、真实 Chrome、两后端共 31 次包装器调用：中文填写、可信提交且只提交一次、截图、刷新后收据、逐次 HTTP 结果关联、定位失败恢复及配置／参数错误通过。已加入 Windows/Linux PR CI。
+- 真实 Electron 应用、scode 0.2.21、Claude Opus 4.8、真实 API 凭据：Rust 使用 7 次成功 PowerShell 调用，完成预订并读对只存在于图像像素中的随机徽章；点击会话附件后实际加载 1600×950 截图。移除后端变量并重启应用，Python 使用 11 次成功 PowerShell 调用完成相同任务。两次最终验收均无失败工具调用。
+- 实测修复了 ACP 新配置未安装包装器、monorepo 开发路径找不到 Python 包、skill junction 无法被模型文件工具读取的问题。Windows skill 摘要和正文明确描述如何发现并调用独立 PowerShell 工具；修改摘要后须重启以清除索引缓存。
+- UI 测试等待附件生成并请求实际绘制帧，避免被遮挡的 Electron 虚拟列表尚未重绘时误点同名工作区条目。通过记录保留真实预览截图的哈希；早期失败没有计入通过结果。
+- [CLI steering 上游改进](https://github.com/sudoprivacy/cli-steering-engineering/pull/1) 已合入，并将本仓库引用更新至 `5f149174`。后续 audit 覆盖 skill 摘要、实际文件路径、延迟加载工具和第一条执行调用。
+
+本地 typecheck、应用构建和相关测试通过；全量 Windows 测试为 2799 通过、15 失败、31 跳过，15 项失败均在未修改基线上复现，未宣称全量通过。
+
+**本轮只接受开发构建中的可选接入和回退。** 安装包分发、默认切换、其他消费者与深层 Python SDK 仍未验收。M1 下一项是 Grok pool 生命周期试验和 SDK 路线决策；同时继续补录制、PDF、下载／扩展行为，最终按 M3 验收正式发行。
 
 ## 3. 依赖盘点结果
 

@@ -859,10 +859,10 @@
       "complexity": "high",
       "explanation": "Vendored Python, aidb wrapper, stdout capture, result sidechannel, login helper and Electron E2E.",
       "acceptance": "Fresh install -> agent discovers browser -> fill local form -> screenshot delivered to conversation -> restart app -> repeat; Electron/CDP and rollback.",
-      "status": "identified",
+      "status": "opt-in-local-accepted",
       "owner": null,
-      "migration_pr": null,
-      "live_evidence": null,
+      "migration_pr": "https://github.com/sudoprivacy/sudowork/pull/1181",
+      "live_evidence": "https://github.com/sudoprivacy/sudowork/blob/92beb4e7ea507e30f32a2c6760b34a4f0a67d53c/docs/tech/browser-backend-acceptance.json",
       "revision": "0c8a5bb",
       "branch": "dev",
       "scope": "remote-default-and-local",
@@ -1616,6 +1616,12 @@
             624
           ]
         }
+      ],
+      "migration_remaining": [
+        "packaged installation and distribution",
+        "default cutover",
+        "remaining browser capabilities used by the consumer",
+        "release and rollback from published packages"
       ]
     },
     {
