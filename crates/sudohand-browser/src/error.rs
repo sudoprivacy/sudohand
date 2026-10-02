@@ -38,6 +38,9 @@ pub enum Error {
     /// An action's target is absent. A search returning found=false is not an error.
     #[error("{0}")]
     TargetNotFound(String),
+    /// A download failed or its completed file could not be confirmed.
+    #[error("{0}")]
+    Download(String),
     /// Anything I/O.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
@@ -71,6 +74,8 @@ impl From<Error> for sudohand_core::Error {
                 .with_hint(crate::steering::LOCATOR_FAILURE),
             Error::JsEvaluation(_) => C::Evaluation(e.to_string())
                 .with_hint(crate::steering::EVALUATION_FAILURE),
+            Error::Download(_) => C::Io(e.to_string())
+                .with_hint(crate::steering::DOWNLOAD_FAILURE),
             Error::Io(io) => match io.kind() {
                 std::io::ErrorKind::NotFound => C::NotFound(e.to_string()),
                 std::io::ErrorKind::PermissionDenied => C::PermissionDenied(e.to_string()),

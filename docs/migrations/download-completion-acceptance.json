@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "date": "2026-10-02",
+  "status": "local_acceptance_passed",
+  "full_migration_accepted": false,
+  "pull_request": "https://github.com/sudoprivacy/sudohand/pull/35",
+  "binary_sha256": "8d5db79071fc0c6bbaa6beb21fb7bd8f4c8a57509416e53b5ce5c1f298a18623",
+  "contract_change": {
+    "before": {
+      "path": "basename only",
+      "success": "returned before fetch/download completion"
+    },
+    "after": {
+      "path": "absolute completed file path",
+      "success": "only after matching blob URL/GUID completed and local file size equals fetched bytes",
+      "filename": "Chrome suggested filename",
+      "bytes": "actual saved size"
+    },
+    "path_argument": "directory including a new dotted/Unicode directory; never silently falls back to cwd",
+    "failures": "HTTP failure, aborted fetch, canceled/event-lost/incomplete transfer -> exit 9 io, retryable=false, recovery hint; no replay"
+  },
+  "local_browser": {
+    "execution": "Windows live PTY; installed Chrome 154.0.8037.92; isolated profiles and local HTTP",
+    "script": "scripts/live_download.py",
+    "status": "passed",
+    "calls": 13,
+    "receipt": {
+      "name": "slow.bin",
+      "bytes": 21,
+      "data": [
+        99,
+        111,
+        110,
+        116,
+        114,
+        111,
+        108,
+        108,
+        101,
+        100,
+        32,
+        100,
+        111,
+        119,
+        110,
+        108,
+        111,
+        97,
+        100,
+        0,
+        255
+      ]
+    },
+    "cases": [
+      "delayed chunked body",
+      "returned path immediately uploaded to input; visible receipt matches bytes",
+      "same filename requested twice; one request each",
+      "zero-byte file",
+      "HTTP 404; no new file and no replay",
+      "stalled body aborted; useful error and no new file"
+    ],
+    "screenshot_sha256": "6013d5b4f83c32d598761a52db47133dbbbdbfe07e463aad5d3b2c1204fd7e7b",
+    "screenshot_reviewed": true,
+    "chrome_for_testing": "Same download suite passed in live PTY with Chrome for Testing 154.0.8037.92.",
+    "page_regression": "scripts/page_parity.py passed the full actual-browser suite, including completed download and unchanged download_link file bytes."
+  },
+  "reference_comparison": {
+    "script": "scripts/live_download_completion_probe.py --require-rust-completion",
+    "interpretation": "Rust requires completion. Pinned Python outcomes remain observations of the known reference bug, never accepted parity.",
+    "backends": [
+      {
+        "backend": "python-old",
+        "reference_commit": "94170d23f65f5f9140792d1de4a158c086a39325",
+        "duration": 4.546046799994656,
+        "returned_success_before_file": true,
+        "download_accepted": false,
+        "files_at_return": []
+      },
+      {
+        "backend": "python-current",
+        "reference_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+        "duration": 5.32326030000695,
+        "returned_success_before_file": true,
+        "download_accepted": false,
+        "files_at_return": []
+      },
+      {
+        "backend": "rust",
+        "reference_commit": null,
+        "duration": 2.1625519000081113,
+        "returned_success_before_file": false,
+        "download_accepted": true,
+        "files_at_return": [
+          "slow.bin"
+        ]
+      }
+    ]
+  },
+  "steering": {
+    "skill_commit": "5f1491743b1c70c639fc5d6933fd0800b407bda1",
+    "mechanical_tools": 63,
+    "shared_help_tools": 7,
+    "script": "scripts/live_cli_steering.py",
+    "client": "Claude Code",
+    "status": "passed",
+    "model_requests": 13,
+    "scenarios": [
+      {
+        "name": "known HTML id",
+        "status": "passed",
+        "calls": 1,
+        "first_tool": "click_by_html_id",
+        "models": [
+          "claude-opus-4-8"
+        ]
+      },
+      {
+        "name": "recover stale locator",
+        "status": "passed",
+        "calls": 2,
+        "first_tool": "page_discover",
+        "models": [
+          "claude-opus-4-8"
+        ]
+      },
+      {
+        "name": "responsive layout",
+        "status": "passed",
+        "calls": 1,
+        "first_tool": "window_set",
+        "models": [
+          "claude-opus-4-8"
+        ]
+      },
+      {
+        "name": "trusted coordinate drag",
+        "status": "passed",
+        "calls": 1,
+        "first_tool": "mouse_drag",
+        "models": [
+          "claude-opus-4-8"
+        ]
+      },
+      {
+        "name": "save URL for immediate reuse",
+        "status": "passed",
+        "calls": 1,
+        "first_tool": "download",
+        "models": [
+          "claude-opus-4-8"
+        ]
+      },
+      {
+        "name": "recover missing export URL",
+        "status": "passed",
+        "calls": 1,
+        "first_tool": "download",
+        "models": [
+          "claude-opus-4-8"
+        ]
+      }
+    ]
+  },
+  "startup_harness": {
+    "before": "Installed Chrome under fabricated HOME/USERPROFILE failed explicit-port startup at 30s locally; historical CI failed later at auto-port startup. Exact historical CI cause remains unproven.",
+    "change": "Only browser_start receives the actual OS account environment. Move only its new PID-verified registry record into the isolated test home. Every other call, including stop-all, retains the isolated home. Retain bounded Chrome stderr on auto-port failure. No timeout increase.",
+    "after": "Full browser_parity.py passed locally with installed Chrome, including both proxy backends, scoped cleanup, auto-port startup and registered-only stop-all; unregistered fixture Chrome remained alive."
+  },
+  "earlier_attempts": [
+    "Initial upload test incorrectly expected find_by_html_id to return a ref, then matched both label text and input; corrected by using real page_discover button ref.",
+    "First real-model attempt used expired OAuth and sent no model request; rerun with existing configured API credentials passed. Its owned cleanup initially reported PID 6504 still alive; subsequent OS check found it gone.",
+    "Stalled fetch originally surfaced JSON platformobject from DOMException; normalized to JS Error and reran the actual timeout.",
+    "Two directory-wide comparison attempts failed without retaining the changed filenames. Added before/after filename-size diagnostics; final run passed. A separate probe observed unrelated Chrome component downloads; its fixture now disables component updates and bounds diagnostic output. Exact cause of those two comparisons remains unproven."
+  ],
+  "ci": {
+    "requirement": "All checks must succeed on the final PR head before merge; links and final outcome recorded in PR #35.",
+    "browser_workflow": ".github/workflows/browser-parity.yml",
+    "new_gate": "Download completion and immediate file reuse; three platforms; pinned Python observations retained"
+  },
+  "remaining": [
+    "download_link --frame and authenticated iframe workflows",
+    "download cancellation via Chrome, extension transport, concurrent downloads from other tabs",
+    "source consumers relying on basename-only path must use filename or absolute path deliberately",
+    "Grok SDK persistent connection/events/pool route",
+    "remaining capability units, consumer packages and release/rollback"
+  ]
+}

@@ -12,7 +12,7 @@
 |---|---|---|
 | 浏览器基础与 LLM 使用 | 真实 Chrome 流程、真实模型工具选择；sudowork 开发构建中的可选 Rust 后端和 Python 回退已验证 | 全部 27 个行为单元、其他宿主及安装包 |
 | 三平台 parity CI | [PR #33](https://github.com/sudoprivacy/sudohand/pull/33) 的最终源码 `640b71a3` 已通过 [Windows/macOS/Linux](https://github.com/sudoprivacy/sudohand/actions/runs/37005381346) | CI 比较对象仍是 adb **v0.38.1 / 94170d23**；不能据此宣称 **v0.51.1 / c349d347** 全量通过 |
-| 当前 v0.51.1 对标 | [PR #35](https://github.com/sudoprivacy/sudohand/pull/35) 的声明检查和 40 次真实浏览器对照调用已在三平台通过 | PR 待合入：Windows 另一项自动选端口启动失败；6 个工具声明缺口、导航 readiness 和下载完成判定仍未补齐 |
+| 当前 v0.51.1 对标 | [PR #35](https://github.com/sudoprivacy/sudohand/pull/35) 的声明检查和 40 次真实浏览器对照调用已在三平台通过；本地新增下载完成／立即上传、模型选择与恢复验收 | 6 个工具声明缺口、导航 readiness、iframe 下载等仍未补齐；最终提交须全部 CI 通过后合并 |
 | Grok | 旧 Python 后端的双 worker、checkpoint、同 profile 重启及不重放已完成任务已实测 | Rust SDK 路线、事件长连接、取消与故障恢复；一次重启连接失败尚未定位 |
 | 发布和调用方 | 已有依赖台账和 sudowork 可选接入 | 23 个调用／分发方逐项迁移；正式发行、干净安装、升级与回滚 |
 
@@ -102,18 +102,28 @@ Grok 的首次真实试验发现旧 adb 的 checkpoint 缺陷：读取成功后�
 
 ### 2.4 当前 v0.51.1 基线的持续检查（2026-10-02）
 
-[PR #35](https://github.com/sudoprivacy/sudohand/pull/35) **已提交，待合入**。新增检查显式固定 `c349d347`，使用该 checkout 的真实 Python parser 和 CLI，以及当前 Rust 二进制；保留原 v0.38.1 套件。两套检查的版本和范围分别记录。
+[PR #35](https://github.com/sudoprivacy/sudohand/pull/35) 承载本节检查及 2.5 节修复；合并以最终提交的全部 CI 通过为门槛。新增检查显式固定 `c349d347`，使用该 checkout 的真实 Python parser 和 CLI，以及当前 Rust 二进制；保留原 v0.38.1 套件。两套检查的版本和范围分别记录。
 
 - 61 个公开工具中，59 个命令存在；6 个工具存在声明缺口：录制 start/stop、PDF、`download_link --frame`、鼠标 click/move 的 `--human-like`。这不是行为完成率；类型、choices、布尔及未显示的默认值仍需补检。
 - [差异清单](https://github.com/sudoprivacy/sudohand/blob/56df8d2742625a477995bbd4b5b7c7ae182ad3f5/docs/migrations/current-cli-gaps.json) 与实际结果逐项比对。新增或消失的差异都要求审查并更新记录；严格 parity 模式仍明确失败，清单一致不代表迁移完成。
 - Windows 本地 live PTY、真实 Chrome、两个后端共 40 次对照 CLI 调用：发现 ref 后可信提交且只提交一次；390×844 视口跨命令／新标签／刷新保留；草稿刷新后可见并保存实际截图；按实时列表关闭第二个标签，确认它消失且原收据仍在。浏览器启动／清理由 Rust fixture 提供，本轮不宣称验证 Python 启停等价。
 - 实测新增返回合同缺口：adb `page_goto` 返回 `ready: true`，Rust 缺少该字段。普通页面导航成功不足以接受慢加载／超时场景；C06 保持未完成。草稿本轮通过 JS 保存，不计作 `storage_*` wrapper 的验收。
-- 下载诊断已形成可重复的真实失败：本地 HTTP 延迟 1 秒时，v0.38.1、v0.51.1 和 Rust 均提前返回成功，完整文件随后落入隔离 profile 的默认下载目录，而非指定目录。[live 复现脚本](https://github.com/sudoprivacy/sudohand/blob/56df8d2742625a477995bbd4b5b7c7ae182ad3f5/scripts/live_download_completion_probe.py) 已实际运行并提交，明确 exit 1；C18 未接受。后续修复要保持连接直到下载完成，并检查实际路径／字节，再加入 CI。该实验复现了 Windows CI 的症状，CI 当次实际落盘位置仍未捕获。
-- 上述检查加入三平台 PR CI，并保存 JSON 结果和截图；[验收记录](https://github.com/sudoprivacy/sudohand/blob/56df8d2742625a477995bbd4b5b7c7ae182ad3f5/docs/migrations/current-reference-acceptance.json) 记录本地结果及 CI 状态。本轮没有修改产品工具或 help，也没有新增真实模型验收结论。
+- 修复前的下载诊断形成可重复的真实失败：本地 HTTP 延迟 1 秒时，v0.38.1、v0.51.1 和 Rust 均提前返回成功，完整文件随后落入隔离 profile 的默认下载目录，而非指定目录。[原 live 复现脚本](https://github.com/sudoprivacy/sudohand/blob/56df8d2742625a477995bbd4b5b7c7ae182ad3f5/scripts/live_download_completion_probe.py) 实际运行 exit 1。修复与验收见 2.5 节；历史 CI 当次实际落盘位置仍未捕获。
+- 上述检查加入三平台 PR CI，并保存 JSON 结果和截图；[首批验收记录](https://github.com/sudoprivacy/sudohand/blob/56df8d2742625a477995bbd4b5b7c7ae182ad3f5/docs/migrations/current-reference-acceptance.json) 保留原始结果。首批仅增加测试；后续产品合同与模型验收见 2.5 节。
 
 [源码 `3b9afeae` 的 CI](https://github.com/sudoprivacy/sudohand/actions/runs/37020362117) 中，三平台新增对标检查均通过；Linux/macOS 完整套件以及 lint、单元测试、清单校验通过。Windows 通过 cookie／代理／定向清理断言后，在后续自动选端口启动时未能于 30 秒内获得调试端点，故整体未通过，原因尚未确定。另一个启动管道测试改为保留真实账户环境后，本机两种 Chrome 和三平台 CI 均已通过；不能据此认定两处启动故障同因。未扩大超时或取消原有断言。
 
-接下来先收敛这项 Windows 启动失败和已可复现的 C18 下载缺陷，再推进 Grok 的持久连接／事件／pool SDK 路线试验。录制、PDF 和 `page_goto` readiness 合同继续逐项补齐。27 个行为单元、调用方和发行门槛全部通过前，完整迁移保持未完成。
+### 2.5 下载完成语义与 Windows 测试环境修复（2026-10-02）
+
+真实验收与历史失败保存在 [download-completion-acceptance.json](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/download-completion-acceptance.json)。此项只接受直接 URL 下载的已测范围，C18 的 iframe、扩展传输和 Chrome 主动取消仍保持未完成。
+
+- Rust `download` 保持 CDP 连接，等待匹配 blob URL／GUID 的完成事件，再核对文件大小。成功结果的 `path` 改为实际绝对路径，并增加 `filename`、`bytes`。依赖旧 basename 的消费者应明确改读 `filename`；不复制旧实现的提前成功缺陷。`--path` 始终解释为目录，包含新建带点号／中文的目录。
+- Windows 本地 live PTY、真实 Chrome：页面发现下载 URL → 慢响应下载 → 使用返回路径立即上传 → 页面显示正确字节的导入收据；另测同名文件、空文件、404 和中断响应。查看了实际截图。404／超时返回 exit 9、`retryable: false` 和恢复提示，不自动重放。
+- 真实 API、Claude Opus 4.8：6 个场景、13 次模型请求通过。新增两项均第一步选择 `download`，成功后直接使用返回状态结束；404 后改用任务提供的正确 URL。过期 OAuth 的首次失败保留在记录中，未计为模型调用。
+- CLI steering 使用固定版本 skill 复核；下载说明共用于 SDK 文档、CLI help 和 `describe`，共享说明扩展至 7 个工具。三平台 CI 增加完整下载／上传流程及两个固定 Python 版本的观测；Python 缺陷不能作为 Rust 的通过标准。
+- Windows 本地复现了伪造 HOME／USERPROFILE 下的启动失败。测试只在 `browser_start` 保留真实账户环境，随后将刚创建且 PID 已核对的注册记录移入隔离目录；其余调用和 `stop-all` 均使用隔离目录。完整 cookie／代理／定向清理／自动选端口／注册实例清理流程已本地通过，未注册的测试 Chrome 未被停止。历史 CI 自动端口失败的具体原因仍未单独证明；保留诊断，不增加超时。
+
+**合并门槛：最终 PR head 的所有 CI 检查全绿；失败就修复。** 不用旧提交的通过结果代替最终检查。接下来推进 Grok 的持久连接／事件／pool SDK 路线试验；录制、PDF 和 `page_goto` readiness 合同继续逐项补齐。27 个行为单元、调用方和发行门槛全部通过前，完整迁移保持未完成。
 
 ## 3. 依赖盘点结果
 

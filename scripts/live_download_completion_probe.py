@@ -12,6 +12,7 @@ import http.server
 import json
 import os
 import socket
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -51,6 +52,8 @@ parser.add_argument("--chrome", type=Path, required=True)
 parser.add_argument("--reference", type=Path, required=True)
 parser.add_argument("--legacy-reference", type=Path)
 parser.add_argument("--output", type=Path, required=True)
+parser.add_argument("--require-rust-completion", action="store_true",
+                    help="Gate Rust completion; retain pinned Python outcomes as reference-bug observations")
 args = parser.parse_args()
 args.output.parent.mkdir(parents=True, exist_ok=True)
 backends = [("python-current", args.reference), ("rust", None)]
@@ -90,6 +93,9 @@ try:
                     "--headless=new",
                     "--no-first-run",
                     "--no-default-browser-check",
+                    "--disable-background-networking",
+                    "--disable-component-update",
+                    *shlex.split(os.environ.get("ADB_TEST_CHROME_ARGS", "")),
                     "about:blank",
                 ],
                 stdout=subprocess.DEVNULL,
@@ -154,7 +160,8 @@ try:
                 files = [
                     {
                         "relative": str(p.relative_to(root / backend)),
-                        "bytes": p.read_bytes().hex(),
+                        "size": p.stat().st_size,
+                        "fixture_bytes": p.read_bytes().hex() if p.name == 'slow.bin' else None,
                     }
                     for d in (expected, fallback)
                     for p in d.iterdir()
@@ -193,4 +200,6 @@ finally:
     server.server_close()
     args.output.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
 
-raise SystemExit(1 if any(not r["download_accepted"] for r in records) else 0)
+gated = [r for r in records if r['backend'] == 'rust'] if args.require_rust_completion else records
+assert gated, 'no backend was tested'
+raise SystemExit(1 if any(not r["download_accepted"] for r in gated) else 0)

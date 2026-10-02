@@ -221,7 +221,7 @@
     },
     {
       "id": "C18", "name": "下载与 iframe 文件产物",
-      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "download_link --frame is absent. Real delayed-response probe also reproduces premature download success and wrong destination in both adb versions and Rust; no download completion acceptance."},
+      "current_evidence": {"status": "open", "record": "download-completion-acceptance.json", "scope": "Direct URL completion, immediate upload reuse, empty file, HTTP error and fetch abort accepted locally; real-model selection and recovery passed. Pinned Python premature success retained as a reference bug. download_link --frame, Chrome cancellation and extension scenarios remain open."},
       "tools": ["download", "download_link"],
       "sources": ["ai_dev_browser/core/download.py"],
       "history": ["36d1874", "0735cde"],

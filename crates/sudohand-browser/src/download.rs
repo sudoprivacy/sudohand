@@ -9,9 +9,8 @@ use chromiumoxide_cdp::cdp::browser_protocol::browser::{
 use serde_json::{json, Value};
 
 use crate::connection::Tab;
-use crate::element::query_selector_all;
 use crate::elements::{trusted_click, xpath_finder_js};
-use crate::Result;
+use crate::{Error, Result};
 
 async fn set_download_dir(tab: &Tab, dir: &Path, events: bool) -> Result<PathBuf> {
     std::fs::create_dir_all(dir)?;
@@ -45,47 +44,108 @@ fn windows_download_path(path: &str) -> String {
     path.into()
 }
 
-/// Fetch `url` in the page and save it via an anchor click into `path`
-/// (a directory; default `./downloads`). `{path, success}`.
+#[doc = include_str!("../help/download.md")]
 pub async fn download(tab: &Tab, url: &str, path: Option<&Path>) -> Result<Value> {
     let dir = match path {
-        Some(p) if p.is_dir() || p.extension().is_none() => p.to_path_buf(),
-        Some(_) | None => std::env::current_dir()?.join("downloads"),
+        Some(p) => p.to_path_buf(),
+        None => std::env::current_dir()?.join("downloads"),
     };
-    set_download_dir(tab, &dir, false).await?;
-    let filename = url
-        .rsplit('/')
-        .next()
-        .unwrap_or(url)
-        .split('?')
-        .next()
-        .unwrap_or("")
-        .to_string();
+    let abs = set_download_dir(tab, &dir, true).await?;
+    // Subscribe before acting and keep this CDP connection alive until Chrome
+    // finishes. Disconnecting while fetch is pending resets the download folder.
+    let mut rx = tab.subscribe();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
     let code = format!(
-        r"(elem) => {{
-            async function _dl(src, name) {{
-                const r = await fetch(src);
+        r"(async () => {{
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 25000);
+            try {{
+                const src = new URL({}, location.href);
+                const name = decodeURIComponent(src.pathname.split('/').pop()) || 'download';
+                const r = await fetch(src, {{signal: controller.signal}});
+                if (!r.ok) throw new Error('Download HTTP ' + r.status);
                 const b = await r.blob();
                 const href = URL.createObjectURL(b);
                 const a = document.createElement('a');
                 a.href = href; a.download = name;
                 document.body.appendChild(a); a.click();
-                setTimeout(() => {{ document.body.removeChild(a); URL.revokeObjectURL(href); }}, 500);
-            }}
-            _dl({}, {})
-        }}",
+                a.remove();
+                return {{href, bytes: b.size}};
+            }} catch (error) {{
+                // Normalize DOMException (AbortError / CORS) for CDP's deep
+                // serialization, whose protocol enum cannot decode platformobject.
+                throw new Error(String(error));
+            }} finally {{ clearTimeout(timer); }}
+        }})()",
         serde_json::to_string(url)?,
-        serde_json::to_string(&filename)?
     );
-    let bodies = query_selector_all(tab, "body").await?;
-    if let Some(body) = bodies.first() {
-        body.apply(tab, &code).await?;
+    let started = tab
+        .evaluate_opts(&code, true, true)
+        .await
+        .map_err(|e| Error::Download(e.to_string()))?;
+    let href = started["href"]
+        .as_str()
+        .ok_or_else(|| Error::Download("page did not return a download URL".into()))?;
+    let result = async {
+        let mut guid = None;
+        let mut filename = None;
+        loop {
+            let ev = tokio::time::timeout_at(deadline, rx.recv())
+                .await
+                .map_err(|_| Error::Download("download did not complete within 30s".into()))?
+                .map_err(|e| Error::Download(format!("download event stream lost: {e}")))?;
+            match ev.method.as_str() {
+                "Browser.downloadWillBegin" if ev.params["url"].as_str() == Some(href) => {
+                    guid = ev.params["guid"].as_str().map(str::to_owned);
+                    filename = ev.params["suggestedFilename"].as_str().map(str::to_owned);
+                }
+                "Browser.downloadProgress"
+                    if guid
+                        .as_deref()
+                        .is_some_and(|g| ev.params["guid"].as_str() == Some(g)) =>
+                {
+                    match ev.params["state"].as_str() {
+                        Some("completed") => {
+                            let filename = filename.as_deref().ok_or_else(|| {
+                                Error::Download("completed download has no filename".into())
+                            })?;
+                            let saved = ev.params["filePath"]
+                                .as_str()
+                                .map_or_else(|| abs.join(filename), PathBuf::from);
+                            let metadata = std::fs::metadata(&saved).map_err(|e| {
+                                Error::Download(format!("completed file is unavailable: {e}"))
+                            })?;
+                            if !metadata.is_file()
+                                || Some(metadata.len()) != started["bytes"].as_u64()
+                            {
+                                return Err(Error::Download(
+                                    "completed file size differs from the response".into(),
+                                ));
+                            }
+                            return Ok(
+                                json!({"success": true, "path": saved, "filename": filename,
+                                "bytes": metadata.len()}),
+                            );
+                        }
+                        Some("canceled") => {
+                            return Err(Error::Download("Chrome canceled the download".into()))
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
     }
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    if filename.is_empty() {
-        return Ok(json!({"path": Value::Null, "success": false}));
-    }
-    Ok(json!({"path": filename, "success": true}))
+    .await;
+    // Revoke only after the transfer settles. Cleanup never replays the click.
+    let _ = tab
+        .evaluate(&format!(
+            "URL.revokeObjectURL({})",
+            serde_json::to_string(href)?
+        ))
+        .await;
+    result
 }
 
 /// Trusted-click the XPath-located link, wait for the download to finish,

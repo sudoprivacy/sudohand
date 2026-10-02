@@ -59,7 +59,7 @@ disposable profiles and a local HTTP page. Missing prerequisites fail the run.
 Run them from a live PTY for local acceptance and inspect the saved screenshots.
 
 The mechanical audit checks real help/describe output and structured argument
-failures. It currently requires shared decision text for six tools; it is not a
+failures. It currently requires shared decision text for seven tools; it is not a
 certification of every command. The browser suite verifies stale-locator
 recovery, trusted linear/human dragging, JavaScript failure without replay,
 mobile viewport persistence, and a visible saved draft after reload.
@@ -94,7 +94,7 @@ contains the actual model choices, results, binary hash and local browser checks
 Four model scenarios passed using real API credentials; this is limited evidence,
 not a claim that every command or consumer has passed.
 
-- This batch shares help for six tools; other SDK/CLI descriptions and runtime
+- Shared help now covers seven tools, including `download`; other SDK/CLI descriptions and runtime
   locator hints still need consolidation by capability family.
 - Missing HTML-id/XPath click targets now raise a core error, mapped to CLI
   `not_found`, exit 4, `retryable: false`, and a recovery hint. Search
@@ -108,3 +108,11 @@ not a claim that every command or consumer has passed.
 - Full consumer acceptance, recording migration, source-license provenance,
   platform packaging, releases and archive gates remain in the
   [migration plan](migrations/ai-dev-browser-to-sudohand.md).
+
+The [download follow-up](migrations/download-completion-acceptance.json) adds two
+real-model cases: save a known URL and recover after an HTTP failure. Both picked
+`download` first, used the actual result, and finished without a verification
+call or replaying the failed URL. The full six-scenario run used 13 authenticated
+model requests. `scripts/live_download.py` separately verifies a delayed response,
+immediate upload of the returned file, a visible receipt, empty files and errors.
+These browser checks run in ordinary CI; model checks remain opt-in and paid.

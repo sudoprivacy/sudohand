@@ -100,7 +100,8 @@
   "audit": {
     "skill_commit": "5f1491743b1c70c639fc5d6933fd0800b407bda1",
     "scope": "No product CLI/help/result changes. Tests audit real parser/help declarations and real task outcomes. New missing readiness field retained as an open result contract. No new model acceptance claimed.",
-    "mechanical_tools": 63
+    "mechanical_tools": 63,
+    "followup": "PR #35 now also changes download results/help/errors; seven shared help tools and six real-model scenarios are recorded separately in download-completion-acceptance.json."
   },
   "remaining": [
     "page_goto ready field, delayed loading, redirects and timeout honesty",
@@ -206,5 +207,9 @@
     "before": "Installed Windows Chrome starts but fails to expose DevTools within the unchanged 30-second startup deadline when HOME/USERPROFILE are replaced. Reproduced locally; Chrome for Testing passed the old harness.",
     "change": "Keep real OS account environment; use browser_start temporary profile and explicit port for isolation. Capture owned descendants and finish them after stop. Pipe EOF and timeouts remain unchanged.",
     "after": "Installed Chrome and Chrome for Testing passed locally via live PTY; all three CI platforms passed the stdio step at 3b9afeaec9997502eb06be13153bc654d1f8a7ee."
+  },
+  "download_followup": {
+    "record": "download-completion-acceptance.json",
+    "status": "local Rust completion, browser reuse and real-model checks passed; C18 still open for iframe/extension/cancellation"
   }
 }

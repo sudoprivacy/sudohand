@@ -39,16 +39,38 @@ def main():
         env = dict(os.environ, PYTHONIOENCODING='utf-8', AI_DEV_BROWSER_TRANSPORT='cdp', AI_DEV_BROWSER_OS_CLICK='false', HOME=str(root), USERPROFILE=str(root), PYTHONPATH=reference)
         def invoke(command):
             print(f'RUN {command[0:4]}', flush=True)
-            if any(str(item).endswith('browser_start') for item in command) and env.get('ADB_TEST_CHROME_ARGS'):
+            starting = any(str(item).endswith('browser_start') for item in command)
+            if starting and env.get('ADB_TEST_CHROME_ARGS'):
                 overrides = {}
                 for flag in shlex.split(env['ADB_TEST_CHROME_ARGS']):
                     key, _, value = flag.partition('=')
                     overrides[key] = value
                 command = [*command, '--override-default-args', json.dumps(overrides)]
-            completed = run_capture(command, env=env, timeout=45)
+            call_env = dict(env)
+            if starting:
+                # Chrome needs the actual OS account environment. Startup uses a
+                # disposable profile; move ONLY its new, PID-verified registry
+                # record into the isolated test home before any stop-all call.
+                # All other commands (especially cleanup) keep the fake home.
+                for key in ('HOME', 'USERPROFILE'):
+                    if key in os.environ:
+                        call_env[key] = os.environ[key]
+                    else:
+                        call_env.pop(key, None)
+            completed = run_capture(command, env=call_env, timeout=45)
             if completed.returncode:
                 raise AssertionError(f'{command[0:4]} exited {completed.returncode}: {completed.stderr}')
-            return json.loads(completed.stdout)
+            result = json.loads(completed.stdout)
+            if starting:
+                assert result.get('pid') and not result.get('reused'), result
+                source = Path.home() / '.ai-dev-browser/instances' / f'{result["port"]}.json'
+                destination = root / '.ai-dev-browser/instances' / source.name
+                entry = json.loads(source.read_text(encoding='utf-8'))
+                assert entry['pid'] == result['pid'] and entry['port'] == result['port'], entry
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                assert not destination.exists(), destination
+                source.replace(destination)
+            return result
         def rust(name, *flags):
             return invoke([suh, 'browser', name, *map(str, flags)])
         def python(name, *flags):
@@ -301,7 +323,9 @@ def main():
             assert external.poll() is None, 'external browser was killed'
             assert rust('browser_cleanup', '--scope', 'profile', '--profile', 'parity-orphan')['count'] == 0
             print('PASS cleanup: managed orphan inventory; differential dry-run; scoped kill; external preserved; idempotent')
-            managed = rust('browser_start', '--headless', '--silent-stderr')
+            # Retain bounded Chrome stderr in a startup failure. Do not hide an
+            # auto-port failure by forcing a port or extending the 30s deadline.
+            managed = rust('browser_start', '--headless')
             assert 'error' not in managed and managed.get('pid') and not managed.get('reused'), managed
             stopped = rust('browser_stop', '--stop-all')
             assert stopped['count'] == 1 and stopped['browsers'][0]['port'] == managed['port'], stopped
