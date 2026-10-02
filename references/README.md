@@ -3,7 +3,7 @@
 ## CLI Steering Engineering
 
 The recurring audit uses the separately maintained
-[CLI Steering Engineering skill](https://github.com/sudoprivacy/cli-steering-engineering/blob/8e597fc872ee0653790960cd96e67f59b5c38a8f/SKILL.md),
+[CLI Steering Engineering skill](https://github.com/sudoprivacy/cli-steering-engineering/blob/5f1491743b1c70c639fc5d6933fd0800b407bda1/SKILL.md),
 pinned in [cli-steering-engineering.json](cli-steering-engineering.json).
 The upstream is currently private. It is an optional reference checkout, so
 public clones, CI and product packages do not require private Git credentials.

@@ -7,7 +7,7 @@ changes, including wrappers and consumer skills.
 ## Source and ownership
 
 The upstream guidance is
-[CLI Steering Engineering](https://github.com/sudoprivacy/cli-steering-engineering/blob/8e597fc872ee0653790960cd96e67f59b5c38a8f/SKILL.md).
+[CLI Steering Engineering](https://github.com/sudoprivacy/cli-steering-engineering/blob/5f1491743b1c70c639fc5d6933fd0800b407bda1/SKILL.md).
 Its [manifest](../references/cli-steering-engineering.json) pins the reviewed
 revision. [Load it locally](../references/README.md#cli-steering-engineering)
 with existing Git access. It is currently private; public CI checks the local
@@ -21,6 +21,10 @@ a passing audit.
 
 1. Read the verified skill and the exact surfaces an agent receives: `suh
    describe`, domain help, command help, consumer wrapper listings and errors.
+   Include the skill description before its body is loaded, the advertised
+   file path, and the host's deferred execution tools. Refresh cached skill
+   indexes when testing changed descriptions. On Windows, distinguish calling
+   the PowerShell tool from running a PowerShell command through Bash.
 2. Check the first sentence: when to choose this operation, what the result
    provides, and any sibling scope differences. Check actual iframe/input
    behavior before promising it in help.
