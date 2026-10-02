@@ -175,7 +175,17 @@
   "ci": {
     "requirement": "All checks must succeed on the final PR head before merge; links and final outcome recorded in PR #35.",
     "browser_workflow": ".github/workflows/browser-parity.yml",
-    "new_gate": "Download completion and immediate file reuse; three platforms; pinned Python observations retained"
+    "new_gate": "Download completion and immediate file reuse; three platforms; pinned Python observations retained",
+    "attempts": [
+      {
+        "commit": "dce4d0a047e136083526589eb335dcd6d3389ac1",
+        "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37029141785",
+        "download_gate": "passed on all three platforms",
+        "linux_failure": "SDK pre-launch port 20002 collision; later Xvfb click test lacked verified, but did not log its full result",
+        "windows_failure": "SDK startup on port 20018: Chrome stderr reports IPv4 bind conflict, followed by DevTools listening on [::1]; IPv4 readiness timed out at 60s. Other steps passed.",
+        "status": "failed; not merged"
+      }
+    ]
   },
   "remaining": [
     "download_link --frame and authenticated iframe workflows",
@@ -183,5 +193,16 @@
     "source consumers relying on basename-only path must use filename or absolute path deliberately",
     "Grok SDK persistent connection/events/pool route",
     "remaining capability units, consumer packages and release/rollback"
-  ]
+  ],
+  "startup_readiness_followup": {
+    "date": "2026-10-03",
+    "change": "Remove bind-based is_port_in_use polling after Chrome is spawned; readiness now directly requests the IPv4 DevTools endpoint. A bind probe can occupy the socket Chrome is about to acquire.",
+    "test_fixture": "Retry only the explicit pre-launch port-in-use validation error on a newly allocated port, at most ten candidates. No launched process, timeout or user action is retried.",
+    "local_acceptance": [
+      "Real occupied-listener regression passed; competitor remains alive, new Chrome serves fixture page on another port.",
+      "Four simultaneous real Chrome launches passed; each returned one page and a reachable IPv4 DevTools endpoint."
+    ],
+    "binary_sha256": "98db82a1e75b8003d2067e8b57efb105d4c9ebf16546c5bd1cb8bfb736c2dd59",
+    "linux_native": "Full missing-field result/page/AX diagnostics added; root cause still under investigation."
+  }
 }

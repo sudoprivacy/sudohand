@@ -35,6 +35,45 @@ async fn eval_str(tab: &sudohand_browser::connection::Tab, expr: &str) -> String
 }
 
 #[tokio::test]
+async fn parallel_startup_publishes_reachable_ipv4_devtools() {
+    if skip_browser_tests() {
+        return;
+    }
+    // Exercise independent launches and their readiness polling together. Each
+    // returned port must actually serve CDP over the IPv4 address clients use.
+    let (first, second, third, fourth) = tokio::join!(
+        start_chrome(),
+        start_chrome(),
+        start_chrome(),
+        start_chrome()
+    );
+    let fixtures = Fixtures::serve();
+    for chrome in [&first, &second, &third, &fourth] {
+        let (browser, tab) = open(chrome, &fixtures.url("index.html")).await;
+        assert_eq!(browser.page_targets().len(), 1);
+        assert!(tab.current_url().await.ends_with("/index.html"));
+    }
+}
+
+#[tokio::test]
+async fn fixture_reallocates_a_port_taken_after_its_probe() {
+    if skip_browser_tests() {
+        return;
+    }
+    let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = occupied.local_addr().unwrap().port();
+    let chrome = common::start_chrome_after_probe(port).await;
+    assert_ne!(chrome.port, port);
+    // The competitor remains untouched; the newly launched browser handles the
+    // actual page journey on its separate port.
+    assert!(std::net::TcpStream::connect(("127.0.0.1", port)).is_ok());
+    let fixture = Fixtures::serve();
+    let (_browser, tab) = open(&chrome, &fixture.url("index.html")).await;
+    assert!(tab.current_url().await.ends_with("/index.html"));
+    assert!(!eval_str(&tab, "document.body.innerText").await.is_empty());
+}
+
+#[tokio::test]
 async fn browser_lifecycle_start_list_stop() {
     if skip_browser_tests() {
         return;

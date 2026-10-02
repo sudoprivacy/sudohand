@@ -191,7 +191,9 @@ pub async fn browser_start(opts: &StartOptions) -> Result<Value> {
         // socket: right after bind, a Chrome competing with other launches
         // can take seconds before /json/version responds, and a caller that
         // connects on our return must not race that.
-        if is_port_in_use(port) && devtools_ready(port, expect_page).await {
+        // Never bind-probe after spawning: the probe can briefly own IPv4 just
+        // as Chrome binds, forcing Chrome onto IPv6 while our client uses IPv4.
+        if devtools_ready(port, expect_page).await {
             listening = true;
             break;
         }

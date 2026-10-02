@@ -108,7 +108,30 @@ fn test_browser_port() -> u16 {
 }
 
 pub async fn start_chrome() -> Chrome {
-    start_with_port(Some(test_browser_port())).await
+    start_chrome_after_probe(test_browser_port()).await
+}
+
+/// A bind probe cannot reserve a socket for another process. If a competing
+/// listener wins before browser_start checks it, choose a new fixture port.
+/// Only this pre-launch validation error is recoverable: never replay a launch
+/// after a process has started, or retry any page operation.
+pub async fn start_chrome_after_probe(mut port: u16) -> Chrome {
+    for attempt in 0..10 {
+        match try_start_with_port(Some(port)).await {
+            Ok(chrome) => return chrome,
+            Err(sudohand_browser::Error::Invalid(message))
+                if message.starts_with(&format!("Port {port} is already in use")) =>
+            {
+                eprintln!(
+                    "fixture port {port} taken before launch (attempt {}); allocating another",
+                    attempt + 1
+                );
+                port = test_browser_port();
+            }
+            Err(error) => panic!("browser_start: {error:?}"),
+        }
+    }
+    panic!("fixture port allocation lost ten consecutive pre-launch races");
 }
 
 /// A Chrome on the preferred 9350-9450 band, where `browser_list` scans.
@@ -121,6 +144,10 @@ pub async fn start_chrome_in_band() -> Chrome {
 }
 
 async fn start_with_port(port: Option<u16>) -> Chrome {
+    try_start_with_port(port).await.expect("browser_start")
+}
+
+async fn try_start_with_port(port: Option<u16>) -> sudohand_browser::Result<Chrome> {
     // CI's setup-chrome Chromium has no usable SUID sandbox helper; the
     // workflow passes `--no-sandbox` through this test-only hook.
     let extra_args: Vec<String> = std::env::var("ADB_TEST_CHROME_ARGS")
@@ -133,16 +160,16 @@ async fn start_with_port(port: Option<u16>) -> Chrome {
         startup_timeout: Some(60.0),
         ..StartOptions::default()
     };
-    let r = browser_start(&opts).await.expect("browser_start");
+    let r = browser_start(&opts).await?;
     if let Some(err) = r.get("error") {
         panic!(
             "browser_start failed: {err}. Is Chrome installed? Set AI_DEV_BROWSER_CHROME to the executable."
         );
     }
-    Chrome {
+    Ok(Chrome {
         port: r["port"].as_u64().unwrap() as u16,
         pid: r["pid"].as_u64().unwrap() as u32,
-    }
+    })
 }
 
 pub async fn open(chrome: &Chrome, url: &str) -> (BrowserClient, Tab) {
