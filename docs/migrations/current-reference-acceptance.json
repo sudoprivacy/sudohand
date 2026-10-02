@@ -73,10 +73,24 @@
       "macOS",
       "Linux"
     ],
-    "status": "Current-reference declaration and real-browser steps passed on all three platforms; overall workflow pending, Windows stdio step failed and needs log review.",
+    "status": "Historical first run: current-reference checks passed on all platforms; Windows stdio failed before its environment fix. Linux/macOS and other Windows steps passed.",
     "legacy_reference_retained": "94170d23f65f5f9140792d1de4a158c086a39325",
     "tested_commit": "85474e5d1c6cb647b60243b9e482e013aa378dab",
-    "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37018744546"
+    "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37018744546",
+    "followup": {
+      "tested_commit": "3b9afeaec9997502eb06be13153bc654d1f8a7ee",
+      "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37020362117",
+      "normal_ci": "https://github.com/sudoprivacy/sudohand/actions/runs/37020362364",
+      "current_reference_checks": "passed on Windows, macOS and Linux; each ran 40 comparison calls",
+      "stdio": "passed on all platforms after preserving OS account environment",
+      "overall": "Windows failed; Linux/macOS, lint, unit tests and inventory passed",
+      "failure": {
+        "job": "https://github.com/sudoprivacy/sudohand/actions/runs/37020362117/job/110881573774",
+        "phase": "browser_parity.py final managed browser_start without explicit port, after cookie/proxy/scoped-cleanup assertions passed",
+        "observed": "Chrome PID 8588 started on selected port 9351, but DevTools/initial page was not ready within 30 seconds. The command exited 9 and killed that process; fixture-owned descendants were cleaned up.",
+        "cause": "Not isolated. This harness still uses an isolated HOME/USERPROFILE for its registry and stop-all tests. The earlier stdio environment diagnosis does not prove the cause of this final automatic-port launch failure."
+      }
+    }
   },
   "prior_unchanged_windows_failure": {
     "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37016817332/job/110869606662",
@@ -191,6 +205,6 @@
     "script": "scripts/stdio_parity.py",
     "before": "Installed Windows Chrome starts but fails to expose DevTools within the unchanged 30-second startup deadline when HOME/USERPROFILE are replaced. Reproduced locally; Chrome for Testing passed the old harness.",
     "change": "Keep real OS account environment; use browser_start temporary profile and explicit port for isolation. Capture owned descendants and finish them after stop. Pipe EOF and timeouts remain unchanged.",
-    "after": "Real installed Chrome and Chrome for Testing both passed via live PTY on Windows. CI follow-up pending."
+    "after": "Installed Chrome and Chrome for Testing passed locally via live PTY; all three CI platforms passed the stdio step at 3b9afeaec9997502eb06be13153bc654d1f8a7ee."
   }
 }
