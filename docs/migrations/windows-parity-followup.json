@@ -34,6 +34,14 @@
       "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36997944033/job/110808857106",
       "failure": "Foundation artifact recorded EMPTY from the original page after the test opened a second tab and used unpinned storage/reload/read calls",
       "status": "Pin the workflow with --tab-url, wait for page readiness after reload, and assert both restored content and returned target URL. The old trace did not record which target page_reload chose, so it cannot distinguish target selection from incomplete reload."
+    },
+    {
+      "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36998996599/job/110812113942",
+      "failures": [
+        "Old Python download returned success but no file appeared",
+        "Loaded extension did not complete the bridge handshake within the startup fixture deadline"
+      ],
+      "status": "Linux/macOS passed. Windows foundation, pool, DPAPI/cleanup and native input passed. Add download request/click/rejection/Chrome verdict diagnostics. Reproduce the extension readiness dependency with delayed identity lookup; send initial hello before optional metadata."
     }
   ],
   "local_checks": {
@@ -76,7 +84,12 @@
         "saved draft is visible after reload on the same explicitly selected tab"
       ],
       "chrome": "Chrome for Testing 154.0.8037.92"
-    }
+    },
+    "slow_identity_before": "Real Chrome extension with identity query delayed four seconds failed: worker WebSocket OPEN, connecting=false, bridge extension_connected=false",
+    "slow_identity_after": "The same delayed-identity real extension passed handshake and page evaluation without extending its deadline, after sending the initial hello immediately",
+    "extension_repetition_before_identity_case": "Ten unmodified startup runs passed locally; they did not reproduce or clear the hosted failure",
+    "download_diagnostics": "Full page parity passed locally with request/click/rejection diagnostics and exact binary bytes; the intermittent old Python missing file remains unisolated",
+    "current_binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56"
   },
   "changes": [
     "Keep Chrome's OS account environment intact; only CLI and bridge asset extraction use the temporary home",
@@ -86,7 +99,9 @@
     "Capture owned direct Chrome process trees before cleanup assertions and wait for their termination before removing disposable profiles; preserve the OS environment for these direct Chrome launches too",
     "Generate encrypted cookie fixtures through real CryptProtectData directly; assert exact decrypted GCM/legacy values and rejection of invalid-tag/app-bound entries in addition to Python/Rust equality",
     "Wait up to 10 seconds for a real initial page before extension loading; startup-only starts without a page, verifies that state, then creates a real page after a delay and continues through bridge handshake and evaluation",
-    "Pin the multi-tab draft workflow and await reload readiness; assert the old EMPTY render changes to saved content on the selected URL"
+    "Pin the multi-tab draft workflow and await reload readiness; assert the old EMPTY render changes to saved content on the selected URL",
+    "Send extension transport readiness before awaiting optional Chrome account metadata; the same connection can update account metadata later",
+    "Capture owned download fixture requests, click/rejection events and Chrome download verdict when a file is missing"
   ],
   "limits": [
     "The local Windows account-environment problem is reproduced; it does not establish that every hosted timeout had the same cause",
@@ -94,5 +109,14 @@
     "Isolated startup uses checkout extension assets; full CLI parity separately checks assets extracted from the executable",
     "This is test infrastructure work, not Grok Rust SDK migration acceptance",
     "Removing the PowerShell fixture wrapper removes its process-start dependency; it does not diagnose the hosted runner's underlying delay"
-  ]
+  ],
+  "cli_steering_audit": {
+    "source_commit": "5f1491743b1c70c639fc5d6933fd0800b407bda1",
+    "rules": [
+      "5a: connected state reflects usable transport rather than optional account lookup",
+      "6: fix the primitive when the documented path cannot connect"
+    ],
+    "mechanical": "63 listed tools and 6 shared help contracts passed",
+    "live": "Real Chrome extension handshake and Runtime.evaluate passed with delayed identity; no description/parameter changes; no new model-steering claim"
+  }
 }

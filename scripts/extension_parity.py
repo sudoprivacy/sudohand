@@ -60,6 +60,19 @@ async def main():
                 if response.get('id') == mid:
                     assert 'error' not in response, (method, response)
                     return response.get('result', {})
+        async def diagnose(cdp, extension_id):
+            targets = await command(cdp, 'Target.getTargets')
+            print('Extension connection diagnostics:', targets, flush=True)
+            for target in targets['targetInfos']:
+                if target['type'] == 'service_worker' and target['url'].startswith(f"chrome-extension://{extension_id}/"):
+                    attached = await command(cdp, 'Target.attachToTarget', {'targetId': target['targetId'], 'flatten': True})
+                    command.sequence += 1
+                    await cdp.send(json.dumps({'id': command.sequence, 'sessionId': attached['sessionId'], 'method': 'Runtime.evaluate', 'params': {'expression': '({socketState: socket?.readyState, connecting, extensionId: chrome.runtime.id})', 'returnByValue': True}}))
+                    while True:
+                        response = json.loads(await asyncio.wait_for(cdp.recv(), 10))
+                        if response.get('id') == command.sequence:
+                            print('Extension worker diagnostics:', response, flush=True)
+                            break
         command.sequence = 0
         try:
             bridge = subprocess.Popen([suh, 'browser', 'bridge-serve', '--port', str(bridge_port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -90,6 +103,11 @@ async def main():
                 background = extension_dir / 'background.js'
                 source = background.read_text(encoding='utf-8')
                 assert source.count('127.0.0.1:9522') == 1
+                identity_query = "chrome.identity.getProfileUserInfo({accountStatus: 'ANY'})"
+                assert source.count(identity_query) == 1
+                # A slow optional identity service must not block CDP control.
+                # Keep the real extension/bridge, delay only the identity query.
+                source = source.replace(identity_query, f"new Promise(resolve => setTimeout(resolve, 4000)).then(() => {identity_query})")
                 background.write_text(source.replace('127.0.0.1:9522', f'127.0.0.1:{bridge_port}'), encoding='utf-8')
                 extension_dir = str(extension_dir)
             else:
@@ -134,6 +152,8 @@ async def main():
                             if status['extension_connected']:
                                 break
                             await asyncio.sleep(.1)
+                        if not status['extension_connected']:
+                            await diagnose(cdp, loaded['id'])
                         assert status['implementation'] == 'sudohand' and status['extension_connected'], status
                         targets = await command(driver, 'Target.getTargets')
                         assert targets['targetInfos'], targets
@@ -150,18 +170,7 @@ async def main():
                         break
                     await asyncio.sleep(.5)
                 if not connected['connected']:
-                    targets = await command(cdp, 'Target.getTargets')
-                    print('Extension connection diagnostics:', targets, flush=True)
-                    for target in targets['targetInfos']:
-                        if target['type'] == 'service_worker' and target['url'].startswith(f"chrome-extension://{loaded['id']}/"):
-                            attached = await command(cdp, 'Target.attachToTarget', {'targetId': target['targetId'], 'flatten': True})
-                            command.sequence += 1
-                            await cdp.send(json.dumps({'id': command.sequence, 'sessionId': attached['sessionId'], 'method': 'Runtime.evaluate', 'params': {'expression': '({socketState: socket?.readyState, connecting, extensionId: chrome.runtime.id})', 'returnByValue': True}}))
-                            while True:
-                                response = json.loads(await asyncio.wait_for(cdp.recv(), 10))
-                                if response.get('id') == command.sequence:
-                                    print('Extension worker diagnostics:', response, flush=True)
-                                    break
+                    await diagnose(cdp, loaded['id'])
                 assert connected['connected'], connected
                 assert connected['tabs'] == ['about:blank'], connected
                 print('PASS actual Chrome extension loaded; bridge handshake; CLI connection')
