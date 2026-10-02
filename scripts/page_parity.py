@@ -30,7 +30,7 @@ def main():
             else:
                 body = html.encode()
             self.send_response(200)
-            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Type', 'application/octet-stream' if self.path == '/fixture.bin' else 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)

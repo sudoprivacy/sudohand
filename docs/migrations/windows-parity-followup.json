@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-02",
+  "scope": "Windows browser parity fixtures during Grok migration baseline acceptance",
+  "ci_attempts": [
+    {
+      "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36987689946/job/110776360668",
+      "failure": "Existing pool_browser test timed out in pool.wait after 20 seconds",
+      "status": "Not reproduced locally; unchanged test passed on the single targeted CI rerun"
+    },
+    {
+      "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36987689946/job/110781620034",
+      "failures": [
+        "Old Python reference returned download success but fixture.bin was absent",
+        "Extensions.loadUnpacked did not answer within the fixture's 10 second deadline"
+      ],
+      "status": "Retained failures; no further unchanged reruns"
+    }
+  ],
+  "local_checks": {
+    "chrome": "154.0.8037.92",
+    "rust_pool": "One targeted pass and five consecutive passes, followed by a pass in the full SDK execution order",
+    "rust_pool_consecutive_seconds": [
+      6.21,
+      6.56,
+      7.66,
+      7.09,
+      6.96
+    ],
+    "full_sdk": {
+      "passed": 101,
+      "ignored_subprocess_fixture": 1,
+      "browser_integration_passed": 27,
+      "pool_browser_seconds": 8.57
+    },
+    "original_page_parity": "Passed with real Chrome and adb v0.38.1, including exact binary download contents",
+    "extension_before": "With HOME and USERPROFILE rewritten, installed Windows Chrome did not expose the debugging endpoint; the diagnostic run was stopped and owned processes cleaned up",
+    "extension_after": "With the OS account environment intact and the same disposable-profile strategy, Extensions.loadUnpacked completed in 0.005 seconds",
+    "isolated_startup": "Passed: real Chrome -> load checkout extension -> Rust bridge handshake -> page evaluation; existing bridge on port 9522 untouched",
+    "final_page_parity": "Passed after the MIME correction, including PDF, exact binary download bytes, download_link completion, cross-origin iframe and scrolling checks",
+    "pool_with_diagnostics": "Passed in 6.16 seconds; all four worker jobs reached the finished phase across shutdown/restart"
+  },
+  "changes": [
+    "Keep Chrome's OS account environment intact; only CLI and bridge asset extraction use the temporary home",
+    "Run --startup-only on an isolated bridge port locally and in CI; the existing full CLI/bundled-extension/restart scenario remains in CI",
+    "Serve the binary download fixture as application/octet-stream instead of text/html",
+    "Print pool worker phases and pool status on wait failure without changing timeout budgets or assertions"
+  ],
+  "limits": [
+    "The local Windows account-environment problem is reproduced; it does not establish that every hosted timeout had the same cause",
+    "The intermittent pool timeout and old Python reference download failure still need observation and, if repeated, further diagnosis",
+    "Isolated startup uses checkout extension assets; full CLI parity separately checks assets extracted from the executable",
+    "This is test infrastructure work, not Grok Rust SDK migration acceptance"
+  ]
+}

@@ -75,6 +75,7 @@ Grok 的首次真实试验发现旧 adb 的 checkpoint 缺陷：读取成功后�
 - 最终脚本运行通过，耗时 22.7 秒。带诊断的前一轮也通过；另一次在重启连接 Chrome 时失败，尚未定位原因，保留为生命周期稳定性待查项。没有加入重试来掩盖失败，也没有换 profile 绕过重启路径。
 - 本地单元和新增回归测试共 126 项通过；新增回归进入 Windows/macOS/Linux CI。真实账号脚本已提交，明确要求有效登录及带时间字段的收藏；缺少条件会失败。测试清除临时凭据、账号结果和专用 profile，仅保留脱敏记录。
 - [脚本及验收证据](https://github.com/sudoprivacy/ai-dev-browser/blob/2bcfe9f661b5eaa0afc96122cb8182b01f9796c7/tests/integration/pool-persistence-acceptance.json) 区分真实浏览器验收与使用内存客户端的 CI 回归。CLI steering 检查对应规则 5：pool 返回值应在源头满足 JSON 序列化合同。
+- Windows parity 另暴露 pool 等待超时、旧 Python 参考下载未落盘和扩展加载超时。本机完整 Rust 浏览器套件 101 项通过，原页面／下载对照流程也通过；这些结果没有用于抹去 CI 失败。修正扩展测试改写 Windows 账号环境的问题，补上可避开现有个人 bridge 的真实启动检查、正确的二进制 fixture MIME 和 pool 失败诊断；超时与文件内容断言保持原样。[诊断记录](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/windows-parity-followup.json) 保留已确认的环境问题与尚未定位的失败。
 
 **这里只接受 Python 后端的持久化修复。** Grok 的 Rust SDK 路线、取消／失败恢复、下载、扩展传输和下游固定版本仍未验收；M1 不能据此退出。下一步用同一条真实任务链比较消费者改写与有限 Python bridge，并追查重启连接失败。
 
