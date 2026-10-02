@@ -14,6 +14,11 @@
         "Extensions.loadUnpacked did not answer within the fixture's 10 second deadline"
       ],
       "status": "Retained failures; no further unchanged reruns"
+    },
+    {
+      "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36992758429/job/110792528384",
+      "failure": "All differential behavior assertions passed; temporary-profile deletion failed with WinError 32 on external-chrome/Default/LocalStorage",
+      "status": "Fixture terminated only the Chrome root and did not wait for its descendants. Reuse the existing PID-reuse-safe process-tree cleanup before profile removal. Linux and macOS passed; Windows extension and page workflows passed on this run."
     }
   ],
   "local_checks": {
@@ -37,13 +42,17 @@
     "extension_after": "With the OS account environment intact and the same disposable-profile strategy, Extensions.loadUnpacked completed in 0.005 seconds",
     "isolated_startup": "Passed: real Chrome -> load checkout extension -> Rust bridge handshake -> page evaluation; existing bridge on port 9522 untouched",
     "final_page_parity": "Passed after the MIME correction, including PDF, exact binary download bytes, download_link completion, cross-origin iframe and scrolling checks",
-    "pool_with_diagnostics": "Passed in 6.16 seconds; all four worker jobs reached the finished phase across shutdown/restart"
+    "pool_with_diagnostics": "Passed in 6.16 seconds; all four worker jobs reached the finished phase across shutdown/restart",
+    "differential_installed_chrome_limit": "Installed Chrome did not start under this suite's isolated HOME/USERPROFILE. Use the same Chrome for Testing build as CI for full differential acceptance; the failed local attempt did not reach the teardown change.",
+    "final_differential_parity": "Passed with Chrome for Testing 154.0.8037.92 (the CI build): plaintext/DPAPI cookies, identity, live/pickle cookie migration, real Chrome proxy routing, scoped cleanup, external-browser preservation, stop-all ownership and process-tree teardown; temporary profile removal succeeded",
+    "process_helpers": "All three bounded-capture and owned-descendant tests passed"
   },
   "changes": [
     "Keep Chrome's OS account environment intact; only CLI and bridge asset extraction use the temporary home",
     "Run --startup-only on an isolated bridge port locally and in CI; the existing full CLI/bundled-extension/restart scenario remains in CI",
     "Serve the binary download fixture as application/octet-stream instead of text/html",
-    "Print pool worker phases and pool status on wait failure without changing timeout budgets or assertions"
+    "Print pool worker phases and pool status on wait failure without changing timeout budgets or assertions",
+    "Capture owned direct Chrome process trees before cleanup assertions and wait for their termination before removing disposable profiles; preserve the OS environment for these direct Chrome launches too"
   ],
   "limits": [
     "The local Windows account-environment problem is reproduced; it does not establish that every hosted timeout had the same cause",

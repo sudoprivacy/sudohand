@@ -5,7 +5,7 @@ Only synthetic local fixtures are used. No personal cookies or profiles are read
 This suite is one parity gate, not evidence for features it does not exercise.
 """
 import argparse
-from parity_process import run_capture
+from parity_process import run_capture, capture_process_tree, finish_process_tree
 from contextlib import closing
 import base64
 import faulthandler
@@ -237,6 +237,7 @@ def main():
         orphan_dir = Path(metadata['profile'])
         external_dir = root / 'external-chrome'
         children = []
+        owned_processes = []
         managed = None
         with socket.socket() as reservation:
             for external_port in range(9350, 9450):
@@ -250,10 +251,14 @@ def main():
         try:
             for directory in [orphan_dir, external_dir]:
                 directory.mkdir(parents=True, exist_ok=True)
-                child = subprocess.Popen([metadata['chrome'], '--headless=new', '--no-first-run', '--no-default-browser-check', '--no-sandbox', f'--user-data-dir={directory}', *([f'--remote-debugging-port={external_port}'] if directory == external_dir else []), 'about:blank'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                child = subprocess.Popen([metadata['chrome'], '--headless=new', '--no-first-run', '--no-default-browser-check', '--no-sandbox', f'--user-data-dir={directory}', *([f'--remote-debugging-port={external_port}'] if directory == external_dir else []), 'about:blank'], env=dict(os.environ), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 children.append(child)
             time.sleep(2)
             assert all(child.poll() is None for child in children)
+            # Capture before testing cleanup: once a root exits, its surviving
+            # descendants may be reparented and still hold Windows profile locks.
+            for child in children:
+                owned_processes.extend(capture_process_tree(child.pid))
             orphan, external = children
             inventory = rust('browser_list', '--all-workspaces')
             mine = {row['pid']: row for row in inventory['browsers'] if row['pid'] in [orphan.pid, external.pid]}
@@ -280,12 +285,11 @@ def main():
                 rust('browser_stop', '--port', managed['port'])
             for child in children:
                 if child.poll() is None:
-                    child.terminate()
-                    try:
-                        child.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        child.kill()
-                        child.wait(timeout=5)
+                    owned_processes.extend(capture_process_tree(child.pid))
+            finish_process_tree(list(set(owned_processes)), terminate=True)
+            for child in children:
+                child.wait(timeout=5)
+            print('PASS fixture teardown: owned Chrome descendants exited before profile removal')
 
 
 if __name__ == '__main__':
