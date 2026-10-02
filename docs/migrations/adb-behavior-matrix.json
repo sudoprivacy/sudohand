@@ -57,6 +57,7 @@
     },
     {
       "id": "C05", "name": "标签选择、状态与关闭计数",
+      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "Partial live CDP evidence: create/list/close the selected second tab, confirm its disappearance and original receipt. URL overlap, refusing targets and extension routing remain open."},
       "tools": ["tab_new", "tab_list", "tab_switch", "tab_close"],
       "sources": ["ai_dev_browser/core/tabs.py", "ai_dev_browser/core/connection.py"],
       "history": ["5739727", "51df94e", "a63491d", "efc5056", "a63f2ef"],
@@ -69,6 +70,7 @@
     },
     {
       "id": "C06", "name": "导航、等待、对话框与焦点",
+      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "Open result gap: v0.51.1 page_goto returns ready=true on the loaded fixture; current Rust omits ready. Delayed load, redirects and timeout behavior remain unaccepted."},
       "tools": ["page_goto", "page_reload", "page_wait_ready", "page_wait_url", "dialog_respond", "page_emulate_focus"],
       "sources": ["ai_dev_browser/core/navigation.py", "ai_dev_browser/core/dialog.py", "ai_dev_browser/core/page.py", "ai_dev_browser/core/window.py"],
       "history": ["f48df34", "296d91a", "8d09fc6", "81b09ec"],
@@ -105,6 +107,7 @@
     },
     {
       "id": "C09", "name": "点击与结果确认",
+      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "Partial live CDP evidence: discovered ref -> trusted reservation exactly once -> visible receipt. Other locator fallbacks and native input remain open."},
       "tools": ["click_by_ref", "click_by_text", "click_by_html_id", "click_by_xpath", "click_row_by_text"],
       "sources": ["ai_dev_browser/core/elements.py", "ai_dev_browser/core/overlays.py", "ai_dev_browser/core/ax.py"],
       "history": ["6180600", "77e555b", "e95e961", "4039ab7"],
@@ -129,6 +132,7 @@
     },
     {
       "id": "C11", "name": "鼠标、拖拽、滚动与人类化",
+      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "Declaration gaps: mouse_click/mouse_move --human-like. Runtime equivalence remains open."},
       "tools": ["mouse_move", "mouse_click", "mouse_drag", "page_scroll", "drag_by_ref"],
       "sources": ["ai_dev_browser/core/mouse.py", "ai_dev_browser/core/human.py", "ai_dev_browser/core/ax.py", "ai_dev_browser/core/elements.py"],
       "history": ["425c6cb", "ec3b215", "5e4c26f", "9eaace0", "3e3c12c", "e3c868e"],
@@ -165,6 +169,7 @@
     },
     {
       "id": "C14", "name": "视口和窗口持久化",
+      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "Both CLIs retain 390x844 across independent calls, a new tab and reload over CDP. Extension/external browser and other window modes remain open."},
       "tools": ["window_set"],
       "sources": ["ai_dev_browser/core/window.py"],
       "history": ["74bfb99", "eab09f0", "9b4cb70", "369eeda"],
@@ -177,6 +182,7 @@
     },
     {
       "id": "C15", "name": "截图、坐标和图像预算",
+      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "Both mobile screenshots decoded at 390x844 with dimension metadata; actual files viewed. Other modes remain open."},
       "tools": ["page_screenshot", "screenshot_by_ref"],
       "sources": ["ai_dev_browser/core/snapshot.py", "ai_dev_browser/core/_image_cap.py", "ai_dev_browser/core/page.py", "ai_dev_browser/core/ax.py"],
       "history": ["6531bd6", "128fa10", "51f5d1a", "7c25952", "4e2c874", "6ef2499", "754efed", "d5c4218"],
@@ -189,6 +195,7 @@
     },
     {
       "id": "C16", "name": "PDF 纸型、单位与 CSS",
+      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "Declaration gaps: --margin, --paper and --prefer-css-page-size. Unit parsing and real PDF layout remain open."},
       "tools": ["page_pdf"],
       "sources": ["ai_dev_browser/core/page.py"],
       "history": ["cd3b370", "020e594", "9e2c8bd", "29f18e4"],
@@ -201,6 +208,7 @@
     },
     {
       "id": "C17", "name": "跨进程录制与证据文件",
+      "current_evidence": {"status": "open", "record": "current-reference-acceptance.json", "scope": "page_record_start and page_record_stop are absent from the Rust CLI; recording migration not accepted."},
       "tools": ["page_record_start", "page_record_stop"],
       "sources": ["ai_dev_browser/core/recording.py", "ai_dev_browser/core/_recorder.py"],
       "history": ["cd26f86", "d1ac1f9", "c349d34"],
@@ -213,6 +221,7 @@
     },
     {
       "id": "C18", "name": "下载与 iframe 文件产物",
+      "current_evidence": {"status": "open", "record": "download-completion-acceptance.json", "scope": "Direct URL completion, immediate upload reuse, empty file, HTTP error and fetch abort accepted locally; real-model selection and recovery passed. Pinned Python premature success retained as a reference bug. download_link --frame, Chrome cancellation and extension scenarios remain open."},
       "tools": ["download", "download_link"],
       "sources": ["ai_dev_browser/core/download.py"],
       "history": ["36d1874", "0735cde"],

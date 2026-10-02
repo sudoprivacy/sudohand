@@ -1,0 +1,1 @@
+Inspect the destination directory and the reported HTTP or browser error before retrying; a transfer may already have started. Fix the URL or page authentication for HTTP failures. Use download_link when the site requires a trusted click. This call was not replayed.

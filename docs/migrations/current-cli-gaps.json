@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "reference_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "reference_commands": 61,
+  "status": "open",
+  "scope": "Exact declaration gap ledger, not a behavior or full-migration acceptance. CI fails if gaps grow OR shrink until this reviewed record is updated.",
+  "gaps": [
+    {"command": "download_link", "kind": "missing_flags", "flags": ["--frame"]},
+    {"command": "mouse_click", "kind": "missing_flags", "flags": ["--human-like"]},
+    {"command": "mouse_move", "kind": "missing_flags", "flags": ["--human-like"]},
+    {"command": "page_pdf", "kind": "missing_flags", "flags": ["--margin", "--paper", "--prefer-css-page-size"]},
+    {"command": "page_record_start", "kind": "missing_command"},
+    {"command": "page_record_stop", "kind": "missing_command"}
+  ],
+  "capabilities": {
+    "download_link": "C18", "mouse_click": "C11", "mouse_move": "C11",
+    "page_pdf": "C16", "page_record_start": "C17", "page_record_stop": "C17"
+  },
+  "additional_unchecked_contracts": [
+    "Argument types and choices, including PDF dimensions with units",
+    "Boolean and undisplayed defaults",
+    "Runtime results, errors, state and artifacts",
+    "SDK, consumers and releases"
+  ]
+}

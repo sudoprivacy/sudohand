@@ -15,6 +15,7 @@ import tempfile
 from pathlib import Path
 
 from browser_fixture import BrowserFixture
+from live_download import BODY, DownloadServer, check_saved
 
 SYSTEM = '''Choose the next browser CLI call for the user's task. You are a text-only
 test subject: do not use your own built-in tools, files, network or shell. The test
@@ -25,7 +26,7 @@ page. The runner supplies --port. Use the actual catalog/help, and use tool resu
 to decide whether the task is complete. Do not invent targets or parameters.'''
 ALLOWED = {'click_by_html_id', 'click_by_xpath', 'click_by_text', 'click_by_ref',
            'find_by_html_id', 'find_by_xpath', 'find_by_text', 'page_discover',
-           'js_evaluate', 'window_set', 'mouse_drag', 'page_info'}
+           'js_evaluate', 'window_set', 'mouse_drag', 'page_info', 'download', 'download_link'}
 
 
 def parse_reply(text):
@@ -129,6 +130,25 @@ def main():
                          f'Drag the slider from CSS coordinates ({coordinates["x"]}, {coordinates["y"]}) to ({coordinates["x"] + 220}, {coordinates["y"]}).',
                          {'mouse_drag'}, dragged, max_calls=2)
                 browser.screenshot('model-drag.png')
+                with DownloadServer() as downloads:
+                    browser.call('page_goto', '--url', downloads.url)
+                    destination = (args.output / 'model-downloads').resolve()
+                    def downloaded(b):
+                        latest = next(c for c in reversed(b.calls) if c['tool'] == 'download')
+                        check_saved(latest['result'], destination, BODY)
+                    scenario(browser, 'save URL for immediate reuse',
+                             f'Save the export at {downloads.url}/slow.bin into directory {destination}. Report the saved file location for the next step.',
+                             {'download'}, downloaded, max_calls=1)
+                    assert downloads.requests.count('/slow.bin') == 1, downloads.requests
+                    code, failure = browser.call_raw('download', '--url', downloads.url + '/missing.bin', '--path', destination)
+                    assert code == 9 and failure['error']['retryable'] is False, failure
+                    scenario(browser, 'recover missing export URL',
+                             f'Save the export into directory {destination}. The earlier URL failed. The corrected URL is {downloads.url}/slow.bin?corrected=1.',
+                             {'download'}, downloaded, max_calls=1,
+                             initial=[{'choice': {'tool': 'download', 'args': ['--url', downloads.url + '/missing.bin', '--path', str(destination)]},
+                                       'result': {'exit': code, 'result': failure}}])
+                    assert downloads.requests.count('/missing.bin') == 1, downloads.requests
+                    assert downloads.requests.count('/slow.bin?corrected=1') == 1, downloads.requests
             report['status'] = 'passed'
         finally:
             report['model_requests'] = count

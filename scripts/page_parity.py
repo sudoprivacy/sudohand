@@ -211,30 +211,16 @@ def main():
                     print(f'PASS PDF {label}: file signature, byte count and result contract', flush=True)
                 folder = Path(temporary) / 'downloads'
                 folder.mkdir()
-                outcomes = []
-                for implementation in (python, rust):
-                    rust('js_evaluate', *connection, '--expression', '''window.downloadDiagnostics=[];
-                        window.addEventListener('unhandledrejection', e=>downloadDiagnostics.push({kind:'rejection',error:String(e.reason)}));
-                        window.addEventListener('click', e=>{const a=e.target.closest('a');if(a)downloadDiagnostics.push({kind:'click',href:a.href,download:a.download});},true);true''')
-                    result = implementation('download', *connection, '--url', url.rsplit('/', 1)[0] + '/fixture.bin', '--path', folder)
-                    print(f'DOWNLOAD {implementation.__name__}: {result}', flush=True)
-                    file = folder / 'fixture.bin'
-                    deadline = time.monotonic() + 5
-                    while not file.exists() and time.monotonic() < deadline:
-                        time.sleep(.05)
-                    if not file.exists():
-                        page_state = rust('js_evaluate', *connection, '--expression', '({url:location.href,events:window.downloadDiagnostics,links:Array.from(document.querySelectorAll("a"), a=>({href:a.href,download:a.download}))})')
-                        # This is our disposable profile; inspect Chrome's actual
-                        # download verdict rather than guessing from an empty dir.
-                        rust('tab_new', *connection, '--url', 'chrome://downloads/')
-                        rust('page_wait_ready', *connection, '--tab-url', 'chrome://downloads/')
-                        download_state = rust('js_evaluate', *connection, '--tab-url', 'chrome://downloads/', '--expression', 'Array.from(document.querySelector("downloads-manager")?.shadowRoot?.querySelectorAll("downloads-item")||[],item=>({name:item.data?.fileName,state:item.data?.state,dangerType:item.data?.dangerType,reason:item.data?.lastReasonText}))')
-                        raise AssertionError((implementation.__name__, result, list(folder.iterdir()), requests, page_state, download_state))
-                    assert file.read_bytes() == b'fixture download \x00\xff', result
-                    outcomes.append(result)
-                    file.unlink()
-                assert outcomes[0] == outcomes[1], outcomes
-                print('PASS download: matching result and exact binary file contents', flush=True)
+                # The pinned Python download reports success before completion.
+                # live_download_completion_probe retains both Python observations;
+                # Rust must satisfy the completed-file contract independently.
+                result = rust('download', *connection, '--url', url.rsplit('/', 1)[0] + '/fixture.bin', '--path', folder)
+                file = Path(result['path'])
+                assert result['success'] and file.is_absolute() and file.parent == folder.resolve(), result
+                assert result['filename'] == 'fixture.bin' and result['bytes'] == len(b'fixture download \x00\xff'), result
+                assert file.read_bytes() == b'fixture download \x00\xff', result
+                file.unlink()
+                print('PASS download: completed absolute path and exact binary contents at return', flush=True)
                 rust('js_evaluate', *connection, '--expression', 'document.body.insertAdjacentHTML("beforeend", \'<a id="download-link" href="/fixture.bin" download="linked.txt">Download fixture</a>\')')
                 outcomes = []
                 for implementation in (python, rust):

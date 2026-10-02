@@ -1,0 +1,215 @@
+{
+  "schema": 1,
+  "tested_at": "2026-10-02",
+  "reference_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "implementation_commit": "ab5855cda7bc2eb581934504313858a97dec0ba1",
+  "binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56",
+  "platform": "Windows",
+  "chrome": "154.0.8037.92",
+  "execution": "live PTY, real installed Chrome, separate CLI processes, disposable profiles and local HTTP fixture",
+  "full_migration_accepted": false,
+  "model_tested": false,
+  "declarations": {
+    "reference_tools": 61,
+    "available_tools": 59,
+    "displayed_defaults_checked": 27,
+    "status": "failed",
+    "gaps": "current-cli-gaps.json",
+    "limits": "Command names, long flags and displayed scalar defaults only. Types, choices, boolean defaults, unshown defaults, results and runtime behavior require separate checks."
+  },
+  "live": {
+    "script": "scripts/live_current_reference.py",
+    "status": "journeys_passed_with_open_result_gap",
+    "comparison_calls": 40,
+    "backends": [
+      {
+        "backend": "python",
+        "checks": [
+          "discover returned ref -> trusted click -> exactly one visible reservation",
+          "mobile viewport -> second tab -> save draft -> reload -> visible draft and decoded screenshot",
+          "live tab list -> close selected target -> verify actual disappearance and original receipt"
+        ],
+        "screenshot_sha256": "a1c7a265cbbcd0fca02ee33aa348a37b99e0141468da3d79b74f723e1f6e93ce",
+        "cleanup": "owned browser stopped"
+      },
+      {
+        "backend": "rust",
+        "checks": [
+          "discover returned ref -> trusted click -> exactly one visible reservation",
+          "mobile viewport -> second tab -> save draft -> reload -> visible draft and decoded screenshot",
+          "live tab list -> close selected target -> verify actual disappearance and original receipt"
+        ],
+        "screenshot_sha256": "48456b5ca0ea55f1b8bd45a08d274fb69512ecbffd973c0905cf3e7c90eefe53",
+        "cleanup": "owned browser stopped"
+      }
+    ],
+    "result_gaps": [
+      {
+        "capability": "C06",
+        "tool": "page_goto",
+        "field": "ready",
+        "reference": true,
+        "target": "missing",
+        "impact": "Navigation success cannot tell the caller that load completed."
+      }
+    ]
+  },
+  "gate_tests": [
+    "strict mode rejects the six open declaration gaps",
+    "exact ledger rejects an extra gap",
+    "exact ledger rejects a removed gap",
+    "exact ledger rejects a different reference commit"
+  ],
+  "earlier_attempts": [
+    {
+      "result": "failed fixture assertion",
+      "detail": "Initial close check expected original URL without the #receipt fragment added by submission. It correctly found the sole remaining original tab. The test now uses the observed submission URL and checks the visible receipt."
+    }
+  ],
+  "ci": {
+    "workflow": ".github/workflows/browser-parity.yml",
+    "platforms": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "status": "Historical first run: current-reference checks passed on all platforms; Windows stdio failed before its environment fix. Linux/macOS and other Windows steps passed.",
+    "legacy_reference_retained": "94170d23f65f5f9140792d1de4a158c086a39325",
+    "tested_commit": "85474e5d1c6cb647b60243b9e482e013aa378dab",
+    "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37018744546",
+    "followup": {
+      "tested_commit": "3b9afeaec9997502eb06be13153bc654d1f8a7ee",
+      "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37020362117",
+      "normal_ci": "https://github.com/sudoprivacy/sudohand/actions/runs/37020362364",
+      "current_reference_checks": "passed on Windows, macOS and Linux; each ran 40 comparison calls",
+      "stdio": "passed on all platforms after preserving OS account environment",
+      "overall": "Windows failed; Linux/macOS, lint, unit tests and inventory passed",
+      "failure": {
+        "job": "https://github.com/sudoprivacy/sudohand/actions/runs/37020362117/job/110881573774",
+        "phase": "browser_parity.py final managed browser_start without explicit port, after cookie/proxy/scoped-cleanup assertions passed",
+        "observed": "Chrome PID 8588 started on selected port 9351, but DevTools/initial page was not ready within 30 seconds. The command exited 9 and killed that process; fixture-owned descendants were cleaned up.",
+        "cause": "Not isolated. This harness still uses an isolated HOME/USERPROFILE for its registry and stop-all tests. The earlier stdio environment diagnosis does not prove the cause of this final automatic-port launch failure."
+      }
+    }
+  },
+  "prior_unchanged_windows_failure": {
+    "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37016817332/job/110869606662",
+    "source": "Documentation-only PR #34; product and tests identical to PR #33",
+    "result": "Old Python download returned success but the expected directory stayed empty. Chrome's download history contained fixture.bin with state=2 and dangerType=0. Actual destination was not captured; cause remains unresolved. Other steps, Linux and macOS passed. No unchanged rerun was used to erase this failure."
+  },
+  "audit": {
+    "skill_commit": "5f1491743b1c70c639fc5d6933fd0800b407bda1",
+    "scope": "No product CLI/help/result changes. Tests audit real parser/help declarations and real task outcomes. New missing readiness field retained as an open result contract. No new model acceptance claimed.",
+    "mechanical_tools": 63,
+    "followup": "PR #35 now also changes download results/help/errors; seven shared help tools and six real-model scenarios are recorded separately in download-completion-acceptance.json."
+  },
+  "remaining": [
+    "page_goto ready field, delayed loading, redirects and timeout honesty",
+    "Other cases within C05/C09/C14/C15, including extension transport and refusing targets",
+    "Recording, PDF, iframe downloads and human-like mouse declarations",
+    "Argument types/choices/boolean or undisplayed defaults",
+    "Grok SDK route, events, pool cancellation and restart failures",
+    "Other consumers, installed releases and rollback"
+  ],
+  "download_probe": {
+    "script": "scripts/live_download_completion_probe.py",
+    "status": "failed_acceptance_reproduced",
+    "execution": "Windows live PTY; Chrome 154; isolated profiles, explicit temporary fallback directory; local HTTP response delayed one second",
+    "exit_code": 1,
+    "backends": [
+      {
+        "backend": "python-old",
+        "reference_commit": "94170d23f65f5f9140792d1de4a158c086a39325",
+        "binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56",
+        "duration": 1.0479936000047019,
+        "result": {
+          "path": "slow.bin",
+          "success": true
+        },
+        "files_at_return": [],
+        "files_after_wait": [
+          {
+            "relative": "fallback\\slow.bin",
+            "bytes": "636f6e74726f6c6c656420646f776e6c6f616400ff"
+          }
+        ],
+        "download_history": [
+          {
+            "name": "slow.bin",
+            "path": "fallback/slow.bin",
+            "state": 2,
+            "danger": 0
+          }
+        ],
+        "returned_success_before_file": true,
+        "download_accepted": false
+      },
+      {
+        "backend": "python-current",
+        "reference_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+        "binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56",
+        "duration": 1.2360272000078112,
+        "result": {
+          "path": "slow.bin",
+          "success": true
+        },
+        "files_at_return": [],
+        "files_after_wait": [
+          {
+            "relative": "fallback\\slow.bin",
+            "bytes": "636f6e74726f6c6c656420646f776e6c6f616400ff"
+          }
+        ],
+        "download_history": [
+          {
+            "name": "slow.bin",
+            "path": "fallback/slow.bin",
+            "state": 2,
+            "danger": 0
+          }
+        ],
+        "returned_success_before_file": true,
+        "download_accepted": false
+      },
+      {
+        "backend": "rust",
+        "reference_commit": null,
+        "binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56",
+        "duration": 0.1650563000002876,
+        "result": {
+          "path": "slow.bin",
+          "success": true
+        },
+        "files_at_return": [],
+        "files_after_wait": [
+          {
+            "relative": "fallback\\slow.bin",
+            "bytes": "636f6e74726f6c6c656420646f776e6c6f616400ff"
+          }
+        ],
+        "download_history": [
+          {
+            "name": "slow.bin",
+            "path": "fallback/slow.bin",
+            "state": 2,
+            "danger": 0
+          }
+        ],
+        "returned_success_before_file": true,
+        "download_accepted": false
+      }
+    ],
+    "interpretation": "All three return success before the file exists in the requested directory. The complete bytes subsequently appear in the isolated default download directory. This reproduces the CI symptom; the exact CI destination was not captured. A source review shows each injected async fetch is launched without awaiting completion, followed by a 100ms sleep.",
+    "next_fix": "Keep the download connection/behavior alive through completed or canceled events; verify final file location and bytes before success; add this delayed response journey to CI after fixing it."
+  },
+  "stdio_followup": {
+    "script": "scripts/stdio_parity.py",
+    "before": "Installed Windows Chrome starts but fails to expose DevTools within the unchanged 30-second startup deadline when HOME/USERPROFILE are replaced. Reproduced locally; Chrome for Testing passed the old harness.",
+    "change": "Keep real OS account environment; use browser_start temporary profile and explicit port for isolation. Capture owned descendants and finish them after stop. Pipe EOF and timeouts remain unchanged.",
+    "after": "Installed Chrome and Chrome for Testing passed locally via live PTY; all three CI platforms passed the stdio step at 3b9afeaec9997502eb06be13153bc654d1f8a7ee."
+  },
+  "download_followup": {
+    "record": "download-completion-acceptance.json",
+    "status": "local Rust completion, browser reuse and real-model checks passed; C18 still open for iframe/extension/cancellation"
+  }
+}

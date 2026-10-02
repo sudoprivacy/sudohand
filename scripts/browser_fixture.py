@@ -43,7 +43,9 @@ class BrowserFixture:
         self.url = f'http://127.0.0.1:{self.server.server_port}/steering.html'
 
     def __enter__(self):
-        flags = ['--headless']
+        # Component updater downloads are unrelated to local fixture workflows
+        # and can race file-directory assertions even with background networking off.
+        flags = ['--headless', '--extra-args=--disable-component-update']
         if self.env.get('ADB_TEST_CHROME_ARGS'):
             overrides = dict(item.partition('=')[::2] for item in shlex.split(self.env['ADB_TEST_CHROME_ARGS']))
             flags += ['--override-default-args', json.dumps(overrides)]

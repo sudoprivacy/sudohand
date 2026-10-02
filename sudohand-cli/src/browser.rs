@@ -961,8 +961,7 @@ pub enum CookieCommands {
 
 #[derive(Subcommand, Debug)]
 pub enum DownloadCommands {
-    /// Download a file by URL into a directory
-    #[command(name = "download")]
+    #[command(name = "download", about = sudohand_browser::steering::DOWNLOAD)]
     Download {
         #[command(flatten)]
         conn: Conn,

@@ -85,6 +85,10 @@ def main():
                         evaluate('window.pointerEvents=[];document.onmousedown=e=>pointerEvents.push({x:e.clientX,y:e.clientY,target:e.target.id,trusted:e.isTrusted}); true')
                     evaluate(f'document.querySelector("#choice").addEventListener("mousedown", event=>event.preventDefault()); document.querySelector("#choice").addEventListener("click", event=>{{if({predicate}) document.title="Accepted";}}); true')
                     result = implementation('click_by_text', *connection, '--text', 'Choose', '--os-click', str(label == 'native').lower())
+                    assert all(key in result for key in ('clicked', 'verified', 'method', 'target')), (
+                        label, implementation.__name__, result,
+                        evaluate('({url:location.href,title:document.title,body:document.body.innerHTML,ready:document.readyState,focus:document.hasFocus()})'),
+                        rust('page_discover', *connection, '--text', 'Choose'))
                     outcome = {key: result[key] for key in ['clicked', 'verified', 'method', 'target']}
                     assert outcome == {'clicked': True, 'verified': expected_method is not None, 'method': expected_method, 'target': 'button'}, (label, implementation.__name__, result, evaluate('({trusted:window.trustedCount,events:window.pointerEvents,focus:document.hasFocus(),sx:screenX,sy:screenY,outer:[outerWidth,outerHeight],inner:[innerWidth,innerHeight],dpr:devicePixelRatio})'))
                     assert evaluate('document.title') == ('Accepted' if expected_method else 'Fixture'), result
