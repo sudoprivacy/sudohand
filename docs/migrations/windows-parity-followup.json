@@ -19,6 +19,11 @@
       "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36992758429/job/110792528384",
       "failure": "All differential behavior assertions passed; temporary-profile deletion failed with WinError 32 on external-chrome/Default/LocalStorage",
       "status": "Fixture terminated only the Chrome root and did not wait for its descendants. Reuse the existing PID-reuse-safe process-tree cleanup before profile removal. Linux and macOS passed; Windows extension and page workflows passed on this run."
+    },
+    {
+      "job": "https://github.com/sudoprivacy/sudohand/actions/runs/36994672410/job/110798539840",
+      "failure": "The PowerShell subprocess used to generate a DPAPI fixture timed out after 20 seconds, before the browser/cleanup journey",
+      "status": "Replace the subprocess with direct CryptProtectData using the current Windows account. The trace does not distinguish PowerShell startup from its wrapped DPAPI call. Linux and macOS passed; all other Windows steps passed."
     }
   ],
   "local_checks": {
@@ -45,19 +50,22 @@
     "pool_with_diagnostics": "Passed in 6.16 seconds; all four worker jobs reached the finished phase across shutdown/restart",
     "differential_installed_chrome_limit": "Installed Chrome did not start under this suite's isolated HOME/USERPROFILE. Use the same Chrome for Testing build as CI for full differential acceptance; the failed local attempt did not reach the teardown change.",
     "final_differential_parity": "Passed with Chrome for Testing 154.0.8037.92 (the CI build): plaintext/DPAPI cookies, identity, live/pickle cookie migration, real Chrome proxy routing, scoped cleanup, external-browser preservation, stop-all ownership and process-tree teardown; temporary profile removal succeeded",
-    "process_helpers": "All three bounded-capture and owned-descendant tests passed"
+    "process_helpers": "All three bounded-capture and owned-descendant tests passed",
+    "direct_dpapi_final": "Full differential workflow passed after direct Win32 fixture generation and stronger assertions: exact GCM/legacy plaintext, invalid-tag/app-bound rejection, real Chrome identity/proxy/cookies, ownership cleanup and profile removal"
   },
   "changes": [
     "Keep Chrome's OS account environment intact; only CLI and bridge asset extraction use the temporary home",
     "Run --startup-only on an isolated bridge port locally and in CI; the existing full CLI/bundled-extension/restart scenario remains in CI",
     "Serve the binary download fixture as application/octet-stream instead of text/html",
     "Print pool worker phases and pool status on wait failure without changing timeout budgets or assertions",
-    "Capture owned direct Chrome process trees before cleanup assertions and wait for their termination before removing disposable profiles; preserve the OS environment for these direct Chrome launches too"
+    "Capture owned direct Chrome process trees before cleanup assertions and wait for their termination before removing disposable profiles; preserve the OS environment for these direct Chrome launches too",
+    "Generate encrypted cookie fixtures through real CryptProtectData directly; assert exact decrypted GCM/legacy values and rejection of invalid-tag/app-bound entries in addition to Python/Rust equality"
   ],
   "limits": [
     "The local Windows account-environment problem is reproduced; it does not establish that every hosted timeout had the same cause",
     "The intermittent pool timeout and old Python reference download failure still need observation and, if repeated, further diagnosis",
     "Isolated startup uses checkout extension assets; full CLI parity separately checks assets extracted from the executable",
-    "This is test infrastructure work, not Grok Rust SDK migration acceptance"
+    "This is test infrastructure work, not Grok Rust SDK migration acceptance",
+    "Removing the PowerShell fixture wrapper removes its process-start dependency; it does not diagnose the hosted runner's underlying delay"
   ]
 }

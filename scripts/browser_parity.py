@@ -72,11 +72,34 @@ def main():
         equivalent('cookies_extract_offline', ['--domain', 'example.test', '--user-data-dir', profile.parent.parent])
         print('PASS plaintext offline cookie fixture', flush=True)
         if sys.platform == 'win32':
+            import ctypes
+            from ctypes import wintypes
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
             def protect(data):
-                program = "$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Security; $bytes=[Convert]::FromBase64String([Console]::In.ReadToEnd()); [Console]::Out.Write([Convert]::ToBase64String([Security.Cryptography.ProtectedData]::Protect($bytes,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)))"
-                result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', program], input=base64.b64encode(data).decode(), capture_output=True, text=True, encoding='utf-8', check=True, timeout=20)
-                return base64.b64decode(result.stdout)
+                # Call real user-scoped DPAPI without a PowerShell startup.
+                # https://learn.microsoft.com/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata
+                class DataBlob(ctypes.Structure):
+                    _fields_ = [('cbData', wintypes.DWORD), ('pbData', ctypes.c_void_p)]
+                crypt32 = ctypes.WinDLL('crypt32', use_last_error=True)
+                kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+                crypt32.CryptProtectData.argtypes = [
+                    ctypes.POINTER(DataBlob), wintypes.LPCWSTR,
+                    ctypes.POINTER(DataBlob), wintypes.LPVOID, wintypes.LPVOID,
+                    wintypes.DWORD, ctypes.POINTER(DataBlob),
+                ]
+                crypt32.CryptProtectData.restype = wintypes.BOOL
+                kernel32.LocalFree.argtypes = [wintypes.HLOCAL]
+                kernel32.LocalFree.restype = wintypes.HLOCAL
+                buffer = ctypes.create_string_buffer(data, len(data))
+                source = DataBlob(len(data), ctypes.addressof(buffer))
+                encrypted = DataBlob()
+                if not crypt32.CryptProtectData(ctypes.byref(source), None, None, None, None,
+                                               1, ctypes.byref(encrypted)):  # UI forbidden
+                    raise ctypes.WinError(ctypes.get_last_error())
+                try:
+                    return ctypes.string_at(encrypted.pbData, encrypted.cbData)
+                finally:
+                    kernel32.LocalFree(encrypted.pbData)
             key = bytes(range(32))
             state = {'os_crypt': {'encrypted_key': base64.b64encode(b'DPAPI' + protect(key)).decode()}}
             (profile.parent.parent / 'Local State').write_text(json.dumps(state))
@@ -91,7 +114,12 @@ def main():
                     ('.example.test', 'invalid-tag', '', encrypted[:-1] + bytes([encrypted[-1] ^ 1]), '/', 0, 0, 0),
                 ])
         for domain in ['example.test', '', 'missing.test']:
-            equivalent('cookies_extract_offline', ['--domain', domain, '--user-data-dir', profile.parent.parent])
+            result = equivalent('cookies_extract_offline', ['--domain', domain, '--user-data-dir', profile.parent.parent])
+            if sys.platform == 'win32' and domain != 'missing.test':
+                values = {cookie['name']: cookie['value'] for cookie in result}
+                assert values['gcm'] == 'windows-fixture-' + 'x' * 80, values
+                assert values['legacy'] == 'legacy \u6d4f\u89c8\u5668', values
+                assert 'app-bound' not in values and 'invalid-tag' not in values, values
         print('PASS offline: full values, Unicode, domain filters, expiry, schema')
 
         with socket.socket() as reservation:
