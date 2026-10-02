@@ -32,7 +32,15 @@ impl PoolClient for BrowserWorker {
     ) -> PoolFuture<'a, std::result::Result<ExecutionResult, JobFailure>> {
         Box::pin(async move {
             // Both workers must be live; a sequential scheduler would time out.
+            eprintln!(
+                "worker {} job {}: waiting for peer",
+                self.options.worker_id, job.job_id
+            );
             self.barrier.wait().await;
+            eprintln!(
+                "worker {} job {}: navigating",
+                self.options.worker_id, job.job_id
+            );
             let result: Result<serde_json::Value> = async {
                 tools::page_goto(&self.tab, job.args[0].as_str().unwrap(), true).await?;
                 if job.task_type == "restore" {
@@ -44,6 +52,12 @@ impl PoolClient for BrowserWorker {
                 let cookies = tools::cookies_extract_live(&self.tab, "parity.test").await?;
                 Ok(json!({"worker_id":self.options.worker_id, "marker": self.tab.evaluate("window.workerMarker").await?, "cookies":cookies}))
             }.await;
+            eprintln!(
+                "worker {} job {}: browser work finished ({})",
+                self.options.worker_id,
+                job.job_id,
+                if result.is_ok() { "ok" } else { "error" }
+            );
             result
                 .map(ExecutionResult::from)
                 .map_err(|error| JobFailure::new(error.to_string(), "BrowserError"))
@@ -156,6 +170,12 @@ async fn independent_chromes_persist_per_worker_cookies_and_close() {
     let results = pool
         .wait(Some(&ids), None, Some(Duration::from_secs(20)))
         .await;
+    if let Err(error) = &results {
+        eprintln!(
+            "visit wait failed: {error}; pool status: {}",
+            pool.get_status()
+        );
+    }
     pool.shutdown(false).await.unwrap();
     let results = results.unwrap();
     let mut workers = Vec::new();
@@ -206,6 +226,12 @@ async fn independent_chromes_persist_per_worker_cookies_and_close() {
     let outcomes = restored
         .wait(Some(&ids), None, Some(Duration::from_secs(20)))
         .await;
+    if let Err(error) = &outcomes {
+        eprintln!(
+            "restore wait failed: {error}; pool status: {}",
+            restored.get_status()
+        );
+    }
     restored.shutdown(false).await.unwrap();
     for outcome in outcomes.unwrap().values() {
         assert!(outcome.success, "{outcome:?}");

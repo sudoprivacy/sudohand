@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Real Chrome extension checks in a disposable profile. Requires websockets.
+Use --startup-only for an isolated-port Chrome/extension/bridge startup check;
+the default run also checks CLI contracts, bundled assets and bridge restart.
 Never loads an extension into, attaches to, or closes a personal browser.
 """
 import argparse
@@ -9,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -29,10 +32,13 @@ async def main():
     parser.add_argument('--suh', type=Path, required=True)
     parser.add_argument('--chrome', required=True)
     parser.add_argument('--reference', type=Path, required=True)
+    parser.add_argument('--startup-only', action='store_true', help='Check real Chrome, checkout extension assets and bridge handshake on an isolated port. Full CLI parity requires port 9522 to be free.')
     args = parser.parse_args()
     suh = str(args.suh.resolve())
-    bridge_port = free_port(9522)  # fail rather than disturb an existing bridge
+    bridge_port = free_port(0 if args.startup_only else 9522)  # never disturb an existing bridge
     chrome_port = free_port()
+    while chrome_port == bridge_port:
+        chrome_port = free_port()
     children = []
     with tempfile.TemporaryDirectory(prefix='suh-extension-test-') as temporary:
         root = Path(temporary)
@@ -54,13 +60,30 @@ async def main():
                 if response.get('id') == mid:
                     assert 'error' not in response, (method, response)
                     return response.get('result', {})
+        async def diagnose(cdp, extension_id):
+            targets = await command(cdp, 'Target.getTargets')
+            print('Extension connection diagnostics:', targets, flush=True)
+            for target in targets['targetInfos']:
+                if target['type'] == 'service_worker' and target['url'].startswith(f"chrome-extension://{extension_id}/"):
+                    attached = await command(cdp, 'Target.attachToTarget', {'targetId': target['targetId'], 'flatten': True})
+                    command.sequence += 1
+                    await cdp.send(json.dumps({'id': command.sequence, 'sessionId': attached['sessionId'], 'method': 'Runtime.evaluate', 'params': {'expression': '({socketState: socket?.readyState, connecting, extensionId: chrome.runtime.id})', 'returnByValue': True}}))
+                    while True:
+                        response = json.loads(await asyncio.wait_for(cdp.recv(), 10))
+                        if response.get('id') == command.sequence:
+                            print('Extension worker diagnostics:', response, flush=True)
+                            break
         command.sequence = 0
         try:
             bridge = subprocess.Popen([suh, 'browser', 'bridge-serve', '--port', str(bridge_port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             children.append(bridge)
             # Match the regular launcher: a disposable macOS test browser must
             # not wait for interactive access to the user's system keychain.
-            chrome = subprocess.Popen([args.chrome, '--headless=new', '--use-mock-keychain', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--enable-unsafe-extension-debugging', f'--remote-debugging-port={chrome_port}', f'--user-data-dir={root / "chrome"}', 'about:blank'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Chrome needs the real OS account environment on Windows. Its
+            # disposable --user-data-dir supplies isolation; the CLI/bridge
+            # keep their separate temporary home for extracted assets.
+            initial_page = ['--no-startup-window'] if args.startup_only else ['about:blank']
+            chrome = subprocess.Popen([args.chrome, '--headless=new', '--use-mock-keychain', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--enable-unsafe-extension-debugging', f'--remote-debugging-port={chrome_port}', f'--user-data-dir={root / "chrome"}', *initial_page], env=dict(os.environ), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             children.append(chrome)
             version = None
             for _ in range(100):
@@ -72,15 +95,74 @@ async def main():
                 except Exception:
                     await asyncio.sleep(.1)
             assert version, 'Chrome debugging endpoint did not start'
-            # First CLI call extracts assets from the actual built binary.
-            setup = cli('browser_connect', '--transport', 'extension')
-            assert setup['connected'] is False and setup['bridge_running'] is True, setup
-            extension_dir = setup['extension_dir']
+            if args.startup_only:
+                # Validate startup even when a personal bridge owns port 9522.
+                # Full parity below still exercises the binary's bundled assets.
+                extension_dir = root / 'extension'
+                shutil.copytree(Path(__file__).resolve().parents[1] / 'crates/sudohand-browser/extension', extension_dir)
+                background = extension_dir / 'background.js'
+                source = background.read_text(encoding='utf-8')
+                assert source.count('127.0.0.1:9522') == 1
+                identity_query = "chrome.identity.getProfileUserInfo({accountStatus: 'ANY'})"
+                assert source.count(identity_query) == 1
+                # A slow optional identity service must not block CDP control.
+                # Keep the real extension/bridge, delay only the identity query.
+                source = source.replace(identity_query, f"new Promise(resolve => setTimeout(resolve, 4000)).then(() => {identity_query})")
+                background.write_text(source.replace('127.0.0.1:9522', f'127.0.0.1:{bridge_port}'), encoding='utf-8')
+                extension_dir = str(extension_dir)
+            else:
+                # First CLI call extracts assets from the actual built binary.
+                setup = cli('browser_connect', '--transport', 'extension')
+                assert setup['connected'] is False and setup['bridge_running'] is True, setup
+                extension_dir = setup['extension_dir']
             async with websockets.connect(version['webSocketDebuggerUrl']) as cdp:
-                before = await command(cdp, 'Target.getTargets')
-                personal = next(t for t in before['targetInfos'] if t['type'] == 'page')
+                create_page = None
+                if args.startup_only:
+                    # Reproduce the real startup gap: DevTools responds before
+                    # Chrome publishes its initial page. Use a second socket so
+                    # only one coroutine receives from each CDP connection.
+                    before = await command(cdp, 'Target.getTargets')
+                    assert not any(t['type'] == 'page' for t in before['targetInfos']), before
+                    async def publish_page():
+                        await asyncio.sleep(.25)
+                        async with websockets.connect(version['webSocketDebuggerUrl']) as creator:
+                            await command(creator, 'Target.createTarget', {'url': 'about:blank'})
+                    create_page = asyncio.create_task(publish_page())
+                try:
+                    async with asyncio.timeout(10):
+                        while True:
+                            before = await command(cdp, 'Target.getTargets')
+                            personal = next((t for t in before['targetInfos'] if t['type'] == 'page'), None)
+                            if personal is not None:
+                                break
+                            await asyncio.sleep(.1)
+                    if create_page is not None:
+                        await create_page
+                        print('PASS startup gap: DevTools with no page -> delayed real tab -> ready')
+                finally:
+                    if create_page is not None and not create_page.done():
+                        create_page.cancel()
+                        await asyncio.gather(create_page, return_exceptions=True)
                 loaded = await command(cdp, 'Extensions.loadUnpacked', {'path': extension_dir})
                 assert loaded.get('id'), loaded
+                if args.startup_only:
+                    async with websockets.connect(f'ws://127.0.0.1:{bridge_port}/devtools/browser') as driver:
+                        for _ in range(30):
+                            status = await command(driver, '_bridge.status')
+                            if status['extension_connected']:
+                                break
+                            await asyncio.sleep(.1)
+                        if not status['extension_connected']:
+                            await diagnose(cdp, loaded['id'])
+                        assert status['implementation'] == 'sudohand' and status['extension_connected'], status
+                        targets = await command(driver, 'Target.getTargets')
+                        assert targets['targetInfos'], targets
+                        target = next(t['targetId'] for t in targets['targetInfos'] if t['type'] == 'page')
+                        async with websockets.connect(f'ws://127.0.0.1:{bridge_port}/devtools/page/{target}') as page:
+                            result = await command(page, 'Runtime.evaluate', {'expression': '6 * 7', 'returnByValue': True})
+                            assert result['result']['value'] == 42, result
+                    print('PASS isolated startup: real Chrome, extension load, Rust bridge handshake and page evaluation')
+                    return
                 connected = None
                 for _ in range(10):
                     connected = cli('browser_connect', '--transport', 'extension')
@@ -88,18 +170,7 @@ async def main():
                         break
                     await asyncio.sleep(.5)
                 if not connected['connected']:
-                    targets = await command(cdp, 'Target.getTargets')
-                    print('Extension connection diagnostics:', targets, flush=True)
-                    for target in targets['targetInfos']:
-                        if target['type'] == 'service_worker' and target['url'].startswith(f"chrome-extension://{loaded['id']}/"):
-                            attached = await command(cdp, 'Target.attachToTarget', {'targetId': target['targetId'], 'flatten': True})
-                            command.sequence += 1
-                            await cdp.send(json.dumps({'id': command.sequence, 'sessionId': attached['sessionId'], 'method': 'Runtime.evaluate', 'params': {'expression': '({socketState: socket?.readyState, connecting, extensionId: chrome.runtime.id})', 'returnByValue': True}}))
-                            while True:
-                                response = json.loads(await asyncio.wait_for(cdp.recv(), 10))
-                                if response.get('id') == command.sequence:
-                                    print('Extension worker diagnostics:', response, flush=True)
-                                    break
+                    await diagnose(cdp, loaded['id'])
                 assert connected['connected'], connected
                 assert connected['tabs'] == ['about:blank'], connected
                 print('PASS actual Chrome extension loaded; bridge handshake; CLI connection')

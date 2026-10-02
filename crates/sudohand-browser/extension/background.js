@@ -139,6 +139,9 @@ async function connect() {
   socket = current;
   current.onopen = async () => {
     connecting = false;
+    // Local control is ready before optional account metadata. Profile identity
+    // can wait on Chrome services even in a signed-out disposable profile.
+    if (socket === current) transmit({_hello: true, account: null});
     let account = null;
     try { account = (await chrome.identity.getProfileUserInfo({accountStatus: 'ANY'})).email || null; } catch { /* Signed-out profile. */ }
     if (socket === current) transmit({_hello: true, account});

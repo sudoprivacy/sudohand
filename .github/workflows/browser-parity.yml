@@ -144,6 +144,7 @@ jobs:
         run: |
           executable=target/debug/suh
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
+          python -u scripts/extension_parity.py --suh "$executable" --chrome "$AI_DEV_BROWSER_CHROME" --reference .parity-reference --startup-only
           python -u scripts/extension_parity.py --suh "$executable" --chrome "$AI_DEV_BROWSER_CHROME" --reference .parity-reference
 
       - name: Click fallback and typing contracts

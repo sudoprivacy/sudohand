@@ -20,9 +20,11 @@ def main():
     parser.add_argument('--suh', type=Path, required=True)
     parser.add_argument('--reference', type=Path, required=True)
     args = parser.parse_args()
+    requests = []
     html = '<!doctype html><html><head><meta charset="utf-8"><title>Parity 页面</title></head><body><h1>Fixture 🙂</h1><input id="field" aria-label="Name" value="hello"><button id="hidden" style="display:none">Hidden</button><iframe src="/frame" title="child"></iframe><select id="choice" aria-label="Choice" size="2"><option value="a">Alpha</option><option value="b">Beta</option></select><input id="upload" type="file" multiple aria-label="Upload fixture"><p>Deterministic content</p></body></html>'
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
+            requests.append(self.path)
             if self.path == '/fixture.bin':
                 body = b'fixture download \x00\xff'
             elif self.path in ('/frame', '/crossframe'):
@@ -30,7 +32,7 @@ def main():
             else:
                 body = html.encode()
             self.send_response(200)
-            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Type', 'application/octet-stream' if self.path == '/fixture.bin' else 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -211,13 +213,23 @@ def main():
                 folder.mkdir()
                 outcomes = []
                 for implementation in (python, rust):
+                    rust('js_evaluate', *connection, '--expression', '''window.downloadDiagnostics=[];
+                        window.addEventListener('unhandledrejection', e=>downloadDiagnostics.push({kind:'rejection',error:String(e.reason)}));
+                        window.addEventListener('click', e=>{const a=e.target.closest('a');if(a)downloadDiagnostics.push({kind:'click',href:a.href,download:a.download});},true);true''')
                     result = implementation('download', *connection, '--url', url.rsplit('/', 1)[0] + '/fixture.bin', '--path', folder)
                     print(f'DOWNLOAD {implementation.__name__}: {result}', flush=True)
                     file = folder / 'fixture.bin'
                     deadline = time.monotonic() + 5
                     while not file.exists() and time.monotonic() < deadline:
                         time.sleep(.05)
-                    assert file.exists(), (implementation.__name__, result, list(folder.iterdir()), rust('js_evaluate', *connection, '--expression', '({url:location.href,links:Array.from(document.querySelectorAll("a"), a=>({href:a.href,download:a.download}))})'))
+                    if not file.exists():
+                        page_state = rust('js_evaluate', *connection, '--expression', '({url:location.href,events:window.downloadDiagnostics,links:Array.from(document.querySelectorAll("a"), a=>({href:a.href,download:a.download}))})')
+                        # This is our disposable profile; inspect Chrome's actual
+                        # download verdict rather than guessing from an empty dir.
+                        rust('tab_new', *connection, '--url', 'chrome://downloads/')
+                        rust('page_wait_ready', *connection, '--tab-url', 'chrome://downloads/')
+                        download_state = rust('js_evaluate', *connection, '--tab-url', 'chrome://downloads/', '--expression', 'Array.from(document.querySelector("downloads-manager")?.shadowRoot?.querySelectorAll("downloads-item")||[],item=>({name:item.data?.fileName,state:item.data?.state,dangerType:item.data?.dangerType,reason:item.data?.lastReasonText}))')
+                        raise AssertionError((implementation.__name__, result, list(folder.iterdir()), requests, page_state, download_state))
                     assert file.read_bytes() == b'fixture download \x00\xff', result
                     outcomes.append(result)
                     file.unlink()
