@@ -33,6 +33,11 @@ jobs:
           repository: sudoprivacy/ai-dev-browser
           ref: 94170d23f65f5f9140792d1de4a158c086a39325
           path: .parity-reference
+      - uses: actions/checkout@v4
+        with:
+          repository: sudoprivacy/ai-dev-browser
+          ref: c349d347251779357136685b6a698e3d2c59ce6d
+          path: .current-reference
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -76,6 +81,23 @@ jobs:
           if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
           python scripts/cli_parity.py --suh "$executable" --reference .parity-reference --check-defaults sudohand-cli/tests/fixtures/browser-cli-defaults.json
           python scripts/pool_parity.py --reference .parity-reference --fixture crates/sudohand-browser/tests/fixtures/pool-scheduler.json
+      - name: Current adb v0.51.1 declarations and open gaps
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          executable=target/debug/suh
+          if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
+          python scripts/cli_parity.py --suh "$executable" --reference .current-reference --known-gaps docs/migrations/current-cli-gaps.json --report artifacts/current-reference/cli.json
+          python scripts/test_current_cli_gate.py --suh "$executable" --reference .current-reference
+      - name: Current adb v0.51.1 real browser journeys
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        env:
+          AI_DEV_BROWSER_CHROME: ${{ env.PARITY_CHROME }}
+        run: |
+          executable=target/debug/suh
+          if [[ "$RUNNER_OS" == Windows ]]; then executable=target/debug/suh.exe; fi
+          python -u scripts/live_current_reference.py --suh "$executable" --reference .current-reference --output artifacts/current-reference
       - name: CLI steering and browser migration foundation
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash

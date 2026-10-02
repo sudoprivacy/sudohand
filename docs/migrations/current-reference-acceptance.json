@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "tested_at": "2026-10-02",
+  "reference_commit": "c349d347251779357136685b6a698e3d2c59ce6d",
+  "implementation_commit": "ab5855cda7bc2eb581934504313858a97dec0ba1",
+  "binary_sha256": "54c02c1ec11d1059e72d1c5afb8654f38ff0b00e9019c3ac9a09d19521dc0d56",
+  "platform": "Windows",
+  "chrome": "154.0.8037.92",
+  "execution": "live PTY, real installed Chrome, separate CLI processes, disposable profiles and local HTTP fixture",
+  "full_migration_accepted": false,
+  "model_tested": false,
+  "declarations": {
+    "reference_tools": 61,
+    "available_tools": 59,
+    "displayed_defaults_checked": 27,
+    "status": "failed",
+    "gaps": "current-cli-gaps.json",
+    "limits": "Command names, long flags and displayed scalar defaults only. Types, choices, boolean defaults, unshown defaults, results and runtime behavior require separate checks."
+  },
+  "live": {
+    "script": "scripts/live_current_reference.py",
+    "status": "journeys_passed_with_open_result_gap",
+    "comparison_calls": 40,
+    "backends": [
+      {
+        "backend": "python",
+        "checks": [
+          "discover returned ref -> trusted click -> exactly one visible reservation",
+          "mobile viewport -> second tab -> save draft -> reload -> visible draft and decoded screenshot",
+          "live tab list -> close selected target -> verify actual disappearance and original receipt"
+        ],
+        "screenshot_sha256": "a1c7a265cbbcd0fca02ee33aa348a37b99e0141468da3d79b74f723e1f6e93ce",
+        "cleanup": "owned browser stopped"
+      },
+      {
+        "backend": "rust",
+        "checks": [
+          "discover returned ref -> trusted click -> exactly one visible reservation",
+          "mobile viewport -> second tab -> save draft -> reload -> visible draft and decoded screenshot",
+          "live tab list -> close selected target -> verify actual disappearance and original receipt"
+        ],
+        "screenshot_sha256": "48456b5ca0ea55f1b8bd45a08d274fb69512ecbffd973c0905cf3e7c90eefe53",
+        "cleanup": "owned browser stopped"
+      }
+    ],
+    "result_gaps": [
+      {
+        "capability": "C06",
+        "tool": "page_goto",
+        "field": "ready",
+        "reference": true,
+        "target": "missing",
+        "impact": "Navigation success cannot tell the caller that load completed."
+      }
+    ]
+  },
+  "gate_tests": [
+    "strict mode rejects the six open declaration gaps",
+    "exact ledger rejects an extra gap",
+    "exact ledger rejects a removed gap",
+    "exact ledger rejects a different reference commit"
+  ],
+  "earlier_attempts": [
+    {
+      "result": "failed fixture assertion",
+      "detail": "Initial close check expected original URL without the #receipt fragment added by submission. It correctly found the sole remaining original tab. The test now uses the observed submission URL and checks the visible receipt."
+    }
+  ],
+  "ci": {
+    "workflow": ".github/workflows/browser-parity.yml",
+    "platforms": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "status": "pending PR run",
+    "legacy_reference_retained": "94170d23f65f5f9140792d1de4a158c086a39325"
+  },
+  "prior_unchanged_windows_failure": {
+    "run": "https://github.com/sudoprivacy/sudohand/actions/runs/37016817332/job/110869606662",
+    "source": "Documentation-only PR #34; product and tests identical to PR #33",
+    "result": "Old Python download returned success but the expected directory stayed empty. Chrome's download history contained fixture.bin with state=2 and dangerType=0. Actual destination was not captured; cause remains unresolved. Other steps, Linux and macOS passed. No unchanged rerun was used to erase this failure."
+  },
+  "audit": {
+    "skill_commit": "5f1491743b1c70c639fc5d6933fd0800b407bda1",
+    "scope": "No product CLI/help/result changes. Tests audit real parser/help declarations and real task outcomes. New missing readiness field retained as an open result contract. No new model acceptance claimed.",
+    "mechanical_tools": 63
+  },
+  "remaining": [
+    "page_goto ready field, delayed loading, redirects and timeout honesty",
+    "Other cases within C05/C09/C14/C15, including extension transport and refusing targets",
+    "Recording, PDF, iframe downloads and human-like mouse declarations",
+    "Argument types/choices/boolean or undisplayed defaults",
+    "Grok SDK route, events, pool cancellation and restart failures",
+    "Other consumers, installed releases and rollback"
+  ]
+}

@@ -17,7 +17,7 @@
 
 **接下来按此顺序推进：**
 
-1. 将 v0.51.1 的实际工具合同接入持续检查，逐项记录缺失工具、参数、默认值和证据。历史 v0.38.1 检查保留其范围标识；未经执行的检查不得计为通过。
+1. 将 v0.51.1 的实际工具合同接入持续检查，逐项记录缺失工具、参数、默认值和证据。首批 61 工具声明检查和真实浏览器任务链已提交，范围见 2.4 节。历史 v0.38.1 检查保留其范围标识；未经执行的检查不得计为通过。
 2. 用同一条真实 Grok 任务链完成持久连接／事件／pool 的 SDK 路线试验，比较消费者改写与有限 Python bridge，记录决定及边界。
 3. 按 27 个行为单元补齐实现和真实测试，优先录制、PDF、iframe／下载及恢复。每项都回填版本、命令、真实结果和剩余场景，再逐步扩大当前基线的 CI 保护。
 4. 通过所用能力的验收后，推进其他调用方和正式发行／安装／回滚；达到第 8 节全部门槛后再决定 adb 归档。
@@ -98,6 +98,18 @@ Grok 的首次真实试验发现旧 adb 的 checkpoint 缺陷：读取成功后�
 - Windows parity 另暴露 pool 等待超时、旧 Python 参考下载未落盘和扩展加载超时。本机完整 Rust 浏览器套件 101 项通过，原页面／下载对照流程也通过；这些结果没有用于抹去 CI 失败。修正扩展测试改写 Windows 账号环境的问题，补上可避开现有个人 bridge 的真实启动检查、正确的二进制 fixture MIME 和 pool 失败诊断；超时与文件内容断言保持原样。[诊断记录](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/windows-parity-followup.json) 保留已确认的环境问题与尚未定位的失败。
 
 **这里只接受 Python 后端的持久化修复。** Grok 的 Rust SDK 路线、取消／失败恢复、下载、扩展传输和下游固定版本仍未验收；M1 不能据此退出。下一步用同一条真实任务链比较消费者改写与有限 Python bridge，并追查重启连接失败。
+
+### 2.4 当前 v0.51.1 基线的持续检查（2026-10-02）
+
+新增检查显式固定 `c349d347`，使用该 checkout 的真实 Python parser 和 CLI，以及当前 Rust 二进制；保留原 v0.38.1 套件。两套检查的版本和范围分别记录。
+
+- 61 个公开工具中，59 个命令存在；6 个工具存在声明缺口：录制 start/stop、PDF、`download_link --frame`、鼠标 click/move 的 `--human-like`。这不是行为完成率；类型、choices、布尔及未显示的默认值仍需补检。
+- [差异清单](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/current-cli-gaps.json) 与实际结果逐项比对。新增或消失的差异都要求审查并更新记录；严格 parity 模式仍明确失败，清单一致不代表迁移完成。
+- Windows 本地 live PTY、真实 Chrome、两个后端共 40 次对照 CLI 调用：发现 ref 后可信提交且只提交一次；390×844 视口跨命令／新标签／刷新保留；草稿刷新后可见并保存实际截图；按实时列表关闭第二个标签，确认它消失且原收据仍在。浏览器启动／清理由 Rust fixture 提供，本轮不宣称验证 Python 启停等价。
+- 实测新增返回合同缺口：adb `page_goto` 返回 `ready: true`，Rust 缺少该字段。普通页面导航成功不足以接受慢加载／超时场景；C06 保持未完成。草稿本轮通过 JS 保存，不计作 `storage_*` wrapper 的验收。
+- 上述检查加入三平台 PR CI，并保存 JSON 结果和截图；[验收记录](https://github.com/sudoprivacy/sudohand/blob/main/docs/migrations/current-reference-acceptance.json) 记录本地结果及 CI 状态。本轮没有修改产品工具或 help，也没有新增真实模型验收结论。
+
+下一步仍是 Grok 的持久连接／事件／pool SDK 路线试验，并继续补录制、PDF、下载和 `page_goto` readiness 合同。27 个行为单元、调用方和发行门槛全部通过前，完整迁移保持未完成。
 
 ## 3. 依赖盘点结果
 
