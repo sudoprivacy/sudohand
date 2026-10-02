@@ -344,10 +344,10 @@
       "complexity": "high",
       "explanation": "ai-dev-browser>=0.15.0,<1.0; CDP/Tab/private element APIs, launch monkeypatch, BrowserPool inheritance/reexports.",
       "acceptance": "Existing profile -> account/session -> pool job -> real request/download -> restart/resume/cancel; extension and CDP transports; update pinned transitive consumers.",
-      "status": "identified",
+      "status": "python-persistence-baseline-accepted",
       "owner": null,
       "migration_pr": null,
-      "live_evidence": null,
+      "live_evidence": "https://github.com/sudoprivacy/ai-dev-browser/blob/2bcfe9f661b5eaa0afc96122cb8182b01f9796c7/tests/integration/pool-persistence-acceptance.json",
       "revision": "a4e527c",
       "branch": "main",
       "scope": "remote-default-and-local",
@@ -622,7 +622,10 @@
             140
           ]
         }
-      ]
+      ],
+      "baseline_fix_pr": "https://github.com/sudoprivacy/ai-dev-browser/pull/9",
+      "baseline_acceptance_revision": "44033c2dbc6b34d83c31b3183fc7f6c0ae7a7463",
+      "remaining": "Rust SDK route, intermittent Chrome restart connection failure, cancellation, failure recovery, downloads, extension transport, and pinned transitive consumers."
     },
     {
       "id": "R16",

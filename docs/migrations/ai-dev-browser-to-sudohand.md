@@ -67,6 +67,17 @@
 
 **本轮只接受开发构建中的可选接入和回退。** 安装包分发、默认切换、其他消费者与深层 Python SDK 仍未验收。M1 下一项是 Grok pool 生命周期试验和 SDK 路线决策；同时继续补录制、PDF、下载／扩展行为，最终按 M3 验收正式发行。
 
+### 2.3 Grok pool 的 Python 基线与持久化修复（2026-10-02）
+
+Grok 的首次真实试验发现旧 adb 的 checkpoint 缺陷：读取成功后，Pydantic 结果里的 `datetime` 保持 Python 类型，导致 `save_state()`／关闭 pool 时 JSON 序列化失败。[adb PR #9](https://github.com/sudoprivacy/ai-dev-browser/pull/9) 改为在结果入口使用 Pydantic JSON 模式，并补上回归测试。源码参考仍固定 v0.51.1；此修复单独记录，不覆盖历史基线。
+
+- 使用 Grok `44033c2d`、真实本地凭据与 Chrome，通过 live PTY 启动两个独立 worker，分别只读收藏列表，确认结果包含时间字段。保存两个完成任务及一个待办任务，关闭后用同一组 profile 和 checkpoint 重开；只执行待办任务，保留两个完成结果，最终三个任务完成且浏览器端口关闭。
+- 最终脚本运行通过，耗时 22.7 秒。带诊断的前一轮也通过；另一次在重启连接 Chrome 时失败，尚未定位原因，保留为生命周期稳定性待查项。没有加入重试来掩盖失败，也没有换 profile 绕过重启路径。
+- 本地单元和新增回归测试共 126 项通过；新增回归进入 Windows/macOS/Linux CI。真实账号脚本已提交，明确要求有效登录及带时间字段的收藏；缺少条件会失败。测试清除临时凭据、账号结果和专用 profile，仅保留脱敏记录。
+- [脚本及验收证据](https://github.com/sudoprivacy/ai-dev-browser/blob/2bcfe9f661b5eaa0afc96122cb8182b01f9796c7/tests/integration/pool-persistence-acceptance.json) 区分真实浏览器验收与使用内存客户端的 CI 回归。CLI steering 检查对应规则 5：pool 返回值应在源头满足 JSON 序列化合同。
+
+**这里只接受 Python 后端的持久化修复。** Grok 的 Rust SDK 路线、取消／失败恢复、下载、扩展传输和下游固定版本仍未验收；M1 不能据此退出。下一步用同一条真实任务链比较消费者改写与有限 Python bridge，并追查重启连接失败。
+
 ## 3. 依赖盘点结果
 
 扫描了本地 **142 个 Git 工作目录**、远端 **123 个仓库的默认分支**（120 个非空），远端共检查 60,791 个选定文本文件。远端 28 个仓库直接出现 adb 引用，另有 2 个仅通过已知上游形成传递依赖；加上本地发现的一个历史文档仓库，去重后共 31 个相关仓库：
